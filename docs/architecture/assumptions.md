@@ -60,7 +60,9 @@ Convenção de status:
 | --- | --- | --- | --- |
 | P1 | ~~O motorista paga antes de carregar, por um valor definido (pré-pago)~~ → **RESOLVIDO: pré-autorização + captura pelo consumo real** | ✅ | Confirmado por você em 2026-07-29. Formalizado no [ADR-0008](adr/0008-pre-autorizacao-e-captura.md). Consequências: `capturePayment` deixa de ser opcional; o teto de pré-autorização vira limite de sessão com parada automática; a matriz da FASE 7 passa a ter pré-autorização como critério eliminatório |
 | P2 | ~~Devolução de valor não consumido~~ → **RESOLVIDO para cartão**: capturamos só o consumido; o saldo é liberado pela captura parcial | ✅ (cartão) 🔴 (Pix) | Para cartão não existe "devolução" — nunca cobramos a mais. **Para Pix o problema continua aberto**: Pix não tem pré-autorização. Ver P8 |
-| P8 | **Pix não suporta pré-autorização.** O modelo escolhido não se aplica a Pix sem uma regra separada | 🔴 | Decisão necessária antes da FASE 7: (a) Pix só como pré-pago com valor fixo + devolução parcial via API de devolução; (b) Pix fora do MVP, só cartão; (c) Pix com valor fixo sem devolução. Cada opção muda a UX e a matriz de adquirentes |
+| P8 | ~~Pix não suporta pré-autorização~~ → **RESOLVIDO: Pix como crédito pré-pago de valor fixo, sem devolução automática** | ✅ | Confirmado por você em 2026-07-29. Formalizado no [ADR-0010](adr/0010-pix-valor-fixo.md). Duas ressalvas obrigatórias: parada automática ao esgotar o valor pago, e **devolução obrigatória quando o consumo for zero** |
+| P11 | O PSP de Pix escolhido oferece **devolução parcial via API** (`PUT /pix/{e2eid}/devolucao`) | 🟡 | Sem isso, não conseguimos honrar a devolução por consumo zero (ADR-0010 §4) e o Pix fica inviável. Vira **requisito**, não diferencial, na matriz da FASE 7 |
+| P12 | Os valores de Pix são oferecidos em **faixas fixas** (ex.: R$ 20 / R$ 30 / R$ 50), não em valor livre | 🟡 | Define a UX do terminal (FASE 8) e limita a sobra típica não consumida |
 | P9 | Cartão de **débito** frequentemente não suporta pré-autorização no Brasil | 🟡 | Se boa parte dos motoristas usa débito, parte do público fica sem caminho de pagamento. Vira critério da matriz da FASE 7 |
 | P10 | Existe um **teto padrão de pré-autorização** por sessão (ex.: R$ 100) e o motorista pode ou não escolhê-lo | 🟡 | Define a UX do terminal (FASE 8) e o valor de `maximumAmountCents` da sessão |
 | P3 | O estabelecimento é o responsável comercial; não há split financeiro real no MVP | 🟡 | Fora do escopo declarado; entra depois |
@@ -93,6 +95,7 @@ Convenção de status:
 | 8 | Pré-pago com valor fixo ou pré-autorização + captura? | **Pré-autorização + captura pelo consumo real** |
 | 9 | O que acontece se pagar mais do que consumir? | Não se aplica a cartão — capturamos só o consumido |
 | 11 (parcial) | Domínio para o endpoint OCPP | **`sonare.com.br`** |
+| 17 | Como tratar Pix, que não tem pré-autorização? | **(c) valor fixo, sem devolução** — com as ressalvas do [ADR-0010](adr/0010-pix-valor-fixo.md) |
 
 ### 🔴 Ainda em aberto — bloqueantes
 
@@ -110,9 +113,11 @@ Convenção de status:
 
 **Sobre o negócio — decorrentes da escolha de pré-autorização**
 10. Já existe preferência de adquirente/gateway (Cielo, Stone, PagSeguro, Mercado Pago, Rede, SmartPOS específico)? Se houver, a matriz da FASE 7 já nasce enviesada — melhor eu saber.
-17. **(nova)** **Pix não tem pré-autorização.** Como tratamos? (a) Pix como pré-pago com valor fixo e devolução parcial do não consumido; (b) Pix fora do MVP, só cartão; (c) Pix com valor fixo e sem devolução. *(premissa P8 — muda a UX e a matriz da FASE 7)*
-18. **(nova)** Qual o **teto padrão de pré-autorização** por sessão? (ex.: R$ 100.) O motorista escolhe o valor ou é fixo pelo estabelecimento? *(premissa P10)*
-19. **(nova)** Quando a sessão atinge o teto pré-autorizado, o comportamento é **parar automaticamente** a recarga? Confirmo que sim como padrão. *(regra nova — ver ADR-0008 §4)*
+18. Qual o **teto padrão de pré-autorização** por sessão no cartão? (ex.: R$ 100.) O motorista escolhe o valor ou é fixo pelo estabelecimento? *(premissa P10)*
+19. Quando a sessão atinge o teto pré-autorizado, o comportamento é **parar automaticamente** a recarga? Confirmo que sim como padrão. *(regra nova — ver ADR-0008 §4)*
+20. **(nova)** Quais **faixas de valor** oferecer no Pix? Proposta: R$ 20 / R$ 30 / R$ 50, sem valor livre — limita a sobra típica não consumida. *(premissa P12)*
+21. **(nova)** Quem pode autorizar uma **devolução manual** de Pix no painel, e há limite de valor sem aprovação superior? *(ADR-0010 §4 — vira regra de perfil de acesso)*
+22. **(nova)** Confirmo o entendimento do ADR-0010 §4: se o Pix for pago e a recarga **não entregar energia nenhuma**, o sistema devolve automaticamente. Essa é a única devolução automática do MVP. Alguma objeção?
 
 **Sobre infraestrutura**
 13. Onde vamos hospedar? (VPS própria, AWS, GCP, Azure, Hetzner, servidor local?) *(premissa A4)*

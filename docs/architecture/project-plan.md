@@ -144,6 +144,7 @@ sua autorização, conforme a regra "não apagar/alterar código existente sem j
 | [ADR-0007](adr/0007-nome-do-produto-configuravel.md) | Marca configurável | "Borá Carregar" vive em config, não espalhado no código |
 | [ADR-0008](adr/0008-pre-autorizacao-e-captura.md) | **Pré-autorização + captura pelo consumo real** | Reserva → entrega → captura parcial; exige parada automática no teto |
 | [ADR-0009](adr/0009-topologia-de-dominios.md) | Subdomínios dedicados em `sonare.com.br` | `ocpp.` / `api.` / `painel.`; `www` intocado; FASE 4 dividida em local + pública |
+| [ADR-0010](adr/0010-pix-valor-fixo.md) | **Pix como crédito de valor fixo** | Sem devolução automática, exceto consumo zero; parada automática ao esgotar o valor |
 
 ### 3.4 Fluxo financeiro (decidido em 2026-07-29)
 
@@ -172,9 +173,32 @@ Consequências que atravessam várias fases:
    Nenhuma cobrança acontece. Isso derruba o risco R-07 de severidade 15 para 5.
 4. A captura precisa acontecer logo após a sessão, não em lote — pré-autorizações
    expiram (risco R-23).
-5. **Pix não tem pré-autorização** e débito frequentemente também não. Esse
-   caminho ficou em aberto — é a maior lacuna remanescente do modelo financeiro
-   (risco R-24, pergunta 17 em `assumptions.md`).
+5. **Pix não tem pré-autorização** e por isso segue um modelo próprio — ver abaixo.
+
+### 3.5 Fluxo do Pix (decidido em 2026-07-29)
+
+Pix funciona como **crédito pré-pago de valor fixo**
+([ADR-0010](adr/0010-pix-valor-fixo.md)) — o motorista escolhe R$ 30, paga, e
+recebe energia até esgotar o valor. Sem devolução automática do saldo.
+
+Isso cria **dois modelos de cobrança no mesmo produto**, e a diferença precisa
+estar visível na interface antes do pagamento:
+
+| | Cartão de crédito | Pix |
+| --- | --- | --- |
+| Cobrança | Depois, pelo consumido | Antes, valor escolhido |
+| Teto da sessão | Valor pré-autorizado | Valor pago |
+| Limiar de parada automática | **95%** — ultrapassar é prejuízo nosso | **~100%** — parar antes é prejuízo do motorista |
+| Sobra não consumida | Não existe | Fica com o estabelecimento |
+| Falha antes de iniciar | `void`, nada cobrado | **Devolução automática obrigatória** |
+
+Dois pontos que atravessam o projeto:
+
+1. A máquina de parada automática é **a mesma** dos dois lados — muda só o
+   limiar. É isso que torna o Pix barato de implementar.
+2. `refundPayment` **funcionando de verdade para Pix** é requisito eliminatório
+   do PSP na FASE 7. A simplificação é de fluxo, não de infraestrutura: o caso de
+   consumo zero exige devolver (risco R-27, severidade 15).
 
 ---
 

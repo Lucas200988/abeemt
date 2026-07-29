@@ -141,26 +141,17 @@ Uma pré-autorização que expira sem captura é energia entregue e não faturad
 por isso vira alerta operacional de alta prioridade na FASE 9, não uma linha de
 log.
 
-## 7. O problema do Pix (não resolvido nesta decisão)
+## 7. O problema do Pix — ✅ RESOLVIDO em 2026-07-29
 
 **Pix não tem pré-autorização.** É pagamento imediato e final. O modelo desta ADR
 não se aplica a ele.
 
-Três caminhos possíveis, **decisão pendente sua** (pergunta 17 em
-`assumptions.md`):
+**Decisão tomada:** Pix funciona como **crédito pré-pago de valor fixo, sem
+devolução automática**, com parada automática ao esgotar o valor pago e devolução
+obrigatória quando o consumo for zero.
 
-| Opção | Como funciona | Custo |
-| --- | --- | --- |
-| **(a)** Pix pré-pago com devolução parcial | Motorista paga R$ 50 fixo; ao fim, devolvemos o não consumido pela API de devolução do Pix | Fluxo financeiro paralelo; devolução leva tempo; UX pior |
-| **(b)** Pix fora do MVP | Só cartão no MVP | Perde-se o público sem cartão, que no Brasil não é pequeno |
-| **(c)** Pix com valor fixo, sem devolução | Motorista compra "R$ 30 de energia" e carrega até acabar | Simples, mas precisa ser explicitíssimo na interface para não parecer abusivo |
-
-**Recomendação:** (a) para o piloto, porque preserva a promessa do produto
-("você paga o que consumiu") em ambos os meios. Mas é trabalho adicional real e
-precisa da sua decisão antes da FASE 7.
-
-Registro honesto: este ponto **não estava coberto** na decisão que você tomou, e
-é a maior lacuna remanescente do modelo financeiro.
+Detalhamento completo, incluindo a exceção obrigatória e o limiar de parada
+diferente do cartão, em **[ADR-0010](0010-pix-valor-fixo.md)**.
 
 ## 8. Cartão de débito
 

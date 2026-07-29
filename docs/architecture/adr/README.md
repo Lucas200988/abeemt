@@ -16,6 +16,7 @@ que **supersede** o anterior, e o antigo passa a status `Superseded by ADR-XXXX`
 | [0007](0007-nome-do-produto-configuravel.md) | Marca do produto configurável ("Borá Carregar") | Aceito | 2026-07-29 |
 | [0008](0008-pre-autorizacao-e-captura.md) | Pré-autorização + captura pelo consumo real | Aceito | 2026-07-29 |
 | [0009](0009-topologia-de-dominios.md) | Topologia de domínios e endpoints (`sonare.com.br`) | Aceito | 2026-07-29 |
+| [0010](0010-pix-valor-fixo.md) | Pix com valor fixo, sem devolução automática | Aceito | 2026-07-29 |
 
 > **Nota sobre o ADR-0004:** o [ADR-0008](0008-pre-autorizacao-e-captura.md)
 > altera a interface `PaymentProvider` definida no

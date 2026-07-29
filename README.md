@@ -99,9 +99,20 @@ Reserva R$ 100 no cartão (não cobrado)
 Falha antes do início gera **cancelamento da reserva** (`void`), não estorno —
 nenhuma cobrança acontece.
 
-> ⚠️ **Lacuna conhecida:** Pix não tem pré-autorização e cartão de débito
-> frequentemente também não. A estratégia para esses meios está em aberto
-> (pergunta 17 em [`assumptions.md`](docs/architecture/assumptions.md), risco R-24).
+**Pix** segue modelo próprio, por não ter pré-autorização
+([ADR-0010](docs/architecture/adr/0010-pix-valor-fixo.md)): crédito pré-pago de
+valor fixo, sem devolução do saldo não consumido.
+
+| | Cartão de crédito | Pix |
+| --- | --- | --- |
+| Cobrança | Depois, pelo consumido | Antes, valor escolhido |
+| Parada automática | 95% do teto | ~100% do valor pago |
+| Sobra não consumida | Não existe | Fica com o estabelecimento |
+| Falha antes de iniciar | `void` — nada cobrado | **Devolução automática** |
+
+> A devolução por **consumo zero** é obrigatória e não configurável: Pix pago sem
+> energia entregue é dinheiro recebido sem contraprestação (risco R-27).
+> Por isso `refundPayment` para Pix é requisito eliminatório do PSP na FASE 7.
 
 ## Endpoints previstos
 

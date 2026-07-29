@@ -5,6 +5,23 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 0 — Decisão sobre Pix — 2026-07-29
+
+#### Adicionado
+- `docs/architecture/adr/0010-pix-valor-fixo.md` — Pix como crédito pré-pago de valor fixo, sem devolução automática do saldo. Registra que devolução parcial de Pix é tecnicamente possível (`PUT /pix/{e2eid}/devolucao`, valor parcial, janela de D+90) e que a escolha é de escopo, não de limitação técnica.
+- Risco **R-27** (Pix pago sem entrega de energia, severidade 15) e **R-28** (retenção de saldo questionada sob o CDC).
+- Premissas P11 (PSP precisa oferecer devolução parcial via API) e P12 (faixas fixas de valor).
+- Perguntas 20 a 22.
+
+#### Alterado
+- **Exceção obrigatória:** consumo zero em Pix gera **devolução automática integral**. É a única devolução automática do MVP e não é configurável — Pix pago sem energia entregue seria cobrança sem contraprestação.
+- `refundPayment` para Pix passa a ser **requisito eliminatório** do PSP na FASE 7, não diferencial. A simplificação adotada é de fluxo, não de infraestrutura.
+- Limiar de parada automática passa a ser **diferente por meio de pagamento**: 95% no cartão (ultrapassar é prejuízo nosso) e ~100% no Pix (parar antes é prejuízo do motorista). A máquina é a mesma; muda só o parâmetro.
+- Risco R-24 rebaixado de severidade 12 para 6 — resta apenas o cartão de débito, com Pix como alternativa no terminal.
+- ADR-0008 §7 marcado como resolvido, apontando para o ADR-0010.
+
+---
+
 ### FASE 0 — Revisão após respostas do cliente — 2026-07-29
 
 Três definições recebidas: domínio `sonare.com.br`, o WEMOB tem **Ethernet**, e

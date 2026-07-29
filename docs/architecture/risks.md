@@ -184,21 +184,60 @@ entregue nunca é faturada.
 - Painel com visão dedicada: "pré-autorizações pendentes de captura".
 - O prazo real de validade entra na matriz da FASE 7 (varia por adquirente).
 
-### R-24 — Pix e cartão de débito ficam sem caminho de pagamento 🔵 *(novo — 2026-07-29)*
-**P 4 · I 3 · Severidade 12 — ALTO**
+### R-24 — Cartão de débito fica sem caminho de pagamento 🟠
+**P 4 · I 3 · Severidade 12 → P 3 · I 2 · Severidade 6 (2026-07-29)**
 
-O modelo escolhido depende de pré-autorização, que **Pix não tem** e que cartão
-de **débito** frequentemente não suporta no Brasil. Boa parte do público-alvo
-(motorista sem cadastro, pagando na hora) usa exatamente esses meios.
+O modelo de pré-autorização não é suportado por **Pix** nem, frequentemente, por
+cartão de **débito** no Brasil.
 
-Se não houver decisão, o produto nasce cobrindo só crédito.
+**Rebaixado:** o caminho Pix foi resolvido pelo
+[ADR-0010](adr/0010-pix-valor-fixo.md) — Pix entra no MVP como crédito pré-pago
+de valor fixo. Resta o débito.
+
+**Mitigação remanescente:**
+- Quem usa débito passa a ter o Pix como alternativa imediata no terminal — o
+  público não fica descoberto.
+- Suporte a pré-autorização em débito vira item da matriz da FASE 7; se algum
+  adquirente oferecer, é ganho, não requisito.
+
+### R-27 — Pix pago sem entrega de energia 🔵 *(novo — 2026-07-29)*
+**P 3 · I 5 · Severidade 15 — CRÍTICO**
+
+No cartão, uma falha antes do início gera `void` e nada é cobrado. **No Pix o
+dinheiro já saiu da conta do motorista.** Se o carregador estiver offline, o
+comando for recusado ou o veículo não iniciar, temos pagamento recebido e zero
+contraprestação.
+
+Este é o pior cenário do produto ressurgindo por uma porta diferente — o mesmo
+risco R-07 que a pré-autorização tinha eliminado.
 
 **Mitigação:**
-- Decisão pendente sua (pergunta 17 de `assumptions.md`) sobre a estratégia Pix.
-- A porta `PaymentProvider` já permite fluxos distintos por método — o domínio
-  não precisa mudar quando a decisão vier.
-- Suporte a débito e Pix vira critério explícito da matriz de adquirentes (FASE 7).
-- Recomendação registrada no ADR-0008 §7: Pix como pré-pago com devolução parcial.
+- **Devolução automática integral** quando `energyWh = 0` — regra obrigatória do
+  [ADR-0010](adr/0010-pix-valor-fixo.md) §4, não configurável.
+- `refundPayment` funcionando de verdade para Pix é **requisito eliminatório** do
+  PSP na FASE 7 (premissa P11), não diferencial.
+- Devolução emitida pelo outbox com retry — falha de devolução é alerta de alta
+  prioridade, no mesmo nível de R-23.
+- Painel com visão "Pix pagos sem energia entregue", que precisa estar sempre vazia.
+- Teste obrigatório na FASE 5: pagar Pix com carregador offline resulta em
+  devolução automática, não em sessão presa.
+
+### R-28 — Retenção de saldo Pix não consumido questionada 🟠 *(novo — 2026-07-29)*
+**P 2 · I 3 · Severidade 6 — MÉDIO**
+
+Reter valor pago e não consumido pode ser questionado sob o CDC como cobrança por
+serviço não prestado, mesmo com aviso na tela. É a exposição aceita
+conscientemente pelo [ADR-0010](adr/0010-pix-valor-fixo.md).
+
+**Mitigação:**
+- Parada automática em ~100% do valor pago faz o caminho feliz ter **sobra zero** —
+  não há o que reter na maioria das sessões.
+- Devolução obrigatória em consumo zero elimina o caso grave (R-27).
+- Aviso explícito **antes** do pagamento, não em letra miúda depois.
+- Faixas de valor modestas (R$ 20 / R$ 30 / R$ 50) limitam a sobra típica.
+- Devolução manual disponível ao operador para casos de bom senso comercial.
+- O caso residual — motorista desconecta por vontade própria antes de esgotar o
+  crédito — é pequeno em valor e defensável.
 
 ### R-25 — Valor reservado indisponível no limite do motorista 🔵 *(novo — 2026-07-29)*
 **P 3 · I 2 · Severidade 6 — MÉDIO**
@@ -353,10 +392,10 @@ autorização. Nada foi apagado.
 | 3 | R-13 |
 | 4a | **R-01, R-02** (bloqueantes) + R-26, R-04, R-05 |
 | 4b | **R-01, R-02, R-18** (bloqueantes) + R-04, R-05 |
-| 5 | **R-08, R-09, R-22** (bloqueantes) + R-07, R-15, R-16, R-23 |
+| 5 | **R-08, R-09, R-22, R-27** (bloqueantes) + R-07, R-15, R-16, R-23 |
 | 6 | R-04, R-12, **R-22** |
-| 7 | R-09, R-10, R-16, **R-23, R-24** |
-| 8 | R-16, R-25 |
+| 7 | R-09, R-10, R-16, **R-23, R-27** + R-24 |
+| 8 | R-16, R-25, R-28 |
 | 9 | todos revisados |
 
 ### Riscos com maior severidade atual (após revisão de 2026-07-29)
@@ -369,6 +408,7 @@ autorização. Nada foi apagado.
 | R-01 perder o carregador de produção | 15 | 4 |
 | R-02 URL OCPP não alterável | 15 | 4 |
 | R-12 erro monetário por float | 15 (mitigado por design) | 1 |
+| **R-27 Pix pago sem entrega de energia** | **15** | **5/7** |
 
 ---
 

@@ -169,6 +169,11 @@ Consequências que atravessam várias fases:
 2. O valor pré-autorizado é um **teto rígido** da sessão. Nasce daí uma regra de
    negócio nova: parada automática da recarga antes de ultrapassá-lo (risco R-22,
    severidade 16 — o mais alto do projeto junto com R-08 e R-13).
+   O teto padrão é **R$ 200,00**, configurável por carregador → estabelecimento →
+   organização → global ([ADR-0008 §9](adr/0008-pre-autorizacao-e-captura.md)).
+   É um valor generoso: reduz paradas automáticas, mas bloqueia mais limite do
+   cartão (R-25) e faz a parada automática ser raramente exercitada em produção
+   (R-29). Deve ser calibrado após o piloto.
 3. Falha antes do início gera `void` (cancelamento da reserva), **não** estorno.
    Nenhuma cobrança acontece. Isso derruba o risco R-07 de severidade 15 para 5.
 4. A captura precisa acontecer logo após a sessão, não em lote — pré-autorizações
@@ -377,9 +382,13 @@ FASE 4b:  WEMOB ──4G/Ethernet──► internet ──► ocpp.sonare.com.br
 ```
 
 Isso rebaixa o risco R-18 de severidade 16 para 6 e encurta a janela de
-indisponibilidade do equipamento na primeira tentativa. Duas condições precisam
-ser confirmadas: existe cabo de rede até o carregador (pergunta 15) e o firmware
-aceita `ws://` sem TLS em rede privada (pergunta 16 / risco R-26).
+indisponibilidade do equipamento na primeira tentativa.
+
+**Confirmado em 2026-07-29:** existe cabo de rede até o carregador e temos
+controle do DNS de `sonare.com.br`. A 4a está viável e a 4b pode ser
+provisionada. Faltam duas confirmações técnicas do equipamento — se o firmware
+aceita `ws://` sem TLS em rede privada (pergunta 23 / risco R-26) e se a troca de
+interface é reversível (pergunta 16) — e a decisão de onde hospedar (pergunta 13).
 
 ### Ordem sugerida e desvio consciente
 

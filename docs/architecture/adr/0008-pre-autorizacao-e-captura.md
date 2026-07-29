@@ -159,6 +159,85 @@ Débito frequentemente **não** suporta pré-autorização no Brasil. Se parte
 relevante dos motoristas usa débito, esse público fica sem caminho — mesmo
 problema do Pix. Também vira critério da matriz da FASE 7.
 
+## 9. Teto padrão de pré-autorização — R$ 200, configurável
+
+**Decidido em 2026-07-29:** teto padrão de **R$ 200,00** (`20000` centavos), com
+possibilidade de alteração.
+
+### Onde o valor mora
+
+O valor **não** fica no código. Hierarquia de resolução, do mais específico para
+o mais geral — vence o primeiro não-nulo:
+
+```
+Charger.preAuthCeilingCents        (nullable)
+  ↑ se nulo
+Site.preAuthCeilingCents           (nullable)
+  ↑ se nulo
+Organization.preAuthCeilingCents   (nullable)
+  ↑ se nulo
+BORA_PREAUTH_CEILING_CENTS = 20000 (default global, variável de ambiente)
+```
+
+Custo de implementação: três colunas nulláveis e uma função de resolução. Barato,
+e evita a situação clássica de descobrir na véspera do piloto que o valor está
+cravado em cinco lugares diferentes do código.
+
+### Distinção que precisa ficar clara
+
+Dois limites diferentes, que não devem ser confundidos:
+
+| Campo | O que é |
+| --- | --- |
+| `preAuthCeilingCents` | Quanto **reservamos no cartão**. Limite financeiro |
+| `Tariff.maximumAmountCents` | Teto **comercial** de quanto uma sessão pode custar. Opcional |
+
+O teto efetivo da sessão é o **menor dos dois**:
+
+```
+tetoEfetivo = min(preAuthCeilingCents, tariff.maximumAmountCents ?? ∞)
+```
+
+A parada automática (§4) usa o teto efetivo, não o valor pré-autorizado bruto.
+
+### O trade-off de R$ 200 — registrado, não questionado
+
+R$ 200 é um teto **generoso** para um carregador de 30 kW. Com tarifa na faixa de
+R$ 2,00–2,50/kWh, equivale a 80–100 kWh — duas a cinco vezes uma sessão típica de
+recarga de oportunidade.
+
+Consequências, ambas reais:
+
+| | Efeito |
+| --- | --- |
+| ✅ | A parada automática quase nunca dispara. O motorista carrega até o carro encher sem esbarrar em limite artificial |
+| ⚠️ | Reservamos R$ 200 do limite do cartão para uma sessão que vai custar R$ 60. Os R$ 140 não capturados ficam bloqueados até o emissor liberar — dias, tipicamente. Para quem tem limite baixo, isso pesa (risco R-25) |
+
+Não é motivo para mudar a decisão — é o mesmo modelo de posto de combustível e
+hotel, e o valor é ajustável. Mas gera duas obrigações:
+
+1. **Comunicação explícita antes do pagamento**, mostrando o valor reservado e
+   deixando claro que a cobrança será só do consumido.
+2. **Calibração após o piloto.** Coletar o valor final das sessões reais e ajustar
+   o teto para algo em torno de 1,5× o percentil 95 observado. Enquanto não houver
+   esse dado, R$ 200 é um chute razoável — e assumido como tal.
+
+### Efeito colateral no teste
+
+Com teto de R$ 200, a parada automática **raramente será exercitada em produção**.
+Isso significa que ela é um caminho pouco testado guardando o risco de severidade
+mais alta do projeto (R-22).
+
+Consequência: o teste com teto artificialmente baixo (item B.5.1 do checklist da
+FASE 4, com teto de R$ 3) passa a ser **mais** importante, não menos. É a única
+oportunidade prática de ver a regra funcionando contra equipamento real.
+
+### O que isso não define
+
+R$ 200 é o teto do **cartão**. As faixas de valor do **Pix**
+([ADR-0010](0010-pix-valor-fixo.md)) são outra decisão — proposta de
+R$ 20 / R$ 30 / R$ 50, ainda pendente (pergunta 20).
+
 ## Alternativas consideradas
 
 | Alternativa | Por que não |

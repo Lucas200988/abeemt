@@ -16,7 +16,7 @@
 Confirmado em 2026-07-29 que **o equipamento tem porta Ethernet**. Isso permite
 executar a primeira conexão em rede local, sem depender de DNS, TLS, VPS ou 4G.
 
-- ⬜ Existe cabo de rede puxado até o carregador? ☐ sim ☐ não ☐ dá para puxar no dia
+- ✅ Existe cabo de rede puxado até o carregador — **confirmado em 2026-07-29**
 - ⬜ O menu permite trocar a interface de rede (4G → Ethernet) e voltar? ☐ sim ☐ não
 - ⬜ O firmware aceita `ws://` sem TLS em rede privada? ☐ sim ☐ não ☐ desconhecido
 
@@ -24,9 +24,9 @@ executar a primeira conexão em rede local, sem depender de DNS, TLS, VPS ou 4G.
 
 | Situação | Caminho |
 | --- | --- |
-| Cabo disponível **e** aceita `ws://` | **FASE 4a** — rede local. Caminho preferencial |
-| Cabo disponível **mas** exige `wss://` | 4a com TLS local e CA própria instalada, **se possível**; senão, ir para 4b |
-| Sem cabo | **FASE 4b** direto, com o endpoint público (mais risco — ver R-18) |
+| Aceita `ws://` **e** troca de interface reversível | **FASE 4a** — rede local. Caminho preferencial |
+| Exige `wss://` | 4a com TLS local e CA própria instalada, **se possível**; senão, ir para 4b |
+| Troca de interface não reversível | **Parar e reavaliar** — não vale arriscar deixar o equipamento sem comunicação |
 
 ### Configuração da FASE 4a
 
@@ -117,7 +117,7 @@ o rollback e analisar os logs offline. Não insistir além disso.
 
 | # | Passo | Esperado | Resultado | Hora |
 | --- | --- | --- | --- | --- |
-| 11 | Criar **pré-autorização manual** no painel (teto de teste, ex.: R$ 20) | Pagamento em `AUTHORIZED`, sessão em `PAYMENT_APPROVED` | ⬜ | |
+| 11 | Criar **pré-autorização manual** no painel (teto de teste, ex.: R$ 20 — **não** o padrão de R$ 200) | Pagamento em `AUTHORIZED`, sessão em `PAYMENT_APPROVED` | ⬜ | |
 | 12 | Enviar `RemoteStartTransaction` | Resposta `Accepted` (ou `Rejected` — registrar) | ⬜ | |
 | 13 | Receber `StartTransaction` | `transactionId` e `meterStart` registrados | ⬜ | |
 | 14 | `StatusNotification: Charging` | Sessão em `CHARGING` | ⬜ | |

@@ -5,6 +5,22 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 0 — Teto de pré-autorização e confirmações de infraestrutura — 2026-07-29
+
+#### Adicionado
+- `ADR-0008 §9` — teto padrão de pré-autorização em **R$ 200,00**, com hierarquia de configuração (carregador → estabelecimento → organização → `BORA_PREAUTH_CEILING_CENTS`). Distingue `preAuthCeilingCents` (limite financeiro) de `Tariff.maximumAmountCents` (teto comercial); o teto efetivo é o menor dos dois.
+- Risco **R-29** — a parada automática será raramente exercitada em produção com teto de R$ 200, o que deixa o caminho de maior severidade do projeto (R-22) pouco testado.
+- Premissa P13 — R$ 200 é ponto de partida, a calibrar após o piloto para ~1,5× o percentil 95 do valor final observado.
+- Pergunta 23 — o firmware aceita `ws://` sem TLS em rede privada? (vale perguntar ao suporte WEG antes da janela).
+
+#### Alterado
+- Premissas **E12 (cabo de rede até o carregador)** e **A8 (controle do DNS)** confirmadas. Os dois pré-requisitos pendentes de R-18 foram atendidos: a FASE 4a está viável e a 4b pode ser provisionada. Resta decidir onde hospedar (pergunta 13).
+- Risco R-25 elevado de severidade 6 para 8 — teto generoso bloqueia mais limite do cartão. Trade-off registrado, com calibração pós-piloto como mitigação.
+- Checklist da FASE 4: item B.5.1 (parada automática com teto baixo) reforçado como mais importante, já que produção não vai exercitar esse caminho.
+- Checklist: sem cabo deixa de ser cenário; troca de interface não reversível passa a ser critério de parada.
+
+---
+
 ### FASE 0 — Decisão sobre Pix — 2026-07-29
 
 #### Adicionado

@@ -89,12 +89,16 @@ Detalhes e justificativas nos [ADRs](docs/architecture/adr/README.md).
 que consumiu ([ADR-0008](docs/architecture/adr/0008-pre-autorizacao-e-captura.md)).
 
 ```
-Reserva R$ 100 no cartão (não cobrado)
+Reserva R$ 200 no cartão (teto padrão, não cobrado)
   → recarga inicia
   → sistema recalcula o valor a cada MeterValues
   → ao atingir 95% do teto: parada automática
-  → captura R$ 37,40 (valor real) · R$ 62,60 liberados
+  → captura R$ 62,40 (valor real) · R$ 137,60 liberados
 ```
+
+O teto padrão de **R$ 200,00** é configurável por carregador → estabelecimento →
+organização → variável de ambiente `BORA_PREAUTH_CEILING_CENTS`. Vence o primeiro
+valor não-nulo.
 
 Falha antes do início gera **cancelamento da reserva** (`void`), não estorno —
 nenhuma cobrança acontece.

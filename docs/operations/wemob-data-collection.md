@@ -51,17 +51,21 @@ Sem estes, a FASE 4 não pode ser planejada com segurança.
 | 19 | Interfaces de rede disponíveis | ☑ 4G ☐ Wi-Fi **☑ Ethernet** *(confirmado 2026-07-29)* | ✅ |
 | 20 | Operadora e qualidade do sinal 4G no local | `________` | ⬜ |
 | 21 | IP fixo ou dinâmico? Há NAT/firewall no caminho? | `________` | ⬜ |
-| 21a | **Existe cabo de rede puxado até o carregador?** | ☐ sim ☐ não ☐ viável puxar no dia | ⬜ 🔴 |
+| 21a | **Existe cabo de rede puxado até o carregador?** | ☑ **sim** *(confirmado 2026-07-29)* | ✅ |
 | 21b | A interface de rede é selecionável no menu e a troca é reversível? | ☐ sim ☐ não | ⬜ 🔴 |
 | 21c | O firmware aceita `ws://` (sem TLS) com IP privado? | ☐ sim ☐ não ☐ desconhecido | ⬜ 🔴 |
 | 21d | Configuração IP atual (DHCP ou estático + endereço) | `________` | ⬜ |
+| 21e | Faixa de IP da rede local e há DHCP disponível? | `________` | ⬜ |
 
-> **O item 19 foi confirmado: o equipamento tem Ethernet.** Isso destrava a
-> **FASE 4a** — primeiro teste em rede local, sem domínio público, TLS ou VPS.
-> É a maior redução de risco disponível no projeto (R-18 caiu de severidade 16
-> para 6). Mas depende dos itens **21a, 21b e 21c**, que agora são bloqueantes:
-> sem cabo, sem troca reversível de interface ou sem aceitar `ws://`, o ganho
-> desaparece e voltamos ao caminho público (FASE 4b).
+> **Itens 19 e 21a confirmados: o equipamento tem Ethernet e existe cabo até
+> ele.** A **FASE 4a está viável** — primeiro teste em rede local, sem domínio
+> público, TLS ou VPS. É a maior redução de risco do projeto (R-18 caiu de
+> severidade 16 para 6).
+>
+> Restam **21b e 21c** como bloqueantes da 4a: se a troca de interface não for
+> reversível, ou se o firmware recusar `ws://` sem TLS (risco R-26), o ganho
+> desaparece e vamos direto para o caminho público (FASE 4b). Vale perguntar
+> ambos ao suporte WEG **antes** da janela de teste.
 
 ## 3. Comportamento OCPP a observar (preencher durante a FASE 4)
 

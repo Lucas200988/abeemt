@@ -239,18 +239,47 @@ conscientemente pelo [ADR-0010](adr/0010-pix-valor-fixo.md).
 - O caso residual — motorista desconecta por vontade própria antes de esgotar o
   crédito — é pequeno em valor e defensável.
 
-### R-25 — Valor reservado indisponível no limite do motorista 🔵 *(novo — 2026-07-29)*
-**P 3 · I 2 · Severidade 6 — MÉDIO**
+### R-25 — Valor reservado indisponível no limite do motorista 🔵
+**P 3 · I 2 · Severidade 6 → P 4 · I 2 · Severidade 8 (2026-07-29)**
 
-Reservamos R$ 100, capturamos R$ 30, mas o emissor pode levar dias para liberar
-os R$ 70 no limite do cartão. O motorista vê "R$ 100 bloqueados" e reclama.
+Reservamos R$ 200, capturamos R$ 60, mas o emissor pode levar dias para liberar
+os R$ 140 no limite do cartão. O motorista vê "R$ 200 bloqueados" e reclama.
+
+**Elevado** com a definição do teto padrão em R$ 200
+([ADR-0008 §9](adr/0008-pre-autorizacao-e-captura.md)). É o custo consciente de um
+teto generoso: quanto maior o teto, menos a parada automática atrapalha a recarga,
+e mais limite do cartão fica bloqueado. Para um motorista com limite de R$ 1.000,
+reservar R$ 200 por uma carga de R$ 60 é perceptível.
 
 **Mitigação:**
-- Comunicação explícita na interface de pagamento **antes** da autorização.
-- Teto padrão dimensionado com bom senso (não reservar R$ 300 para uma carga
-  típica de R$ 40) — depende da resposta à pergunta 18.
-- Comprovante/mensagem final mostrando claramente: reservado, cobrado, liberado.
+- Comunicação explícita na interface **antes** da autorização: valor reservado,
+  e que a cobrança será só do consumido.
+- Comprovante final mostrando os três números: reservado, cobrado, liberado.
+- **Calibração após o piloto:** coletar o valor final das sessões reais e ajustar
+  o teto para ~1,5× o percentil 95 observado. R$ 200 é ponto de partida, não
+  destino (premissa P13).
+- O teto é configurável por carregador, estabelecimento e organização — dá para
+  baixar num local específico sem mexer no resto.
 - Roteiro de atendimento para essa reclamação no manual de suporte (FASE 9).
+
+### R-29 — Parada automática mal exercitada em produção 🟠 *(novo — 2026-07-29)*
+**P 3 · I 3 · Severidade 9 — MÉDIO**
+
+Com teto de R$ 200, quase nenhuma sessão real vai atingi-lo — o carro enche
+antes. A parada automática vira um caminho **raramente executado**, guardando o
+risco de maior severidade do projeto (R-22, severidade 16).
+
+Código que não roda é código que não se sabe se funciona. Quando finalmente
+disparar, será numa sessão real, com um motorista esperando.
+
+**Mitigação:**
+- Testes automatizados cobrindo o disparo em vários pontos (FASE 5/6).
+- Teste com teto artificialmente baixo (R$ 3) contra equipamento real — item
+  B.5.1 do checklist da FASE 4. **Ficou mais importante, não menos.**
+- Métrica no painel: quantas vezes a parada automática disparou. Se o número for
+  zero por meses, é sinal de que a regra nunca foi validada em campo.
+- Considerar, no piloto, um carregador com teto deliberadamente baixo para
+  exercitar o caminho com sessões reais.
 
 ### R-10 — Acoplamento precoce a uma adquirente 🟠
 **P 3 · I 4 · Severidade 12 → mitigado por design**
@@ -335,9 +364,14 @@ Isso é a maior redução de risco obtida até aqui: a primeira conversa OCPP co
 equipamento real deixa de depender de cinco camadas de infraestrutura
 simultaneamente. Se falhar, o problema está no OCPP.
 
+**Atualização 2026-07-29:** confirmado que **existe cabo de rede até o carregador**
+(E12) e que **temos controle do DNS** (A8). Os dois pré-requisitos que restavam
+foram atendidos: a FASE 4a está viável e a 4b pode ser provisionada.
+
 **Mitigação remanescente:**
-- Confirmar que existe cabo de rede até o carregador (premissa E12, pergunta 15).
-- Confirmar controle do DNS de `sonare.com.br` (premissa A8, pergunta 14).
+- Decidir onde hospedar (premissa A4, pergunta 13) — único item de infraestrutura
+  ainda aberto.
+- Confirmar que o firmware aceita `ws://` em rede privada (E14, risco R-26).
 - Provisionar VPS + TLS durante a FASE 2, para a FASE 4b.
 - Validar que a renovação do certificado não derruba WebSocket (ADR-0009 §2).
 
@@ -393,7 +427,7 @@ autorização. Nada foi apagado.
 | 4a | **R-01, R-02** (bloqueantes) + R-26, R-04, R-05 |
 | 4b | **R-01, R-02, R-18** (bloqueantes) + R-04, R-05 |
 | 5 | **R-08, R-09, R-22, R-27** (bloqueantes) + R-07, R-15, R-16, R-23 |
-| 6 | R-04, R-12, **R-22** |
+| 6 | R-04, R-12, **R-22** + R-29 |
 | 7 | R-09, R-10, R-16, **R-23, R-27** + R-24 |
 | 8 | R-16, R-25, R-28 |
 | 9 | todos revisados |

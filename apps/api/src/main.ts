@@ -8,6 +8,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { corsOrigins, parseEnv } from '@bora/config';
 import { AppModule } from './app.module';
+import { OcppGateway } from './modules/ocpp/ocpp.gateway';
 
 async function bootstrap(): Promise<void> {
   const env = parseEnv();
@@ -58,7 +59,11 @@ async function bootstrap(): Promise<void> {
     });
   }
 
+  // O servidor OCPP compartilha a porta HTTP: o upgrade para WebSocket acontece
+  // no mesmo listener (ADR-0002 — um único processo no MVP).
   await app.listen(env.API_PORT, '0.0.0.0');
+
+  app.get(OcppGateway).attach(app.getHttpServer());
 
   const logger = app.get(PinoLogger);
   logger.log(

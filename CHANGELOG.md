@@ -5,6 +5,63 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 2 — Núcleo OCPP 1.6J e simulador — 2026-07-29
+
+O fluxo completo de recarga funciona de ponta a ponta contra o simulador.
+**Nada foi conectado ao WEMOB real** — isso é a FASE 4.
+
+#### Adicionado
+
+**`packages/ocpp-core`** — protocolo puro, sem I/O e sem regra de negócio.
+
+- Envelope OCPP 1.6J: parsing e serialização de CALL, CALLRESULT e CALLERROR, com o código de erro correto para cada violação.
+- Esquemas Zod das sete ações recebidas e das duas enviadas.
+- Normalização de energia para Wh inteiro: trata `unit` ausente, `kWh`, valor fracionário e amostras por fase.
+- Reconciliação monotônica de leitura de medidor, para MeterValues fora de ordem.
+- Tradução de estados e rótulos em português, para o painel não mostrar `SuspendedEVSE` cru.
+
+**`apps/api/src/modules/ocpp`** — gateway WebSocket sobre a porta HTTP existente.
+
+- Handshake com negociação do subprotocolo `ocpp1.6`, identity no caminho e Basic Auth por carregador (`timingSafeEqual` no usuário, Argon2 na senha).
+- Registro de conexões que substitui a anterior na reconexão e ignora o `close` atrasado do socket antigo.
+- Processamento **serializado por conexão**: ordem importa, e handlers assíncronos intercalariam.
+- Despacho de comandos com correlação por `messageId`, timeout, cancelamento na desconexão e tradução de falhas para linguagem de operador.
+- Persistência de todas as mensagens, incluindo as malformadas, com payload bruto para diagnóstico.
+- Handlers das sete ações recebidas.
+- `GET /api/ocpp/status` — carregadores conectados e comandos pendentes.
+
+**`apps/ocpp-simulator`** — carregador simulado com CLI.
+
+Simula os comportamentos que quebram sistemas: recusa de comandos, CALLERROR, silêncio (para exercitar timeout), queda abrupta de conexão, leitura fora de ordem, energia em kWh, falha reportada e JSON inválido.
+
+**Migration** — sequência `ocpp_transaction_id_seq` (o `transactionId` do OCPP é inteiro, nosso id de sessão é UUID) e índice único parcial `ocpp_messages_inbound_unique` para deduplicação.
+
+#### Achado — uma verificação em aplicação era código inalcançável
+
+O `remoteStart` tinha uma verificação de "conector ocupado" que **nunca executa**.
+O índice parcial `charging_sessions_one_active_per_connector` cobre todos os
+estados ativos, incluindo `PAYMENT_APPROVED` — o banco recusa a **criação** da
+segunda sessão ativa, muito antes de alguém chamar o comando.
+
+A verificação foi removida. O caminho real é a camada de pagamento (FASE 5)
+receber P2002 ao aprovar, e o filtro global traduzir para "Este conector já possui
+uma recarga em andamento." O teste passou a provar a garantia do banco, que é mais
+forte do que a que eu havia escrito.
+
+#### Testes
+
+170 testes no total (87 novos de OCPP), todos passando:
+
+- 42 no protocolo puro — envelope, todos os casos de erro da seção 16, normalização de unidades, reconciliação de leituras.
+- 45 de ponta a ponta com servidor, banco e simulador reais — inclui o fluxo dos 12 passos do critério de aceite, os casos de recusa, timeout, reconexão, substituição de conexão, deduplicação de retransmissão, kWh, leitura fora de ordem, medição inconsistente e recarga sem pagamento.
+
+#### Notas
+
+- Nenhuma alteração, conexão ou comando foi executado contra o carregador WEG WEMOB real.
+- Endpoints HTTP de operação manual (iniciar/parar pelo painel) **não** entraram: são escopo da FASE 3.
+
+---
+
 ### FASE 1 — Fundação do projeto — 2026-07-29
 
 Primeiro código de aplicação. O projeto sobe com um comando, com banco migrado,

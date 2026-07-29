@@ -9,6 +9,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { OcppCommands } from '../ocpp/ocpp-commands.service';
 
 /** Verificação real de conectividade com o banco — não um `return true`. */
 @Injectable()
@@ -42,6 +43,7 @@ export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
     private readonly database: PrismaHealthIndicator,
+    private readonly ocpp: OcppCommands,
   ) {}
 
   /**
@@ -77,5 +79,23 @@ export class HealthController {
   @ApiOperation({ summary: 'Readiness — dependências disponíveis' })
   ready() {
     return this.health.check([() => this.database.isHealthy('database')]);
+  }
+
+  /**
+   * Estado do servidor OCPP (briefing seção 13).
+   *
+   * Separado do /ready de propósito: nenhum carregador conectado é normal às
+   * 3h da manhã e não pode tirar a API do balanceador.
+   */
+  @Public()
+  @Get('ocpp/status')
+  @ApiOperation({ summary: 'Carregadores conectados e comandos pendentes' })
+  ocppStatus(): {
+    onlineChargers: number;
+    pendingCommands: number;
+    identities: string[];
+    timestamp: string;
+  } {
+    return { ...this.ocpp.status(), timestamp: new Date().toISOString() };
   }
 }

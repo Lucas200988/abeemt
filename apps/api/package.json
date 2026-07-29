@@ -33,7 +33,9 @@
     "passport-jwt": "^4.0.1",
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "ws": "^8.19.0",
+    "@bora/ocpp-core": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
@@ -46,6 +48,8 @@
     "supertest": "^7.1.4",
     "typescript": "^5.9.3",
     "unplugin-swc": "^1.5.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/ws": "^8.18.1",
+    "@bora/ocpp-simulator": "workspace:*"
   }
 }

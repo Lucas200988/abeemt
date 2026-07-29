@@ -9,6 +9,7 @@ import { runtimeEnv as env } from './config/runtime-env';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { OcppModule } from './modules/ocpp/ocpp.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -68,6 +69,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
     AuthModule,
     HealthModule,
+    OcppModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

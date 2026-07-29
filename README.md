@@ -14,11 +14,12 @@ para o motorista.
 
 ## Situação atual do projeto
 
-**FASE 1 concluída.** O projeto sobe com um comando, com banco migrado, login
-funcionando, health checks respondendo e testes passando.
+**FASE 2 concluída.** O fluxo completo de recarga funciona de ponta a ponta
+contra o simulador OCPP 1.6J: conexão, início remoto, medição, encerramento e
+registro. 170 testes automatizados.
 
-Ainda **não há comunicação OCPP** — isso é a FASE 2. Nada foi conectado ao
-carregador WEG WEMOB real.
+Nada foi conectado ao carregador WEG WEMOB real — isso é a FASE 4, e depende da
+sua autorização explícita.
 
 ---
 
@@ -92,6 +93,22 @@ o seed se recusa a rodar com `NODE_ENV=production`.
 | `pnpm db:studio`       | Abre o Prisma Studio                          |
 | `docker compose up -d` | Sobe tudo em containers                       |
 
+### Simulador OCPP
+
+Permite exercitar o sistema sem equipamento físico:
+
+```bash
+# Sobe um carregador simulado já com "veículo" conectado
+pnpm --filter @bora/ocpp-simulator start -- --identity SIM-001 --plug-in
+
+# Simula firmware que reporta energia em kWh e recusa comandos
+pnpm --filter @bora/ocpp-simulator start -- --energy-unit kWh --reject-start
+
+pnpm --filter @bora/ocpp-simulator start -- --help
+```
+
+O carregador `SIM-001` já vem cadastrado pelo seed.
+
 ### Testes
 
 Os testes de integração usam um banco **separado** (`DATABASE_URL_TEST`), porque
@@ -111,7 +128,7 @@ pnpm test
 | ---- | ------------------------------------------------------------- | ----------------------------------- |
 | 0    | Descoberta, arquitetura, riscos, ADRs                         | ✅ concluída — aguardando validação |
 | 1    | Fundação: monorepo, API, web, banco, auth, CI                 | ✅ **concluída**                    |
-| 2    | Núcleo OCPP 1.6J + simulador                                  | ⬜ não iniciada                     |
+| 2    | Núcleo OCPP 1.6J + simulador                                  | ✅ **concluída**                    |
 | 3    | Painel de carregadores e operação manual                      | ⬜ não iniciada                     |
 | 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
 | 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
@@ -133,6 +150,10 @@ Cada fase só começa após validação explícita da anterior.
 - [Premissas e perguntas em aberto](docs/architecture/assumptions.md) — o que estamos assumindo sem confirmação
 - [Registro de riscos](docs/architecture/risks.md) — riscos, severidade e mitigações
 - [Decisões arquiteturais (ADRs)](docs/architecture/adr/README.md)
+
+### OCPP
+
+- [Mensagens implementadas](docs/ocpp/supported-messages.md) — o que existe hoje, tolerância a divergências de firmware, simulador
 
 ### Operações
 

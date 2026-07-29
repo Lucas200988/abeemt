@@ -24,7 +24,8 @@ procedimentos operacionais de proteção do equipamento real.
 | 1 | Fundação: monorepo, API, web, banco, auth, CI | ⬜ não iniciada |
 | 2 | Núcleo OCPP 1.6J + simulador | ⬜ não iniciada |
 | 3 | Painel de carregadores e operação manual | ⬜ não iniciada |
-| 4 | Teste controlado com o WEMOB real | ⬜ bloqueada (requer autorização) |
+| 4a | Teste com o WEMOB real em rede local (Ethernet) | ⬜ bloqueada (requer autorização) |
+| 4b | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada |
 | 5 | Pagamento simulado | ⬜ não iniciada |
 | 6 | Tarifação e regras comerciais | ⬜ não iniciada |
 | 7 | Integração com pagamento real | ⬜ não iniciada |
@@ -81,6 +82,37 @@ Princípios que valem para todas as fases:
 6. Nada toca o equipamento real antes do simulador validar o fluxo.
 
 Detalhes e justificativas nos [ADRs](docs/architecture/adr/README.md).
+
+## Modelo de cobrança
+
+**Pré-autorização + captura pelo consumo real** — o motorista paga exatamente o
+que consumiu ([ADR-0008](docs/architecture/adr/0008-pre-autorizacao-e-captura.md)).
+
+```
+Reserva R$ 100 no cartão (não cobrado)
+  → recarga inicia
+  → sistema recalcula o valor a cada MeterValues
+  → ao atingir 95% do teto: parada automática
+  → captura R$ 37,40 (valor real) · R$ 62,60 liberados
+```
+
+Falha antes do início gera **cancelamento da reserva** (`void`), não estorno —
+nenhuma cobrança acontece.
+
+> ⚠️ **Lacuna conhecida:** Pix não tem pré-autorização e cartão de débito
+> frequentemente também não. A estratégia para esses meios está em aberto
+> (pergunta 17 em [`assumptions.md`](docs/architecture/assumptions.md), risco R-24).
+
+## Endpoints previstos
+
+| Subdomínio | Uso |
+| --- | --- |
+| `ocpp.sonare.com.br` | Endpoint WebSocket dos carregadores (`wss://`) |
+| `api.sonare.com.br` | API REST (painel e webhooks) |
+| `painel.sonare.com.br` | Painel administrativo |
+| `www.sonare.com.br` | Site institucional existente — **não é tocado** |
+
+Justificativa da separação em [ADR-0009](docs/architecture/adr/0009-topologia-de-dominios.md).
 
 ---
 

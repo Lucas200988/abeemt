@@ -7,6 +7,39 @@
 **Data do teste:** `__________`  **Início:** `____`  **Término:** `____`
 **Presente no local:** `__________`  **Operando o painel:** `__________`
 
+**Etapa desta execução:** ☐ FASE 4a (rede local) ☐ FASE 4b (infraestrutura pública)
+
+---
+
+## Bloco A.0 — Escolha do caminho de rede (fazer primeiro)
+
+Confirmado em 2026-07-29 que **o equipamento tem porta Ethernet**. Isso permite
+executar a primeira conexão em rede local, sem depender de DNS, TLS, VPS ou 4G.
+
+- ⬜ Existe cabo de rede puxado até o carregador? ☐ sim ☐ não ☐ dá para puxar no dia
+- ⬜ O menu permite trocar a interface de rede (4G → Ethernet) e voltar? ☐ sim ☐ não
+- ⬜ O firmware aceita `ws://` sem TLS em rede privada? ☐ sim ☐ não ☐ desconhecido
+
+**Decisão:**
+
+| Situação | Caminho |
+| --- | --- |
+| Cabo disponível **e** aceita `ws://` | **FASE 4a** — rede local. Caminho preferencial |
+| Cabo disponível **mas** exige `wss://` | 4a com TLS local e CA própria instalada, **se possível**; senão, ir para 4b |
+| Sem cabo | **FASE 4b** direto, com o endpoint público (mais risco — ver R-18) |
+
+### Configuração da FASE 4a
+
+```
+WEMOB ──cabo Ethernet──► switch/roteador ──► notebook rodando a API
+URL a configurar no carregador:  ws://<IP-do-notebook>:3001/ocpp/<identity>
+```
+
+- ⬜ IP fixo do notebook na LAN definido: `________________`
+- ⬜ Firewall do notebook liberando a porta 3001 na interface local
+- ⬜ Simulador testado contra esse mesmo IP:porta antes de conectar o WEMOB
+- ⬜ Notebook não entra em suspensão durante o teste
+
 ---
 
 ## Bloco A — Pré-requisitos (todos obrigatórios)
@@ -19,11 +52,15 @@
 - ⬜ Painel exibe status, sessão ao vivo e mensagens OCPP
 - ⬜ Logs estruturados com `chargerId`, `sessionId`, `correlationId`
 
-### A.2 Infraestrutura de produção temporária
-- ⬜ Domínio público configurado: `__________________`
-- ⬜ Certificado TLS válido e testado (`wss://` responde)
-- ⬜ Endpoint OCPP acessível pela internet: `wss://______/ocpp/{chargePointId}`
+### A.2 Infraestrutura — **somente para a FASE 4b** (pular na 4a)
+- ⬜ Subdomínio configurado: `ocpp.sonare.com.br` → aponta para o servidor
+- ⬜ Certificado TLS válido, com **cadeia completa** (firmwares embarcados são exigentes)
+- ⬜ Endpoint OCPP acessível pela internet: `wss://ocpp.sonare.com.br/ocpp/{chargePointId}`
+- ⬜ Nginx com upgrade de WebSocket e `proxy_read_timeout` alto (conexões de horas)
+- ⬜ Verificado que a renovação do certificado usa `reload` e **não derruba** conexões abertas
+- ⬜ Sem CDN/proxy com cache na frente do endpoint OCPP
 - ⬜ Firewall permite apenas as portas necessárias (443; nada além disso exposto)
+- ⬜ `www.sonare.com.br` (site institucional) **não** foi afetado
 - ⬜ Credencial individual gerada para este carregador (armazenada em cofre)
 - ⬜ Banco com backup automatizado e restauração testada ao menos uma vez
 - ⬜ Monitoramento ativo com alerta de desconexão
@@ -57,6 +94,7 @@ Registrar horário e resultado de cada passo. Anexar capturas do painel.
 | # | Passo | Esperado | Resultado | Hora |
 | --- | --- | --- | --- | --- |
 | 1 | Registrar configuração original (rollback §2) | Tudo capturado | ⬜ | |
+| 1b | *(4a)* Registrar a interface de rede original (4G/Ethernet) e trocar para Ethernet | Anotado antes de trocar | ⬜ | |
 | 2 | Alterar URL OCPP para o nosso endpoint | Salvo com sucesso | ⬜ | |
 | 3 | Aguardar conexão WebSocket | Conexão aceita, subprotocolo `ocpp1.6` | ⬜ | |
 | 4 | Receber `BootNotification` | Payload completo registrado | ⬜ | |
@@ -79,7 +117,7 @@ o rollback e analisar os logs offline. Não insistir além disso.
 
 | # | Passo | Esperado | Resultado | Hora |
 | --- | --- | --- | --- | --- |
-| 11 | Criar pagamento manual aprovado no painel | Sessão em `PAYMENT_APPROVED` | ⬜ | |
+| 11 | Criar **pré-autorização manual** no painel (teto de teste, ex.: R$ 20) | Pagamento em `AUTHORIZED`, sessão em `PAYMENT_APPROVED` | ⬜ | |
 | 12 | Enviar `RemoteStartTransaction` | Resposta `Accepted` (ou `Rejected` — registrar) | ⬜ | |
 | 13 | Receber `StartTransaction` | `transactionId` e `meterStart` registrados | ⬜ | |
 | 14 | `StatusNotification: Charging` | Sessão em `CHARGING` | ⬜ | |
@@ -110,8 +148,24 @@ painel não bate com o do equipamento, nada mais importa.
 | 23 | `StatusNotification` volta para `Available` | Conector liberado | ⬜ | |
 | 24 | Energia calculada = `meterStop − meterStart` | Confere com o display | ⬜ | |
 | 25 | Valor calculado conforme a tarifa de teste | Conferido manualmente | ⬜ | |
+| 25b | **Captura** do valor real (≤ pré-autorizado) | `CAPTURED` com o valor calculado, não o teto | ⬜ | |
 | 26 | Sessão em `COMPLETED` no painel | Linha do tempo completa | ⬜ | |
 | 27 | Desconectar o veículo | Sem erro | ⬜ | |
+
+### B.5.1 Teste da parada automática no teto (risco R-22)
+
+Só executar se houver tempo de janela e veículo disponível. É o teste que valida
+a regra de negócio mais nova do projeto.
+
+| # | Passo | Esperado | Resultado |
+| --- | --- | --- | --- |
+| 27a | Criar pré-autorização com teto **baixo** (ex.: R$ 3) e iniciar carga | Sessão inicia normalmente | ⬜ |
+| 27b | Acompanhar até o valor corrente atingir 95% do teto | `RemoteStopTransaction` disparado **automaticamente** | ⬜ |
+| 27c | Verificar o valor final capturado | **Não excede** o pré-autorizado | ⬜ |
+| 27d | Medir a margem real consumida entre o disparo e a parada efetiva | Registrar: `____ Wh` / `R$ ____` | ⬜ |
+
+O item 27d é o dado que calibra o limiar de 95% para produção. Sem ele, o número
+é chute.
 
 ### B.6 Teste de resiliência (opcional, somente se B.1–B.5 foram limpos)
 

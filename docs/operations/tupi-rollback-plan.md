@@ -42,7 +42,15 @@ produção sem plataforma não é.
 | Usuário (se Basic Auth) | `________________________` | | |
 | Senha (se Basic Auth) | **guardada em:** `________` (cofre, não aqui) | | |
 | Intervalo de heartbeat | `________` | | |
+| **Interface de rede em uso** (4G / Ethernet / Wi-Fi) | `________________________` | | |
+| Configuração IP (DHCP / estático + endereço) | `________________________` | | |
+| APN / configuração 4G, se aplicável | `________________________` | | |
 | Demais parâmetros OCPP alterados | `________________________` | | |
+
+> A linha da **interface de rede** foi adicionada em 2026-07-29, quando se
+> confirmou que o equipamento tem Ethernet e que a FASE 4a trocará a interface.
+> Trocar a interface e não registrar a original é a forma mais fácil de deixar o
+> carregador sem comunicação depois do teste.
 
 ### 2.2 Evidências obrigatórias (armazenar fora do repositório)
 
@@ -81,8 +89,12 @@ produção sem plataforma não é.
 2. Restaurar a **URL original** exatamente como registrada em §2.1.
 3. Restaurar `chargePointIdentity` original, se tiver sido alterado.
 4. Restaurar credenciais de autenticação originais.
-5. Restaurar demais parâmetros alterados.
-6. Salvar/aplicar.
+5. **Restaurar a interface de rede original** (se a FASE 4a trocou 4G → Ethernet,
+   voltar para 4G) e a configuração de IP correspondente.
+6. Restaurar demais parâmetros alterados.
+7. Salvar/aplicar.
+8. Se um cabo de rede foi conectado apenas para o teste, decidir conscientemente
+   se ele fica ou sai — e registrar a decisão.
 
 ### Passo 3 — Reiniciar a comunicação
 1. Aguardar a reconexão automática (até 2 min).

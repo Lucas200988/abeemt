@@ -142,6 +142,39 @@ sua autorização, conforme a regra "não apagar/alterar código existente sem j
 | [ADR-0005](adr/0005-dinheiro-centavos-energia-wh.md) | Centavos inteiros e Wh inteiros | Proíbe ponto flutuante em dinheiro e energia |
 | [ADR-0006](adr/0006-estado-de-sessao-no-banco.md) | Estado da sessão persistido | Máquina de estados no banco, recuperável após restart |
 | [ADR-0007](adr/0007-nome-do-produto-configuravel.md) | Marca configurável | "Borá Carregar" vive em config, não espalhado no código |
+| [ADR-0008](adr/0008-pre-autorizacao-e-captura.md) | **Pré-autorização + captura pelo consumo real** | Reserva → entrega → captura parcial; exige parada automática no teto |
+| [ADR-0009](adr/0009-topologia-de-dominios.md) | Subdomínios dedicados em `sonare.com.br` | `ocpp.` / `api.` / `painel.`; `www` intocado; FASE 4 dividida em local + pública |
+
+### 3.4 Fluxo financeiro (decidido em 2026-07-29)
+
+O modelo é **pré-autorização + captura pelo consumo real** — o motorista paga
+exatamente o que consumiu.
+
+```
+Reserva de R$ 100 no cartão (não cobrado)
+   → recarga inicia
+   → sistema recalcula o valor a cada MeterValues
+   → ao atingir 95% do teto: RemoteStopTransaction automático
+   → StopTransaction: energia final conhecida
+   → CAPTURA de R$ 37,40 (valor real)
+   → R$ 62,60 liberados pelo emissor
+```
+
+Consequências que atravessam várias fases:
+
+1. `capturePayment` **deixa de ser opcional** na porta `PaymentProvider`, e
+   `voidPayment` é adicionado. Suporte a pré-autorização com captura parcial
+   vira **critério eliminatório** na matriz de adquirentes da FASE 7.
+2. O valor pré-autorizado é um **teto rígido** da sessão. Nasce daí uma regra de
+   negócio nova: parada automática da recarga antes de ultrapassá-lo (risco R-22,
+   severidade 16 — o mais alto do projeto junto com R-08 e R-13).
+3. Falha antes do início gera `void` (cancelamento da reserva), **não** estorno.
+   Nenhuma cobrança acontece. Isso derruba o risco R-07 de severidade 15 para 5.
+4. A captura precisa acontecer logo após a sessão, não em lote — pré-autorizações
+   expiram (risco R-23).
+5. **Pix não tem pré-autorização** e débito frequentemente também não. Esse
+   caminho ficou em aberto — é a maior lacuna remanescente do modelo financeiro
+   (risco R-24, pergunta 17 em `assumptions.md`).
 
 ---
 
@@ -296,12 +329,33 @@ aceite; depois, o que foi feito, testes executados e resultado real.
 | **1** | Fundação: monorepo, API, web, Postgres, Docker, migrations, auth+RBAC, health, Swagger, logger, lint, CI | `docker compose up` sobe tudo; login funciona; testes básicos passam | 0 |
 | **2** | Núcleo OCPP 1.6J + simulador; fluxo completo Boot→Start→Meter→Stop | Teste automatizado E2E com simulador, verde | 1 |
 | **3** | Painel de carregadores e operação manual (start/stop, sessão ao vivo, mensagens OCPP) | Operador inicia/encerra carga pelo painel contra o simulador | 2 |
-| **4** | Teste controlado com o WEMOB real (TLS/WSS, janela agendada, rollback pronto) | WEMOB conecta, sessão remota inicia e encerra, dados registrados | 3 + **sua autorização explícita** |
-| **5** | Pagamento simulado: `PaymentProvider`, Mock, webhook, idempotência, vínculo com sessão | Pagamento recusado não inicia; aprovado inicia; webhook duplicado não duplica | 2 (real: 4) |
+| **4a** | Teste com o WEMOB real em **rede local** (Ethernet, `ws://`, sem DNS/TLS/VPS) | WEMOB conecta ao notebook na LAN; Boot/Heartbeat/Status recebidos; sessão remota inicia e encerra | 3 + **sua autorização explícita** |
+| **4b** | Teste com **infraestrutura pública** (`wss://ocpp.sonare.com.br`, VPS, TLS) | Mesmo fluxo pela internet, com o equipamento em condição de produção | 4a |
+| **5** | Pagamento simulado: `PaymentProvider` com autorizar/capturar/cancelar, Mock, webhook, idempotência, parada no teto | Falha antes do início gera `void`; sessão para sozinha no teto; webhook duplicado não duplica | 2 (real: 4) |
 | **6** | Tarifação: kWh, taxa fixa, tempo, mínimo, máximo, arredondamento, snapshot na sessão | Casos-limite cobertos por testes determinísticos | 5 |
 | **7** | Matriz comparativa de adquirentes → **você escolhe** → adapter real em sandbox | Sandbox aprovando e iniciando recarga, webhook assinado | 6 + sua escolha |
 | **8** | SmartPOS (caminho A) ou terminal web/quiosque (caminho B) | Terminal identificado inicia sessão no carregador correto | 7 |
 | **9** | Endurecimento para piloto: backup, alertas, testes de caos, runbooks | Checklist de piloto assinado; nenhuma sessão sem estado definido | 8 |
+
+### Por que a FASE 4 foi dividida (revisão de 2026-07-29)
+
+Com a confirmação de que **o WEMOB tem porta Ethernet**, a primeira conexão com
+o equipamento real não precisa mais depender de VPS, DNS, certificado TLS e
+qualidade do sinal 4G ao mesmo tempo:
+
+```
+FASE 4a:  WEMOB ──cabo──► roteador local ──► notebook rodando a API
+          ws://192.168.x.x:3001/ocpp/{identity}
+          Se falhar, o problema está no OCPP — e em nada mais.
+
+FASE 4b:  WEMOB ──4G/Ethernet──► internet ──► ocpp.sonare.com.br ──► API
+          wss://, TLS válido, VPS, firewall
+```
+
+Isso rebaixa o risco R-18 de severidade 16 para 6 e encurta a janela de
+indisponibilidade do equipamento na primeira tentativa. Duas condições precisam
+ser confirmadas: existe cabo de rede até o carregador (pergunta 15) e o firmware
+aceita `ws://` sem TLS em rede privada (pergunta 16 / risco R-26).
 
 ### Ordem sugerida e desvio consciente
 

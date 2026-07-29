@@ -101,17 +101,26 @@ Motorista paga, mas o carro não está plugado, ou recusa a carga.
 
 ## 2. Riscos de pagamento
 
-### R-07 — Cobrar e não entregar energia 🔵
-**P 3 · I 5 · Severidade 15 — CRÍTICO (risco de reputação e jurídico)**
+### R-07 — Cobrar e não entregar energia 🟠
+**P 3 · I 5 · Severidade 15 → P 1 · I 5 · Severidade 5 (2026-07-29)**
 
 O pior cenário do produto: motorista paga e não carrega.
 
-**Mitigação:**
-- Preferir **pré-autorização + captura** ao pagamento capturado na hora (depende
-  da resposta à pergunta 8 de `assumptions.md`).
-- Só capturar após confirmação de `StartTransaction`.
-- Estorno automático em falha de início, com registro auditável.
+**Rebaixado** com a decisão de pré-autorização + captura ([ADR-0008](adr/0008-pre-autorizacao-e-captura.md)):
+como o dinheiro é apenas **reservado** e só é capturado depois da energia
+entregue, uma falha antes do início resulta em `voidPayment` — nenhuma cobrança
+acontece. O risco deixa de ser estrutural e passa a ser residual (falha de
+software na hora de decidir entre capturar e cancelar).
+
+**Mitigação remanescente:**
+- Captura **somente** após `StopTransaction` com energia conhecida.
+- Distinção rigorosa entre `void` (pré-autorização) e `refund` (valor capturado).
 - Runbook `operations/payment-refund.md` para o operador agir em minutos.
+- Teste obrigatório: falha em cada ponto do fluxo resulta em `void`, nunca em captura.
+
+> Ressalva: a mitigação **não cobre Pix**, que não tem pré-autorização. Enquanto
+> a pergunta 17 de `assumptions.md` estiver aberta, R-07 permanece em severidade
+> 15 para o caminho Pix.
 
 ### R-08 — Webhook duplicado inicia duas recargas 🔵
 **P 4 · I 4 · Severidade 16 — CRÍTICO**
@@ -136,6 +145,73 @@ Endpoint público que inicia carregamento é alvo óbvio.
 - Rejeitar sem assinatura válida, mesmo em dev, salvo flag explícita de ambiente local.
 - Rate limiting no endpoint.
 - Nunca confiar em valor vindo do payload sem conferir contra o `Payment` local.
+
+### R-22 — Consumo ultrapassa o valor pré-autorizado 🔵 *(novo — 2026-07-29)*
+**P 4 · I 4 · Severidade 16 — CRÍTICO**
+
+Não se pode capturar mais do que foi pré-autorizado. Se a recarga consumir R$ 120
+sobre uma reserva de R$ 100, os R$ 20 excedentes simplesmente **não são
+cobráveis** — energia entregue e perdida.
+
+Pior: uma tentativa de capturar acima do autorizado é recusada pelo adquirente,
+e uma implementação ingênua pode acabar não capturando **nada**.
+
+**Mitigação:**
+- Recálculo do valor corrente a cada `MeterValues`.
+- `RemoteStopTransaction` automático ao atingir 95% do teto (margem para o tempo
+  entre leituras e o tempo de resposta do carregador) — ver ADR-0008 §4.
+- Se mesmo assim exceder: capturar **exatamente o valor pré-autorizado** e
+  registrar a diferença como perda operacional, com alerta. Nunca tentar
+  capturar acima.
+- O limiar de 95% será calibrado na FASE 4 com a periodicidade real de
+  `MeterValues` do WEMOB. Um carregador de 30 kW entrega ~0,5 kWh por minuto —
+  com leituras a cada 60 s, a margem precisa cobrir pelo menos duas leituras.
+- Teste obrigatório: sessão que atinge o teto para sozinha antes de ultrapassá-lo.
+
+### R-23 — Pré-autorização expira antes da captura 🔵 *(novo — 2026-07-29)*
+**P 3 · I 4 · Severidade 12 — ALTO**
+
+Pré-autorizações têm validade. Se a captura falhar (adquirente fora, bug, sessão
+presa em estado intermediário) e ninguém perceber, a reserva expira e a energia
+entregue nunca é faturada.
+
+**Mitigação:**
+- Captura disparada no encerramento da sessão, não em fechamento em lote.
+- Falha de captura entra em retry pelo outbox (ADR-0003) com backoff.
+- **Alerta de alta prioridade** para qualquer pagamento em `AUTHORIZED` há mais
+  do que a janela configurada — este é o alerta financeiro mais importante do
+  sistema.
+- Painel com visão dedicada: "pré-autorizações pendentes de captura".
+- O prazo real de validade entra na matriz da FASE 7 (varia por adquirente).
+
+### R-24 — Pix e cartão de débito ficam sem caminho de pagamento 🔵 *(novo — 2026-07-29)*
+**P 4 · I 3 · Severidade 12 — ALTO**
+
+O modelo escolhido depende de pré-autorização, que **Pix não tem** e que cartão
+de **débito** frequentemente não suporta no Brasil. Boa parte do público-alvo
+(motorista sem cadastro, pagando na hora) usa exatamente esses meios.
+
+Se não houver decisão, o produto nasce cobrindo só crédito.
+
+**Mitigação:**
+- Decisão pendente sua (pergunta 17 de `assumptions.md`) sobre a estratégia Pix.
+- A porta `PaymentProvider` já permite fluxos distintos por método — o domínio
+  não precisa mudar quando a decisão vier.
+- Suporte a débito e Pix vira critério explícito da matriz de adquirentes (FASE 7).
+- Recomendação registrada no ADR-0008 §7: Pix como pré-pago com devolução parcial.
+
+### R-25 — Valor reservado indisponível no limite do motorista 🔵 *(novo — 2026-07-29)*
+**P 3 · I 2 · Severidade 6 — MÉDIO**
+
+Reservamos R$ 100, capturamos R$ 30, mas o emissor pode levar dias para liberar
+os R$ 70 no limite do cartão. O motorista vê "R$ 100 bloqueados" e reclama.
+
+**Mitigação:**
+- Comunicação explícita na interface de pagamento **antes** da autorização.
+- Teto padrão dimensionado com bom senso (não reservar R$ 300 para uma carga
+  típica de R$ 40) — depende da resposta à pergunta 18.
+- Comprovante/mensagem final mostrando claramente: reservado, cobrado, liberado.
+- Roteiro de atendimento para essa reclamação no manual de suporte (FASE 9).
 
 ### R-10 — Acoplamento precoce a uma adquirente 🟠
 **P 3 · I 4 · Severidade 12 → mitigado por design**
@@ -206,15 +282,38 @@ A lista de "fora do MVP" é longa e tentadora (mapa, app, roaming, fidelidade…
 sua entre fases. Qualquer item fora do MVP entra em backlog documentado, não no
 código.
 
-### R-18 — Dependência de infraestrutura pública para a FASE 4 🔵
-**P 4 · I 4 · Severidade 16 — CRÍTICO para o cronograma**
+### R-18 — Dependência de infraestrutura pública para a FASE 4 🟠
+**P 4 · I 4 · Severidade 16 → P 2 · I 3 · Severidade 6 (2026-07-29)**
 
-Sem domínio, TLS e host público, o WEMOB em 4G não nos alcança.
+Originalmente: sem domínio, TLS e host público, o WEMOB em 4G não nos alcança.
 
-**Mitigação:** tratar provisionamento (domínio + VPS + certificado) como
-pré-requisito da FASE 4, iniciado durante a FASE 2. Alternativa de baixo custo
-para teste inicial: túnel reverso autenticado, **apenas** se o equipamento
-aceitar e com o entendimento de que não é solução de produção.
+**Rebaixado** por duas confirmações suas:
+1. O domínio existe (`sonare.com.br`) — ver [ADR-0009](adr/0009-topologia-de-dominios.md).
+2. **O WEMOB tem Ethernet** — a primeira conexão com o equipamento real pode ser
+   feita em **rede local**, sem DNS, sem TLS público e sem VPS (FASE 4a).
+
+Isso é a maior redução de risco obtida até aqui: a primeira conversa OCPP com o
+equipamento real deixa de depender de cinco camadas de infraestrutura
+simultaneamente. Se falhar, o problema está no OCPP.
+
+**Mitigação remanescente:**
+- Confirmar que existe cabo de rede até o carregador (premissa E12, pergunta 15).
+- Confirmar controle do DNS de `sonare.com.br` (premissa A8, pergunta 14).
+- Provisionar VPS + TLS durante a FASE 2, para a FASE 4b.
+- Validar que a renovação do certificado não derruba WebSocket (ADR-0009 §2).
+
+### R-26 — Firmware recusa `ws://` sem TLS na rede local 🔵 *(novo — 2026-07-29)*
+**P 3 · I 2 · Severidade 6 — MÉDIO**
+
+Alguns firmwares de carregador exigem `wss://` e recusam conexão sem TLS, mesmo
+em rede privada. Se for o caso do WEMOB, a FASE 4a perde a simplicidade.
+
+**Mitigação:**
+- Confirmar com o suporte WEG antes da janela (premissa E14).
+- Plano B: TLS local com certificado auto-assinado e CA instalada no equipamento
+  (nem sempre possível em firmware embarcado).
+- Plano C: pular a 4a e ir direto para a 4b com o endpoint público — mais risco,
+  mas o caminho original já estava previsto.
 
 ### R-19 — Simulador que "concorda consigo mesmo" 🟠
 **P 3 · I 4 · Severidade 12 → mitigado por design**
@@ -252,12 +351,24 @@ autorização. Nada foi apagado.
 | 1 | R-12, R-20 |
 | 2 | R-03, R-11, R-13, R-14, R-19 |
 | 3 | R-13 |
-| 4 | **R-01, R-02, R-18** (bloqueantes) + R-04, R-05 |
-| 5 | **R-07, R-08, R-09** (bloqueantes) + R-15, R-16 |
-| 6 | R-04, R-12 |
-| 7 | R-09, R-10, R-16 |
-| 8 | R-16 |
+| 4a | **R-01, R-02** (bloqueantes) + R-26, R-04, R-05 |
+| 4b | **R-01, R-02, R-18** (bloqueantes) + R-04, R-05 |
+| 5 | **R-08, R-09, R-22** (bloqueantes) + R-07, R-15, R-16, R-23 |
+| 6 | R-04, R-12, **R-22** |
+| 7 | R-09, R-10, R-16, **R-23, R-24** |
+| 8 | R-16, R-25 |
 | 9 | todos revisados |
+
+### Riscos com maior severidade atual (após revisão de 2026-07-29)
+
+| Risco | Severidade | Fase |
+| --- | --- | --- |
+| R-08 webhook duplicado inicia duas recargas | 16 | 5 |
+| R-13 perda de estado em restart | 16 (mitigado por design) | 2 |
+| **R-22 consumo ultrapassa o pré-autorizado** | **16** | **5/6** |
+| R-01 perder o carregador de produção | 15 | 4 |
+| R-02 URL OCPP não alterável | 15 | 4 |
+| R-12 erro monetário por float | 15 (mitigado por design) | 1 |
 
 ---
 

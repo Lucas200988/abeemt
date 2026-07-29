@@ -24,6 +24,7 @@ Sem estes, a FASE 4 não pode ser planejada com segurança.
 
 | # | Dado | Valor | Onde obter | Status |
 | --- | --- | --- | --- | --- |
+| 0 | Interface de rede em uso hoje (4G ou Ethernet) | `________` | Menu técnico | ⬜ |
 | 1 | URL OCPP atual configurada no equipamento | `________` | Menu técnico do carregador / painel Tupi | ⬜ |
 | 2 | `chargePointIdentity` atual | `________` | Menu técnico / painel Tupi | ⬜ |
 | 3 | Tipo de autenticação OCPP em uso | ☐ nenhuma ☐ Basic Auth ☐ certificado ☐ outro: `____` | Menu técnico | ⬜ |
@@ -47,14 +48,20 @@ Sem estes, a FASE 4 não pode ser planejada com segurança.
 | 16 | Corrente máxima (A) e tensão (V) | `________` | ⬜ |
 | 17 | Versão OCPP exata reportada pelo firmware | `________` | ⬜ |
 | 18 | Suporta OCPP 1.6J (WebSocket) ou apenas 1.6 SOAP? | ☐ JSON ☐ SOAP ☐ ambos | ⬜ |
-| 19 | Interfaces de rede disponíveis | ☐ 4G ☐ Wi-Fi ☐ Ethernet | ⬜ |
+| 19 | Interfaces de rede disponíveis | ☑ 4G ☐ Wi-Fi **☑ Ethernet** *(confirmado 2026-07-29)* | ✅ |
 | 20 | Operadora e qualidade do sinal 4G no local | `________` | ⬜ |
 | 21 | IP fixo ou dinâmico? Há NAT/firewall no caminho? | `________` | ⬜ |
+| 21a | **Existe cabo de rede puxado até o carregador?** | ☐ sim ☐ não ☐ viável puxar no dia | ⬜ 🔴 |
+| 21b | A interface de rede é selecionável no menu e a troca é reversível? | ☐ sim ☐ não | ⬜ 🔴 |
+| 21c | O firmware aceita `ws://` (sem TLS) com IP privado? | ☐ sim ☐ não ☐ desconhecido | ⬜ 🔴 |
+| 21d | Configuração IP atual (DHCP ou estático + endereço) | `________` | ⬜ |
 
-> O item 19 é mais importante do que parece: se houver **Ethernet ou Wi-Fi**, o
-> primeiro teste pode ser feito na rede local contra um servidor na mesma LAN,
-> sem depender de domínio público, TLS e infraestrutura externa. Isso reduziria
-> substancialmente o risco R-18 e a duração da janela de indisponibilidade.
+> **O item 19 foi confirmado: o equipamento tem Ethernet.** Isso destrava a
+> **FASE 4a** — primeiro teste em rede local, sem domínio público, TLS ou VPS.
+> É a maior redução de risco disponível no projeto (R-18 caiu de severidade 16
+> para 6). Mas depende dos itens **21a, 21b e 21c**, que agora são bloqueantes:
+> sem cabo, sem troca reversível de interface ou sem aceitar `ws://`, o ganho
+> desaparece e voltamos ao caminho público (FASE 4b).
 
 ## 3. Comportamento OCPP a observar (preencher durante a FASE 4)
 

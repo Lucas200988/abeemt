@@ -14,3 +14,10 @@ que **supersede** o anterior, e o antigo passa a status `Superseded by ADR-XXXX`
 | [0005](0005-dinheiro-centavos-energia-wh.md) | Dinheiro em centavos e energia em Wh, sempre inteiros | Aceito | 2026-07-29 |
 | [0006](0006-estado-de-sessao-no-banco.md) | Estado da sessão persistido no banco, não em memória | Aceito | 2026-07-29 |
 | [0007](0007-nome-do-produto-configuravel.md) | Marca do produto configurável ("Borá Carregar") | Aceito | 2026-07-29 |
+| [0008](0008-pre-autorizacao-e-captura.md) | Pré-autorização + captura pelo consumo real | Aceito | 2026-07-29 |
+| [0009](0009-topologia-de-dominios.md) | Topologia de domínios e endpoints (`sonare.com.br`) | Aceito | 2026-07-29 |
+
+> **Nota sobre o ADR-0004:** o [ADR-0008](0008-pre-autorizacao-e-captura.md)
+> altera a interface `PaymentProvider` definida no
+> [ADR-0004](0004-payment-provider-port.md) — `capturePayment` deixa de ser
+> opcional e `voidPayment` é adicionado. O ADR-0004 permanece válido no restante.

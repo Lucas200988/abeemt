@@ -5,6 +5,29 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 0 — Revisão após respostas do cliente — 2026-07-29
+
+Três definições recebidas: domínio `sonare.com.br`, o WEMOB tem **Ethernet**, e
+o modelo de cobrança é **pré-autorização + captura pelo consumo real**.
+
+#### Adicionado
+- `docs/architecture/adr/0008-pre-autorizacao-e-captura.md` — modelo financeiro, regra de parada automática no teto, tratamento de `void` vs `refund`, e a lacuna de Pix/débito.
+- `docs/architecture/adr/0009-topologia-de-dominios.md` — subdomínios dedicados, FASE 4 dividida em local (4a) e pública (4b).
+- Riscos R-22 (consumo ultrapassa o pré-autorizado, severidade 16), R-23 (pré-autorização expira antes da captura), R-24 (Pix e débito sem caminho de pagamento), R-25 (valor reservado indisponível), R-26 (firmware pode recusar `ws://`).
+- Premissas E11–E14 (rede do equipamento), A8–A9 (DNS), P8–P10 (pagamento).
+- Perguntas 14 a 19, decorrentes das novas decisões.
+- Checklist: Bloco A.0 (escolha do caminho de rede) e teste B.5.1 (parada automática no teto).
+
+#### Alterado
+- **`PaymentProvider`**: `capturePayment` deixa de ser opcional e `voidPayment` é adicionado — suporte a pré-autorização com captura parcial vira critério eliminatório na FASE 7. Altera o ADR-0004.
+- **FASE 4 dividida** em 4a (rede local via Ethernet, sem DNS/TLS/VPS) e 4b (infraestrutura pública). A primeira conexão com o equipamento real deixa de depender de cinco camadas de infraestrutura.
+- Risco **R-07** (cobrar e não entregar) rebaixado de severidade 15 para 5 — a pré-autorização torna a cobrança indevida estruturalmente improvável. Permanece em 15 para o caminho Pix.
+- Risco **R-18** (infraestrutura pública) rebaixado de severidade 16 para 6.
+- Plano de rollback: passa a exigir registro da **interface de rede** original e da configuração de IP.
+- Premissas P1, P2, A3 e E-rede marcadas como confirmadas.
+
+---
+
 ### FASE 0 — Descoberta, planejamento e proteção do equipamento — 2026-07-29
 
 #### Adicionado

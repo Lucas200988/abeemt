@@ -14,23 +14,112 @@ para o motorista.
 
 ## Situação atual do projeto
 
-**FASE 0 concluída (aguardando validação).** Ainda não há código de aplicação.
-Esta entrega contém apenas a documentação de arquitetura, riscos, premissas e os
-procedimentos operacionais de proteção do equipamento real.
+**FASE 1 concluída.** O projeto sobe com um comando, com banco migrado, login
+funcionando, health checks respondendo e testes passando.
 
-| Fase | Escopo | Situação |
-| --- | --- | --- |
-| 0 | Descoberta, arquitetura, riscos, ADRs | ✅ concluída — aguardando validação |
-| 1 | Fundação: monorepo, API, web, banco, auth, CI | ⬜ não iniciada |
-| 2 | Núcleo OCPP 1.6J + simulador | ⬜ não iniciada |
-| 3 | Painel de carregadores e operação manual | ⬜ não iniciada |
-| 4a | Teste com o WEMOB real em rede local (Ethernet) | ⬜ bloqueada (requer autorização) |
-| 4b | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada |
-| 5 | Pagamento simulado | ⬜ não iniciada |
-| 6 | Tarifação e regras comerciais | ⬜ não iniciada |
-| 7 | Integração com pagamento real | ⬜ não iniciada |
-| 8 | SmartPOS / terminal de autoatendimento | ⬜ não iniciada |
-| 9 | Endurecimento para piloto | ⬜ não iniciada |
+Ainda **não há comunicação OCPP** — isso é a FASE 2. Nada foi conectado ao
+carregador WEG WEMOB real.
+
+---
+
+## Como executar
+
+### Pré-requisitos
+
+- Node.js 22 (LTS)
+- pnpm 10 (`corepack enable`)
+- PostgreSQL 16 — ou Docker, se preferir subir tudo em containers
+
+### Primeira execução
+
+```bash
+git clone <repositório> && cd bora-carregar
+
+cp .env.example .env
+# Edite o .env: troque os valores CHANGE_ME e TROQUE_ESTA_SENHA.
+# Gere segredos com: openssl rand -hex 32
+
+pnpm setup      # instala, migra o banco, popula dados e constrói tudo
+pnpm dev        # sobe API e painel em modo desenvolvimento
+```
+
+Com Docker, sem instalar Node nem Postgres na máquina:
+
+```bash
+cp .env.example .env    # e preencha
+docker compose up -d
+```
+
+As migrations rodam num serviço próprio antes da API subir — se uma migration
+falhar, a API não sobe com o schema errado.
+
+### Endereços
+
+| O quê   | URL                              |
+| ------- | -------------------------------- |
+| Painel  | http://localhost:3000            |
+| API     | http://localhost:3001/api/v1     |
+| Swagger | http://localhost:3001/api/docs   |
+| Saúde   | http://localhost:3001/api/health |
+| Pronto  | http://localhost:3001/api/ready  |
+
+### Usuários criados pelo seed
+
+Todos usam a senha definida em `SEED_ADMIN_PASSWORD`. **Somente desenvolvimento** —
+o seed se recusa a rodar com `NODE_ENV=production`.
+
+| Perfil                           | E-mail                     | Enxerga            |
+| -------------------------------- | -------------------------- | ------------------ |
+| Administrador global             | admin@sonare.com.br        | tudo               |
+| Administrador do estabelecimento | gestor@sonare.com.br       | sua organização    |
+| Operador                         | operador@sonare.com.br     | opera carregadores |
+| Visualizador                     | visualizador@sonare.com.br | somente leitura    |
+
+### Comandos
+
+| Comando                | O que faz                                     |
+| ---------------------- | --------------------------------------------- |
+| `pnpm setup`           | Prepara o ambiente do zero                    |
+| `pnpm dev`             | API e painel em modo desenvolvimento          |
+| `pnpm build`           | Constrói todos os pacotes                     |
+| `pnpm test`            | Roda toda a suíte                             |
+| `pnpm typecheck`       | Verificação de tipos                          |
+| `pnpm exec eslint .`   | Lint                                          |
+| `pnpm format`          | Formata o código                              |
+| `pnpm db:migrate`      | Cria uma migration nova a partir do schema    |
+| `pnpm db:deploy`       | Aplica migrations pendentes                   |
+| `pnpm db:seed`         | Popula dados de desenvolvimento (idempotente) |
+| `pnpm db:studio`       | Abre o Prisma Studio                          |
+| `docker compose up -d` | Sobe tudo em containers                       |
+
+### Testes
+
+Os testes de integração usam um banco **separado** (`DATABASE_URL_TEST`), porque
+a suíte apaga dados. Crie-o antes da primeira execução:
+
+```bash
+createdb bora_carregar_test
+DATABASE_URL="$DATABASE_URL_TEST" pnpm db:deploy
+pnpm test
+```
+
+---
+
+## Situação por fase
+
+| Fase | Escopo                                                        | Situação                            |
+| ---- | ------------------------------------------------------------- | ----------------------------------- |
+| 0    | Descoberta, arquitetura, riscos, ADRs                         | ✅ concluída — aguardando validação |
+| 1    | Fundação: monorepo, API, web, banco, auth, CI                 | ✅ **concluída**                    |
+| 2    | Núcleo OCPP 1.6J + simulador                                  | ⬜ não iniciada                     |
+| 3    | Painel de carregadores e operação manual                      | ⬜ não iniciada                     |
+| 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
+| 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
+| 5    | Pagamento simulado                                            | ⬜ não iniciada                     |
+| 6    | Tarifação e regras comerciais                                 | ⬜ não iniciada                     |
+| 7    | Integração com pagamento real                                 | ⬜ não iniciada                     |
+| 8    | SmartPOS / terminal de autoatendimento                        | ⬜ não iniciada                     |
+| 9    | Endurecimento para piloto                                     | ⬜ não iniciada                     |
 
 Cada fase só começa após validação explícita da anterior.
 
@@ -39,12 +128,14 @@ Cada fase só começa após validação explícita da anterior.
 ## Documentação
 
 ### Arquitetura
+
 - [Plano do projeto](docs/architecture/project-plan.md) — arquitetura, estrutura de pastas, stack, fases
 - [Premissas e perguntas em aberto](docs/architecture/assumptions.md) — o que estamos assumindo sem confirmação
 - [Registro de riscos](docs/architecture/risks.md) — riscos, severidade e mitigações
 - [Decisões arquiteturais (ADRs)](docs/architecture/adr/README.md)
 
 ### Operações
+
 - [Levantamento de dados do WEMOB](docs/operations/wemob-data-collection.md) — formulário a preencher
 - [Plano de retorno à Tupi](docs/operations/tupi-rollback-plan.md) — rollback obrigatório antes da FASE 4
 - [Checklist de teste do WEMOB](docs/operations/wemob-test-checklist.md) — roteiro da FASE 4
@@ -107,12 +198,12 @@ nenhuma cobrança acontece.
 ([ADR-0010](docs/architecture/adr/0010-pix-valor-fixo.md)): crédito pré-pago de
 valor fixo, sem devolução do saldo não consumido.
 
-| | Cartão de crédito | Pix |
-| --- | --- | --- |
-| Cobrança | Depois, pelo consumido | Antes, valor escolhido |
-| Parada automática | 95% do teto | ~100% do valor pago |
-| Sobra não consumida | Não existe | Fica com o estabelecimento |
-| Falha antes de iniciar | `void` — nada cobrado | **Devolução automática** |
+|                        | Cartão de crédito      | Pix                        |
+| ---------------------- | ---------------------- | -------------------------- |
+| Cobrança               | Depois, pelo consumido | Antes, valor escolhido     |
+| Parada automática      | 95% do teto            | ~100% do valor pago        |
+| Sobra não consumida    | Não existe             | Fica com o estabelecimento |
+| Falha antes de iniciar | `void` — nada cobrado  | **Devolução automática**   |
 
 > A devolução por **consumo zero** é obrigatória e não configurável: Pix pago sem
 > energia entregue é dinheiro recebido sem contraprestação (risco R-27).
@@ -120,12 +211,12 @@ valor fixo, sem devolução do saldo não consumido.
 
 ## Endpoints previstos
 
-| Subdomínio | Uso |
-| --- | --- |
-| `ocpp.sonare.com.br` | Endpoint WebSocket dos carregadores (`wss://`) |
-| `api.sonare.com.br` | API REST (painel e webhooks) |
-| `painel.sonare.com.br` | Painel administrativo |
-| `www.sonare.com.br` | Site institucional existente — **não é tocado** |
+| Subdomínio             | Uso                                             |
+| ---------------------- | ----------------------------------------------- |
+| `ocpp.sonare.com.br`   | Endpoint WebSocket dos carregadores (`wss://`)  |
+| `api.sonare.com.br`    | API REST (painel e webhooks)                    |
+| `painel.sonare.com.br` | Painel administrativo                           |
+| `www.sonare.com.br`    | Site institucional existente — **não é tocado** |
 
 Justificativa da separação em [ADR-0009](docs/architecture/adr/0009-topologia-de-dominios.md).
 
@@ -133,16 +224,16 @@ Justificativa da separação em [ADR-0009](docs/architecture/adr/0009-topologia-
 
 ## Stack prevista
 
-| Camada | Tecnologia |
-| --- | --- |
-| Monorepo | pnpm workspaces + Turborepo |
-| Backend | Node.js 22 LTS, TypeScript, NestJS 11, `ws`, Swagger |
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind + shadcn/ui, TanStack Query |
-| Banco | PostgreSQL 16 + Prisma 6 (migrations versionadas) |
-| Assincronismo | PostgreSQL com padrão outbox (**sem Redis no MVP** — [ADR-0003](docs/architecture/adr/0003-postgres-outbox-sem-redis.md)) |
-| Infra local | Docker + Docker Compose |
-| Testes | Vitest, Supertest, Playwright |
-| Observabilidade | pino (JSON estruturado), `/health`, `/ready` |
+| Camada          | Tecnologia                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo        | pnpm workspaces + Turborepo                                                                                               |
+| Backend         | Node.js 22 LTS, TypeScript, NestJS 11, `ws`, Swagger                                                                      |
+| Frontend        | Next.js 15, React 19, TypeScript, Tailwind + shadcn/ui, TanStack Query                                                    |
+| Banco           | PostgreSQL 16 + Prisma 6 (migrations versionadas)                                                                         |
+| Assincronismo   | PostgreSQL com padrão outbox (**sem Redis no MVP** — [ADR-0003](docs/architecture/adr/0003-postgres-outbox-sem-redis.md)) |
+| Infra local     | Docker + Docker Compose                                                                                                   |
+| Testes          | Vitest, Supertest, Playwright                                                                                             |
+| Observabilidade | pino (JSON estruturado), `/health`, `/ready`                                                                              |
 
 ---
 

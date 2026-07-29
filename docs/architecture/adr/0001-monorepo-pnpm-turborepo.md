@@ -35,25 +35,28 @@ os scripts continuam funcionando via `pnpm -r`.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Repositórios separados | Atrito de versionamento de contratos; inviável no ritmo do MVP |
-| Monorepo só com `pnpm -r` | Funciona, mas sem cache nem grafo; adotável como fallback |
-| Nx | Mais poderoso, mais opinativo, curva de aprendizado maior que o necessário |
-| npm/yarn workspaces | Funcionam; pnpm ganha em disciplina de dependências e velocidade |
+| Alternativa               | Por que não                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| Repositórios separados    | Atrito de versionamento de contratos; inviável no ritmo do MVP             |
+| Monorepo só com `pnpm -r` | Funciona, mas sem cache nem grafo; adotável como fallback                  |
+| Nx                        | Mais poderoso, mais opinativo, curva de aprendizado maior que o necessário |
+| npm/yarn workspaces       | Funcionam; pnpm ganha em disciplina de dependências e velocidade           |
 
 ## Consequências
 
 **Positivas**
+
 - Contratos compartilhados sem publicação de pacote.
 - Refatoração atômica: mudar um enum e todos os consumidores no mesmo commit.
 - CI única, com cache por task.
 
 **Negativas**
+
 - Exige disciplina de fronteiras: um package não pode importar de um app.
   Será garantido por regra de ESLint (`no-restricted-imports`).
 - Desenvolvedores não familiarizados com pnpm precisam de um passo a mais no
   onboarding (documentado no README).
 
 **Neutras**
+
 - Deploy continua independente por app (Dockerfile por aplicação).

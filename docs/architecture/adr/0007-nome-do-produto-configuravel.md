@@ -32,8 +32,8 @@ Fonte única em `packages/config`:
 
 ```typescript
 export const brand = {
-  productName:  env.BRAND_PRODUCT_NAME  ?? 'Borá Carregar',
-  companyName:  env.BRAND_COMPANY_NAME  ?? 'Sonare Engenharia',
+  productName: env.BRAND_PRODUCT_NAME ?? 'Borá Carregar',
+  companyName: env.BRAND_COMPANY_NAME ?? 'Sonare Engenharia',
   supportEmail: env.BRAND_SUPPORT_EMAIL ?? 'suporte@example.com',
   primaryColor: env.BRAND_PRIMARY_COLOR ?? '#00C853',
 };
@@ -55,22 +55,25 @@ de escopo).
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
+| Alternativa                                                         | Por que não                                                                                                                                            |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Escrever o nome direto no código e renomear depois com find/replace | Funciona mal: pega falsos positivos, esquece e-mails/PDF/OG tags, e o custo cai justamente no pior momento (quando a marca definitiva chega com prazo) |
-| Framework de i18n para conter a marca | Sobrepeso: o MVP é pt-BR apenas |
-| White-label completo por estabelecimento desde já | Fora do escopo do MVP |
+| Framework de i18n para conter a marca                               | Sobrepeso: o MVP é pt-BR apenas                                                                                                                        |
+| White-label completo por estabelecimento desde já                   | Fora do escopo do MVP                                                                                                                                  |
 
 ## Consequências
 
 **Positivas**
+
 - Renomear o produto custa uma variável de ambiente.
 - Prepara terreno para white-label futuro sem construí-lo agora.
 
 **Negativas**
+
 - Um nível de indireção em textos de interface.
 - Exige disciplina, garantida pela regra de lint.
 
 **Neutras**
+
 - O nome técnico `sonare-charge` permanece nos artefatos internos, o que é
   desejável: infraestrutura estável, marca flexível.

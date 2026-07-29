@@ -49,11 +49,11 @@ energia → captura parcial pelo valor real → liberação automática do saldo
 O campo `Payment` já previa os três valores necessários — agora eles têm
 semântica obrigatória e distinta:
 
-| Campo | Significado neste modelo |
-| --- | --- |
+| Campo                   | Significado neste modelo                                                        |
+| ----------------------- | ------------------------------------------------------------------------------- |
 | `amountAuthorizedCents` | Teto da sessão. Reservado no cartão, **nunca cobrado integralmente por padrão** |
-| `amountCapturedCents` | Valor efetivamente cobrado = valor calculado da sessão |
-| `amountRefundedCents` | Só usado em correção pós-captura (erro operacional, contestação) |
+| `amountCapturedCents`   | Valor efetivamente cobrado = valor calculado da sessão                          |
+| `amountRefundedCents`   | Só usado em correção pós-captura (erro operacional, contestação)                |
 
 Novos estados de pagamento necessários:
 
@@ -117,13 +117,13 @@ reais de periodicidade de `MeterValues` do WEMOB.
 
 ## 5. Captura mínima e sessão sem consumo
 
-| Situação | Ação |
-| --- | --- |
-| Sessão nunca iniciou (timeout, carregador offline, veículo não plugado) | `voidPayment` — cancelamento total da pré-autorização. **Nada é cobrado** |
-| Sessão iniciou e consumiu 0 Wh | `voidPayment`, salvo se a tarifa tiver taxa de conexão — nesse caso captura-se apenas a taxa |
-| Sessão consumiu normalmente | Captura do valor calculado, respeitando `minimumAmountCents` da tarifa |
-| Valor calculado < mínimo da tarifa | Captura o mínimo (regra comercial já prevista na FASE 6) |
-| Falha após início, energia entregue | Captura do consumido; sessão marcada para revisão |
+| Situação                                                                | Ação                                                                                         |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Sessão nunca iniciou (timeout, carregador offline, veículo não plugado) | `voidPayment` — cancelamento total da pré-autorização. **Nada é cobrado**                    |
+| Sessão iniciou e consumiu 0 Wh                                          | `voidPayment`, salvo se a tarifa tiver taxa de conexão — nesse caso captura-se apenas a taxa |
+| Sessão consumiu normalmente                                             | Captura do valor calculado, respeitando `minimumAmountCents` da tarifa                       |
+| Valor calculado < mínimo da tarifa                                      | Captura o mínimo (regra comercial já prevista na FASE 6)                                     |
+| Falha após início, energia entregue                                     | Captura do consumido; sessão marcada para revisão                                            |
 
 ## 6. Janela de validade da pré-autorização
 
@@ -187,9 +187,9 @@ cravado em cinco lugares diferentes do código.
 
 Dois limites diferentes, que não devem ser confundidos:
 
-| Campo | O que é |
-| --- | --- |
-| `preAuthCeilingCents` | Quanto **reservamos no cartão**. Limite financeiro |
+| Campo                       | O que é                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `preAuthCeilingCents`       | Quanto **reservamos no cartão**. Limite financeiro            |
 | `Tariff.maximumAmountCents` | Teto **comercial** de quanto uma sessão pode custar. Opcional |
 
 O teto efetivo da sessão é o **menor dos dois**:
@@ -208,10 +208,10 @@ recarga de oportunidade.
 
 Consequências, ambas reais:
 
-| | Efeito |
-| --- | --- |
-| ✅ | A parada automática quase nunca dispara. O motorista carrega até o carro encher sem esbarrar em limite artificial |
-| ⚠️ | Reservamos R$ 200 do limite do cartão para uma sessão que vai custar R$ 60. Os R$ 140 não capturados ficam bloqueados até o emissor liberar — dias, tipicamente. Para quem tem limite baixo, isso pesa (risco R-25) |
+|     | Efeito                                                                                                                                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅  | A parada automática quase nunca dispara. O motorista carrega até o carro encher sem esbarrar em limite artificial                                                                                                   |
+| ⚠️  | Reservamos R$ 200 do limite do cartão para uma sessão que vai custar R$ 60. Os R$ 140 não capturados ficam bloqueados até o emissor liberar — dias, tipicamente. Para quem tem limite baixo, isso pesa (risco R-25) |
 
 Não é motivo para mudar a decisão — é o mesmo modelo de posto de combustível e
 hotel, e o valor é ajustável. Mas gera duas obrigações:
@@ -240,21 +240,23 @@ R$ 20 / R$ 30 / R$ 50, ainda pendente (pergunta 20).
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Pré-pago com valor fixo (opção 1) | Descartada por você. Era mais simples, mas cobra por energia não entregue |
-| Pós-pago com cadastro do motorista | Exige conta e cartão salvo — contraria a premissa central do produto ("sem cadastro") |
-| Pré-autorização com captura total sempre | Anula o benefício: cobraria o teto independentemente do consumo |
+| Alternativa                              | Por que não                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| Pré-pago com valor fixo (opção 1)        | Descartada por você. Era mais simples, mas cobra por energia não entregue             |
+| Pós-pago com cadastro do motorista       | Exige conta e cartão salvo — contraria a premissa central do produto ("sem cadastro") |
+| Pré-autorização com captura total sempre | Anula o benefício: cobraria o teto independentemente do consumo                       |
 
 ## Consequências
 
 **Positivas**
+
 - O motorista paga exatamente o que consumiu. É a promessa correta e defensável.
 - Elimina a necessidade de estorno no caminho feliz — não há valor a devolver.
 - Falha antes do início não gera cobrança nenhuma (`void`), o que reduz
   drasticamente o risco R-07 (cobrar e não entregar).
 
 **Negativas**
+
 - Reduz o universo de adquirentes viáveis (pré-autorização + captura parcial não
   é universal, especialmente em SmartPOS).
 - Exige a regra de parada automática no teto (§4) — código novo, com risco
@@ -264,5 +266,6 @@ R$ 20 / R$ 30 / R$ 50, ainda pendente (pergunta 20).
   o emissor liberar — pode gerar reclamação. Precisa ser comunicado na interface.
 
 **Neutras**
+
 - `MockPaymentProvider` e `ManualPaymentProvider` (FASE 5) passam a simular o
   ciclo completo autorizar → capturar/cancelar, o que já exercita o fluxo real.

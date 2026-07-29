@@ -1,0 +1,540 @@
+// ============================================================================
+// Borá Carregar — modelo de dados
+//
+// Regras que valem para o schema inteiro:
+//
+//  * Dinheiro em CENTAVOS INTEIROS (Int). Nunca Float/Decimal para moeda.
+//    Energia em Wh INTEIROS. Conversão para R$/kWh só na apresentação.
+//    (ADR-0005 — risco R-12)
+//
+//  * O banco é a fonte da verdade do estado comercial, não a conexão WebSocket
+//    em memória. Toda transição de sessão é persistida. (ADR-0006 — risco R-13)
+//
+//  * Idempotência é garantida por constraint no banco, não por lógica em
+//    memória. (risco R-08)
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Identidade e acesso
+// ============================================================================
+
+enum UserRole {
+  SUPER_ADMIN // administrador global da plataforma
+  ORG_ADMIN // administrador do estabelecimento/organização
+  OPERATOR // opera carregadores e sessões
+  VIEWER // somente leitura
+}
+
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  email        String       @unique
+  name         String
+  passwordHash String
+  role         UserRole
+  status       EntityStatus @default(ACTIVE)
+
+  // Nulo para SUPER_ADMIN, que enxerga todas as organizações.
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("users")
+}
+
+/// Sessões de refresh, guardadas com hash para permitir revogação individual.
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ============================================================================
+// Organização, estabelecimento e equipamento
+// ============================================================================
+
+model Organization {
+  id     String       @id @default(uuid()) @db.Uuid
+  name   String
+  slug   String       @unique
+  status EntityStatus @default(ACTIVE)
+
+  /// Teto de pré-autorização em centavos (ADR-0008 §9).
+  /// Nulo = herda do nível seguinte (variável de ambiente).
+  preAuthCeilingCents Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sites    Site[]
+  users    User[]
+  tariffs  Tariff[]
+  sessions ChargingSession[]
+  auditLogs AuditLog[]
+
+  @@map("organizations")
+}
+
+model Site {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String
+  legalName   String?
+  taxId       String? // CNPJ, opcional no MVP
+  address     String?
+  city        String?
+  state       String?
+  postalCode  String?
+  timezone    String       @default("America/Cuiaba")
+  status      EntityStatus @default(ACTIVE)
+
+  /// Sobrescreve o teto da organização (ADR-0008 §9).
+  preAuthCeilingCents Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chargers Charger[]
+  tariffs  Tariff[]
+  sessions ChargingSession[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("sites")
+}
+
+/// Conectividade do carregador com o nosso servidor OCPP.
+enum ConnectionStatus {
+  ONLINE
+  OFFLINE
+  NEVER_CONNECTED
+}
+
+/// Situação operacional decidida pelo operador, não pelo equipamento.
+enum OperationalStatus {
+  AVAILABLE // liberado para uso
+  BLOCKED // bloqueado manualmente pelo operador
+  MAINTENANCE // em manutenção
+}
+
+model Charger {
+  id     String @id @default(uuid()) @db.Uuid
+  siteId String @db.Uuid
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  /// Identidade usada na URL OCPP: wss://ocpp.sonare.com.br/ocpp/{chargePointIdentity}
+  chargePointIdentity String @unique
+
+  name            String
+  manufacturer    String?
+  model           String?
+  serialNumber    String?
+  firmwareVersion String?
+  protocolVersion String  @default("ocpp1.6")
+  address         String?
+
+  connectionStatus  ConnectionStatus  @default(NEVER_CONNECTED)
+  operationalStatus OperationalStatus @default(AVAILABLE)
+
+  lastSeenAt      DateTime?
+  lastBootAt      DateTime?
+  lastHeartbeatAt DateTime?
+
+  /// Hash da credencial individual do carregador (Basic Auth no handshake).
+  /// Nunca a credencial em claro.
+  credentialsHash String?
+
+  /// Sobrescreve o teto do estabelecimento (ADR-0008 §9).
+  preAuthCeilingCents Int?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  connectors   Connector[]
+  sessions     ChargingSession[]
+  meterValues  MeterValue[]
+  ocppMessages OcppMessage[]
+
+  @@index([siteId])
+  @@index([connectionStatus])
+  @@map("chargers")
+}
+
+/// Estados de conector do OCPP 1.6 (tabela 'ChargePointStatus').
+enum ConnectorStatus {
+  AVAILABLE
+  PREPARING
+  CHARGING
+  SUSPENDED_EV
+  SUSPENDED_EVSE
+  FINISHING
+  RESERVED
+  UNAVAILABLE
+  FAULTED
+}
+
+model Connector {
+  id        String  @id @default(uuid()) @db.Uuid
+  chargerId String  @db.Uuid
+  charger   Charger @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+
+  /// Numeração do OCPP. O conector 0 representa o carregador inteiro.
+  connectorNumber Int
+  connectorType   String?
+  ratedPowerKw    Decimal? @db.Decimal(8, 2) // potência não é dinheiro; Decimal é adequado
+
+  status       ConnectorStatus @default(AVAILABLE)
+  errorCode    String?
+  lastStatusAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions    ChargingSession[]
+  meterValues MeterValue[]
+
+  @@unique([chargerId, connectorNumber])
+  @@index([chargerId])
+  @@map("connectors")
+}
+
+// ============================================================================
+// Tarifação
+// ============================================================================
+
+model Tariff {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  siteId String? @db.Uuid
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  name String
+
+  // Todos os valores em centavos inteiros (ADR-0005).
+  pricePerKwhCents      Int
+  connectionFeeCents    Int  @default(0)
+  pricePerMinuteCents   Int  @default(0)
+  minimumAmountCents    Int  @default(0)
+  /// Teto COMERCIAL da sessão. Diferente do teto de pré-autorização, que é
+  /// limite financeiro. O teto efetivo é o menor dos dois (ADR-0008 §9).
+  maximumAmountCents    Int?
+  idleFeePerMinuteCents Int  @default(0)
+
+  status     EntityStatus @default(ACTIVE)
+  validFrom  DateTime     @default(now())
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions ChargingSession[]
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@map("tariffs")
+}
+
+// ============================================================================
+// Pagamentos
+// ============================================================================
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  MANUAL // aprovação manual do operador, para testes (FASE 5)
+}
+
+/// Ciclo de vida do pagamento (ADR-0008).
+///
+/// VOIDED e REFUNDED são coisas diferentes e não podem ser confundidos:
+/// VOIDED cancela uma pré-autorização que nunca foi capturada;
+/// REFUNDED devolve dinheiro que já foi cobrado.
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED // reserva feita, nada cobrado ainda
+  CAPTURED // valor efetivamente cobrado
+  PARTIALLY_REFUNDED
+  REFUNDED
+  VOIDED // pré-autorização cancelada, sem captura
+  DECLINED
+  EXPIRED // pré-autorização venceu sem captura (risco R-23)
+  FAILED
+}
+
+model Payment {
+  id       String        @id @default(uuid()) @db.Uuid
+  provider String // "mock", "manual", e futuramente o adquirente real
+  method   PaymentMethod
+
+  providerPaymentId String?
+  /// Chave de idempotência. O índice único é o que impede webhook duplicado de
+  /// criar dois pagamentos (risco R-08) — não a lógica de aplicação.
+  idempotencyKey    String  @unique
+  terminalId        String?
+
+  // Centavos inteiros (ADR-0005).
+  amountAuthorizedCents Int
+  amountCapturedCents   Int @default(0)
+  amountRefundedCents   Int @default(0)
+
+  status PaymentStatus @default(PENDING)
+
+  authorizationCode String?
+  nsu               String?
+  cardBrand         String?
+  /// Apenas os quatro últimos dígitos. O número completo, CVV e trilha nunca
+  /// entram nesta tabela nem em lugar nenhum (briefing seção 12).
+  cardLastFour      String?
+  pixEndToEndId     String?
+
+  authorizedAt DateTime?
+  capturedAt   DateTime?
+  cancelledAt  DateTime?
+  refundedAt   DateTime?
+  /// Prazo para capturar antes da pré-autorização expirar (risco R-23).
+  expiresAt    DateTime?
+
+  rawMetadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session ChargingSession?
+
+  @@index([status])
+  @@index([providerPaymentId])
+  @@index([expiresAt])
+  @@map("payments")
+}
+
+// ============================================================================
+// Sessões de recarga
+// ============================================================================
+
+/// Máquina de estados da sessão (ADR-0006).
+enum SessionStatus {
+  AWAITING_PAYMENT
+  PAYMENT_APPROVED
+  AWAITING_CHARGER
+  COMMAND_SENT
+  STARTING
+  CHARGING
+  FINISHING
+  COMPLETED
+  DECLINED
+  CANCELLED
+  FAILED
+  EXPIRED
+}
+
+/// Motivos de encerramento, distinguindo falha de término normal (briefing 11.8).
+enum StopReason {
+  REMOTE_STOP // encerrada pelo nosso comando
+  LOCAL_STOP // encerrada no próprio carregador
+  EV_DISCONNECTED // motorista desconectou o veículo
+  EMERGENCY_STOP
+  POWER_LOSS
+  CEILING_REACHED // atingiu o teto pré-autorizado (ADR-0008 §4)
+  DE_AUTHORIZED
+  CHARGER_FAULT
+  COMMUNICATION_LOST
+  OTHER
+}
+
+model ChargingSession {
+  id String @id @default(uuid()) @db.Uuid
+
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  siteId         String       @db.Uuid
+  site           Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  chargerId      String       @db.Uuid
+  charger        Charger      @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  connectorId    String       @db.Uuid
+  connector      Connector    @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  /// Um pagamento não pode custear duas sessões (regra 11.2 do briefing).
+  paymentId String?  @unique @db.Uuid
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  /// transactionId devolvido pelo carregador no StartTransaction.
+  ocppTransactionId Int?
+  idTag             String?
+
+  status SessionStatus @default(AWAITING_PAYMENT)
+
+  requestedAt  DateTime  @default(now())
+  authorizedAt DateTime?
+  startedAt    DateTime?
+  stoppedAt    DateTime?
+
+  // Energia em Wh inteiros (ADR-0005).
+  meterStartWh Int?
+  meterStopWh  Int?
+  energyWh     Int?
+
+  durationSeconds Int?
+
+  tariffId String? @db.Uuid
+  tariff   Tariff? @relation(fields: [tariffId], references: [id], onDelete: SetNull)
+
+  /// Cópia congelada das condições da tarifa no momento da sessão.
+  /// Mudar a tarifa depois não pode alterar o valor de sessões antigas
+  /// (briefing FASE 6).
+  tariffSnapshot Json?
+
+  // Centavos inteiros (ADR-0005).
+  estimatedAmountCents Int?
+  finalAmountCents     Int?
+  /// Teto efetivo desta sessão = min(pré-autorizado, máximo da tarifa).
+  /// Congelado aqui para não depender de configuração que pode mudar.
+  ceilingAmountCents   Int?
+
+  stopReason    StopReason?
+  failureReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meterValues MeterValue[]
+
+  @@index([organizationId])
+  @@index([chargerId])
+  @@index([connectorId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("charging_sessions")
+}
+
+// ============================================================================
+// Telemetria OCPP
+// ============================================================================
+
+model MeterValue {
+  id        String           @id @default(uuid()) @db.Uuid
+  sessionId String?          @db.Uuid
+  session   ChargingSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  chargerId   String     @db.Uuid
+  charger     Charger    @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  connectorId String?    @db.Uuid
+  connector   Connector? @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+
+  timestamp DateTime
+  measurand String // ex.: "Energy.Active.Import.Register"
+  value     String // mantido como texto: o valor bruto do carregador, sem interpretação
+  unit      String?
+  phase     String?
+  context   String?
+  location  String?
+
+  rawPayload Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([chargerId, timestamp])
+  @@map("meter_values")
+}
+
+enum MessageDirection {
+  INBOUND // do carregador para nós
+  OUTBOUND // de nós para o carregador
+}
+
+model OcppMessage {
+  id        String  @id @default(uuid()) @db.Uuid
+  chargerId String? @db.Uuid
+  charger   Charger? @relation(fields: [chargerId], references: [id], onDelete: SetNull)
+
+  direction   MessageDirection
+  messageType Int // 2=CALL, 3=CALLRESULT, 4=CALLERROR
+  messageId   String
+  action      String?
+
+  payload          Json?
+  responsePayload  Json?
+  errorCode        String?
+  errorDescription String?
+
+  correlationId String?
+
+  receivedAt           DateTime  @default(now())
+  respondedAt          DateTime?
+  processingDurationMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([chargerId, receivedAt])
+  @@index([correlationId])
+  @@index([messageId])
+  @@map("ocpp_messages")
+}
+
+// ============================================================================
+// Auditoria
+// ============================================================================
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  userId         String?       @db.Uuid
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String // ex.: "session.remote_start", "payment.refund"
+  entityType String
+  entityId   String?
+
+  previousValue Json?
+  newValue      Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}

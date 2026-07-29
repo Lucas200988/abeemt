@@ -42,12 +42,12 @@ Motorista escolhe R$ 30  →  QR Pix  →  pago  →  recarga inicia
 
 ### Duas experiências diferentes, e tudo bem
 
-| | Cartão de crédito | Pix |
-| --- | --- | --- |
-| Momento da cobrança | Depois (captura) | Antes |
-| Valor cobrado | O que consumiu | O que escolheu |
-| Teto da sessão | Valor pré-autorizado | Valor pago |
-| Sobra não consumida | Não existe | Fica com o estabelecimento |
+|                        | Cartão de crédito     | Pix                            |
+| ---------------------- | --------------------- | ------------------------------ |
+| Momento da cobrança    | Depois (captura)      | Antes                          |
+| Valor cobrado          | O que consumiu        | O que escolheu                 |
+| Teto da sessão         | Valor pré-autorizado  | Valor pago                     |
+| Sobra não consumida    | Não existe            | Fica com o estabelecimento     |
 | Falha antes de iniciar | `void` — nada cobrado | **Devolução obrigatória** (§4) |
 
 A interface precisa deixar essa diferença explícita **antes** do pagamento, não
@@ -61,11 +61,11 @@ isso é o que torna esta decisão barata de implementar.
 
 **O limiar é diferente, e o motivo é que o incentivo se inverte:**
 
-| | Cartão | Pix |
-| --- | --- | --- |
-| Se **ultrapassar** o teto | Prejuízo nosso — não é cobrável | Sem prejuízo — já recebemos |
-| Se **parar antes** do teto | Sem prejuízo — capturamos menos | Prejuízo do motorista — pagou e não recebeu |
-| Limiar adotado | **95%** (margem de segurança para baixo) | **~100%**, aceitando pequeno excedente |
+|                            | Cartão                                   | Pix                                         |
+| -------------------------- | ---------------------------------------- | ------------------------------------------- |
+| Se **ultrapassar** o teto  | Prejuízo nosso — não é cobrável          | Sem prejuízo — já recebemos                 |
+| Se **parar antes** do teto | Sem prejuízo — capturamos menos          | Prejuízo do motorista — pagou e não recebeu |
+| Limiar adotado             | **95%** (margem de segurança para baixo) | **~100%**, aceitando pequeno excedente      |
 
 No Pix, entregar 2% a mais de energia é um custo marginal nosso; entregar 5% a
 menos é ficar com dinheiro do motorista. O limiar do Pix deve mirar 100% e a
@@ -87,12 +87,12 @@ simplificação de MVP; é cobrar por serviço não prestado.
 
 No cartão isso é resolvido sozinho pelo `void`. No Pix, exige ação.
 
-| Situação | Ação |
-| --- | --- |
-| Pago, energia = 0 Wh | **Devolução integral**, disparada pelo sistema |
-| Pago, sessão iniciou e parou cedo por falha nossa ou do equipamento | Devolução do não consumido, **decidida pelo operador** |
-| Pago, motorista desconectou o carro por vontade própria | Sem devolução — regra desta ADR |
-| Pago, bateria encheu antes de esgotar o crédito | Sem devolução automática; operador pode devolver a critério comercial |
+| Situação                                                            | Ação                                                                  |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Pago, energia = 0 Wh                                                | **Devolução integral**, disparada pelo sistema                        |
+| Pago, sessão iniciou e parou cedo por falha nossa ou do equipamento | Devolução do não consumido, **decidida pelo operador**                |
+| Pago, motorista desconectou o carro por vontade própria             | Sem devolução — regra desta ADR                                       |
+| Pago, bateria encheu antes de esgotar o crédito                     | Sem devolução automática; operador pode devolver a critério comercial |
 
 Consequências de implementação:
 
@@ -129,21 +129,23 @@ decisão (c) de fato simplifica.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
+| Alternativa                          | Por que não                                                                                                                                                                                                                        |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **(a)** Devolução parcial automática | Tecnicamente viável e coerente com a promessa do produto. Recusada por custo de escopo no MVP: fluxo financeiro paralelo, conciliação e comunicação de um valor que chega dias depois. Continua sendo o caminho natural pós-piloto |
-| **(b)** Pix fora do MVP | Excluiria boa parte do público que o produto existe para atender — motorista sem cadastro pagando na hora |
-| (c) sem parada automática | Descartado: transformaria o crédito num valor arbitrário e a decisão em algo indefensável |
+| **(b)** Pix fora do MVP              | Excluiria boa parte do público que o produto existe para atender — motorista sem cadastro pagando na hora                                                                                                                          |
+| (c) sem parada automática            | Descartado: transformaria o crédito num valor arbitrário e a decisão em algo indefensável                                                                                                                                          |
 
 ## Consequências
 
 **Positivas**
+
 - Pix entra no MVP sem construir fluxo de devolução automática.
 - Reaproveita integralmente a máquina de parada automática do cartão — o custo
   incremental é o limiar diferente, pouco mais que isso.
 - No caminho feliz, o motorista recebe exatamente a energia que pagou.
 
 **Negativas**
+
 - Duas experiências de cobrança diferentes no mesmo produto, que precisam ser
   explicadas na interface.
 - Exposição residual de consumidor no caso de desconexão antecipada.
@@ -151,5 +153,6 @@ decisão (c) de fato simplifica.
   aprendido o modelo — trocar regra de cobrança depois custa mais do que parece.
 
 **Neutras**
+
 - `refundPayment` continua obrigatório na porta de pagamento; muda apenas quem o
   aciona (sistema no consumo zero, operador nos demais casos).

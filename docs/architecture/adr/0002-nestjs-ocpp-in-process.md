@@ -61,24 +61,27 @@ sem tocar no domínio.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não agora |
-| --- | --- |
-| Gateway OCPP como serviço separado desde o início | Complexidade e modos de falha novos sem benefício com 1 carregador |
-| `@nestjs/websockets` com adapter padrão | Otimizado para Socket.IO; OCPP exige controle do handshake, do subprotocolo e de frames crus. `ws` direto é mais previsível |
-| Biblioteca OCPP pronta de terceiros | Regra 19 do briefing: não assumir que funciona sem testes. Além disso, precisamos de controle total sobre tolerância a payloads divergentes (risco R-03) |
+| Alternativa                                       | Por que não agora                                                                                                                                        |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gateway OCPP como serviço separado desde o início | Complexidade e modos de falha novos sem benefício com 1 carregador                                                                                       |
+| `@nestjs/websockets` com adapter padrão           | Otimizado para Socket.IO; OCPP exige controle do handshake, do subprotocolo e de frames crus. `ws` direto é mais previsível                              |
+| Biblioteca OCPP pronta de terceiros               | Regra 19 do briefing: não assumir que funciona sem testes. Além disso, precisamos de controle total sobre tolerância a payloads divergentes (risco R-03) |
 
 ## Consequências
 
 **Positivas**
+
 - Um processo, um deploy, um lugar para depurar no MVP.
 - Envio de comando é chamada de método, não chamada de rede.
 - Latência mínima entre decisão de negócio e comando OCPP.
 
 **Negativas**
+
 - API não escala horizontalmente enquanto o gateway estiver embutido.
 - Reinício da API derruba as conexões dos carregadores. Mitigado por: os
   carregadores reconectam automaticamente (comportamento padrão OCPP), e o
   estado comercial sobrevive no banco (ADR-0006).
 
 **Neutras**
+
 - O `worker` roda o mesmo código sem o listener HTTP nem o servidor OCPP.

@@ -74,15 +74,16 @@ redaction no logger.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Escolher um adquirente agora e integrar | Contraria a regra 24 e a decisão ainda é sua |
+| Alternativa                                    | Por que não                                                                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Escolher um adquirente agora e integrar        | Contraria a regra 24 e a decisão ainda é sua                                                         |
 | Usar uma biblioteca de "pagamentos universais" | Camada extra opaca; a variedade brasileira (Pix, SmartPOS, NSU, conciliação) raramente é bem coberta |
-| Sem abstração, integrar direto quando escolher | Retrabalho garantido em sessões, testes e painel |
+| Sem abstração, integrar direto quando escolher | Retrabalho garantido em sessões, testes e painel                                                     |
 
 ## Consequências
 
 **Positivas**
+
 - Fases 5 e 6 avançam sem depender da escolha comercial.
 - Testar cenário de falha de pagamento é trivial e determinístico.
 - Trocar de adquirente no futuro é escrever um adapter, não refatorar o domínio.
@@ -90,9 +91,11 @@ redaction no logger.
   avulsa antes de qualquer integração.
 
 **Negativas**
+
 - A interface pode não encaixar perfeitamente no primeiro provedor real. É
   esperado: na FASE 7 a porta pode ser ajustada, com ADR novo, tendo dois
   adapters como referência para não moldá-la a um único fornecedor.
 
 **Neutras**
+
 - Uma indireção a mais em um fluxo já assíncrono.

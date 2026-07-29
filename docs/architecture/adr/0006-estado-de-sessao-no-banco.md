@@ -6,9 +6,9 @@
 
 ## Contexto
 
-Requisito explícito do briefing (§8): *"Não depender exclusivamente da conexão
-mantida em memória para determinar o estado comercial da sessão"*, e (§9 dos
-critérios da FASE 9): *"Nenhuma sessão fica sem estado definido"*.
+Requisito explícito do briefing (§8): _"Não depender exclusivamente da conexão
+mantida em memória para determinar o estado comercial da sessão"_, e (§9 dos
+critérios da FASE 9): _"Nenhuma sessão fica sem estado definido"_.
 
 O cenário concreto: um motorista paga R$ 40, a recarga começa, e a API é
 reiniciada (deploy, crash, OOM). Se o estado da sessão viver em memória, a
@@ -18,8 +18,8 @@ continua entregando energia; ninguém fatura; ninguém encerra.
 ## Decisão
 
 A `ChargingSession` no PostgreSQL é a **única fonte de verdade** do estado
-comercial. A conexão WebSocket em memória responde apenas a uma pergunta: *"este
-carregador está alcançável neste instante?"*.
+comercial. A conexão WebSocket em memória responde apenas a uma pergunta: _"este
+carregador está alcançável neste instante?"_.
 
 ### Máquina de estados persistida
 
@@ -70,12 +70,12 @@ aplicação ter checado antes, nem de haver uma única instância rodando.
 Quando um carregador (re)conecta, o servidor compara o que o banco diz com o que
 o carregador reporta:
 
-| Banco | Carregador | Ação |
-| --- | --- | --- |
-| Sessão `CHARGING` | `StatusNotification: Charging`, mesma transação | Nada — segue monitorando |
-| Sessão `CHARGING` | `Available` / sem transação | Encerrar por reconciliação; energia pelo último `MeterValue` conhecido; marcar para revisão |
-| Sem sessão | transação ativa reportada | Criar sessão órfã (`paymentId` nulo), sinalizar no painel — é energia entregue sem cobrança, o operador precisa saber |
-| Sessão `COMMAND_SENT` | `StartTransaction` chegando | Transição normal para `STARTING`/`CHARGING` |
+| Banco                 | Carregador                                      | Ação                                                                                                                  |
+| --------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Sessão `CHARGING`     | `StatusNotification: Charging`, mesma transação | Nada — segue monitorando                                                                                              |
+| Sessão `CHARGING`     | `Available` / sem transação                     | Encerrar por reconciliação; energia pelo último `MeterValue` conhecido; marcar para revisão                           |
+| Sem sessão            | transação ativa reportada                       | Criar sessão órfã (`paymentId` nulo), sinalizar no painel — é energia entregue sem cobrança, o operador precisa saber |
+| Sessão `COMMAND_SENT` | `StartTransaction` chegando                     | Transição normal para `STARTING`/`CHARGING`                                                                           |
 
 O terceiro caso é justamente o que o briefing exige em §16 ("sessão sem
 pagamento", "pagamento sem sessão").
@@ -90,24 +90,27 @@ pagamento", "pagamento sem sessão").
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Estado em memória com snapshot periódico | Janela de perda; complexidade de sincronização |
-| Event sourcing completo | Auditoria excelente, custo de implementação alto demais para o MVP. A tabela de transições dá 80% do benefício |
-| Redis como store de estado | Persistência configurável, mas separa estado de sessão dos dados relacionais — dual-write de novo (ver ADR-0003) |
+| Alternativa                              | Por que não                                                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Estado em memória com snapshot periódico | Janela de perda; complexidade de sincronização                                                                   |
+| Event sourcing completo                  | Auditoria excelente, custo de implementação alto demais para o MVP. A tabela de transições dá 80% do benefício   |
+| Redis como store de estado               | Persistência configurável, mas separa estado de sessão dos dados relacionais — dual-write de novo (ver ADR-0003) |
 
 ## Consequências
 
 **Positivas**
+
 - Restart da API não perde sessão nem dinheiro.
 - Concorrência resolvida pelo banco, não por locks de aplicação.
 - Linha do tempo do painel sai de graça da tabela de transições.
 - Auditoria e diagnóstico pós-incidente ficam viáveis.
 
 **Negativas**
+
 - Cada transição é uma escrita no banco. Irrelevante nesta escala.
 - Mais código do que "guardar num Map".
 
 **Neutras**
+
 - O worker torna-se peça essencial: sem ele, timeouts não são aplicados. Precisa
   de health check próprio e alerta se parar (FASE 9).

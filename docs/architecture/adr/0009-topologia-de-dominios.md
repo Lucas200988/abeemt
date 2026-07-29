@@ -14,13 +14,13 @@ Há um detalhe importante: `www.sonare.com.br` provavelmente já hospeda o **sit
 institucional da Sonare Engenharia**. Usar esse mesmo host para o endpoint OCPP
 misturaria duas coisas com requisitos muito diferentes:
 
-| | Site institucional | Endpoint OCPP |
-| --- | --- | --- |
-| Disponibilidade | importante | **crítica** — carregador desconecta se cair |
-| Tipo de tráfego | HTTP, requisições curtas | WebSocket persistente, horas de duração |
-| Deploy | ocasional | frequente durante o desenvolvimento |
-| Superfície de ataque | marketing | **aciona equipamento elétrico** |
-| CDN/proxy | desejável | proxies de CDN frequentemente quebram WebSocket longo |
+|                      | Site institucional       | Endpoint OCPP                                         |
+| -------------------- | ------------------------ | ----------------------------------------------------- |
+| Disponibilidade      | importante               | **crítica** — carregador desconecta se cair           |
+| Tipo de tráfego      | HTTP, requisições curtas | WebSocket persistente, horas de duração               |
+| Deploy               | ocasional                | frequente durante o desenvolvimento                   |
+| Superfície de ataque | marketing                | **aciona equipamento elétrico**                       |
+| CDN/proxy            | desejável                | proxies de CDN frequentemente quebram WebSocket longo |
 
 Um deploy do site derrubando a conexão de um carregador no meio de uma recarga
 paga é um modo de falha que não queremos ter inventado.
@@ -29,12 +29,12 @@ paga é um modo de falha que não queremos ter inventado.
 
 Usar **subdomínios dedicados**, mantendo `www.sonare.com.br` intocado.
 
-| Subdomínio | Uso | Protocolo | Exposição |
-| --- | --- | --- | --- |
-| `ocpp.sonare.com.br` | Endpoint WebSocket dos carregadores | `wss://` (443) | Pública, mas restrita por autenticação e — quando possível — por IP de origem |
-| `api.sonare.com.br` | API REST (painel, webhooks de pagamento) | `https://` | Pública |
-| `painel.sonare.com.br` | Painel administrativo (Next.js) | `https://` | Pública, atrás de login |
-| `www.sonare.com.br` | Site institucional existente | — | **Não tocamos** |
+| Subdomínio             | Uso                                      | Protocolo      | Exposição                                                                     |
+| ---------------------- | ---------------------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `ocpp.sonare.com.br`   | Endpoint WebSocket dos carregadores      | `wss://` (443) | Pública, mas restrita por autenticação e — quando possível — por IP de origem |
+| `api.sonare.com.br`    | API REST (painel, webhooks de pagamento) | `https://`     | Pública                                                                       |
+| `painel.sonare.com.br` | Painel administrativo (Next.js)          | `https://`     | Pública, atrás de login                                                       |
+| `www.sonare.com.br`    | Site institucional existente             | —              | **Não tocamos**                                                               |
 
 URL final do carregador:
 
@@ -97,25 +97,28 @@ depender de VPS, DNS e certificado estarem prontos e corretos.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Usar `www.sonare.com.br/ocpp` | Acopla a infra crítica ao site institucional; deploy do site derruba carregador |
-| Domínio novo e separado (ex.: `boracarregar.com.br`) | Faz sentido quando a marca for definitiva. Hoje o nome é provisório (ADR-0007) — registrar domínio para um nome que pode mudar é desperdício |
+| Alternativa                                                                    | Por que não                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Usar `www.sonare.com.br/ocpp`                                                  | Acopla a infra crítica ao site institucional; deploy do site derruba carregador                                                                                                                            |
+| Domínio novo e separado (ex.: `boracarregar.com.br`)                           | Faz sentido quando a marca for definitiva. Hoje o nome é provisório (ADR-0007) — registrar domínio para um nome que pode mudar é desperdício                                                               |
 | Um único subdomínio com paths (`charge.sonare.com.br/ocpp`, `/api`, `/painel`) | Funciona e é mais barato de configurar. Recusado porque o endpoint OCPP tem requisitos de disponibilidade e deploy diferentes dos demais — separar permite tratá-lo com mais cuidado sem penalizar o resto |
-| Ir direto para a 4b, ignorando a rede local | Desperdiça a maior redução de risco disponível no projeto |
+| Ir direto para a 4b, ignorando a rede local                                    | Desperdiça a maior redução de risco disponível no projeto                                                                                                                                                  |
 
 ## Consequências
 
 **Positivas**
+
 - Site institucional isolado e protegido do projeto.
 - Primeira conexão com o equipamento real sem depender de infraestrutura pública.
 - Endpoint OCPP pode ter política de deploy própria (janela, drain de conexões).
 
 **Negativas**
+
 - Três subdomínios para provisionar e três certificados para manter (mitigável
   com certificado curinga `*.sonare.com.br`, se o DNS permitir validação DNS-01).
 - Exige controle do DNS de `sonare.com.br` — **ainda não confirmado**
   (premissa A8, pergunta 14).
 
 **Neutras**
+
 - Em desenvolvimento local, tudo continua em `localhost` com portas distintas.

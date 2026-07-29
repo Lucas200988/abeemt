@@ -72,24 +72,27 @@ trilhões em centavos ainda cabe em `Number.MAX_SAFE_INTEGER`), migra-se para
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| `Decimal` do PostgreSQL | Correto matematicamente, mas o Prisma o expõe como `Decimal.js`, contaminando toda a base com um tipo não-primitivo, e ainda permite conversão acidental para `number` |
-| Biblioteca `dinero.js` | Útil, mas adiciona dependência para um problema que inteiros resolvem |
-| `float` com arredondamento no final | É exatamente o bug que queremos impedir |
+| Alternativa                         | Por que não                                                                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Decimal` do PostgreSQL             | Correto matematicamente, mas o Prisma o expõe como `Decimal.js`, contaminando toda a base com um tipo não-primitivo, e ainda permite conversão acidental para `number` |
+| Biblioteca `dinero.js`              | Útil, mas adiciona dependência para um problema que inteiros resolvem                                                                                                  |
+| `float` com arredondamento no final | É exatamente o bug que queremos impedir                                                                                                                                |
 
 ## Consequências
 
 **Positivas**
+
 - Impossível ter erro de centavo por representação.
 - Comparações e somas são exatas.
 - Conciliação com o adquirente fica direta.
 
 **Negativas**
+
 - Toda leitura precisa de conversão para exibir. Mitigado com helpers
   centralizados (`formatBRL`, `formatKwh`) usados por todo o frontend.
 - Desenvolvedores desatentos podem exibir "3000" onde deveria ser "R$ 30,00".
   Mitigado pelos tipos nominais e pela ausência de formatação ad hoc.
 
 **Neutras**
+
 - Valores no banco são menos legíveis a olho nu numa consulta manual.

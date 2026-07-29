@@ -6,9 +6,9 @@
 
 ## Contexto
 
-O briefing pede explicitamente: *"Utilize Redis e BullMQ somente caso sejam
+O briefing pede explicitamente: _"Utilize Redis e BullMQ somente caso sejam
 necessários... Caso seja possível manter confiabilidade usando PostgreSQL e um
-padrão de outbox, documente a decisão."*
+padrão de outbox, documente a decisão."_
 
 As necessidades reais de assincronismo no MVP são cinco:
 
@@ -80,13 +80,13 @@ violação de unicidade → resposta 200 sem reprocessar.
 
 ## Justificativa quantitativa
 
-| Requisito | Solução PostgreSQL | Suficiente? |
-| --- | --- | --- |
-| Throughput de comandos | dezenas por hora no MVP | Sim, por três ordens de grandeza |
-| Latência de despacho | polling de 1 s (ou `LISTEN/NOTIFY` para o caminho crítico) | Sim — o gargalo real é o carregador, que leva segundos para responder |
-| Durabilidade | ACID, mesmo commit dos dados de negócio | **Melhor** que Redis: não existe janela entre "gravei a sessão" e "enfileirei o comando" |
-| Retry com backoff | `next_attempt_at` | Sim |
-| Deduplicação | constraint única | Sim, e mais forte que a do BullMQ |
+| Requisito              | Solução PostgreSQL                                         | Suficiente?                                                                              |
+| ---------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Throughput de comandos | dezenas por hora no MVP                                    | Sim, por três ordens de grandeza                                                         |
+| Latência de despacho   | polling de 1 s (ou `LISTEN/NOTIFY` para o caminho crítico) | Sim — o gargalo real é o carregador, que leva segundos para responder                    |
+| Durabilidade           | ACID, mesmo commit dos dados de negócio                    | **Melhor** que Redis: não existe janela entre "gravei a sessão" e "enfileirei o comando" |
+| Retry com backoff      | `next_attempt_at`                                          | Sim                                                                                      |
+| Deduplicação           | constraint única                                           | Sim, e mais forte que a do BullMQ                                                        |
 
 O ponto decisivo é o terceiro: com Redis, gravar a sessão no Postgres e
 enfileirar no Redis são duas operações que podem divergir (dual-write). Com
@@ -108,25 +108,28 @@ a fonte de trabalho, o modelo de dados permanece.
 
 ## Alternativas consideradas
 
-| Alternativa | Por que não |
-| --- | --- |
-| Redis + BullMQ desde o início | Um container e um modo de falha a mais; problema de dual-write; sem ganho no volume do MVP |
-| `setTimeout` em memória para timeouts | Perde tudo em restart — inaceitável para timeout que decide captura de pagamento |
-| `pg_cron` | Menos visibilidade e testabilidade que um job na aplicação |
-| `LISTEN/NOTIFY` puro, sem tabela | Notificação não é durável; se ninguém escuta no momento, perde-se |
+| Alternativa                           | Por que não                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Redis + BullMQ desde o início         | Um container e um modo de falha a mais; problema de dual-write; sem ganho no volume do MVP |
+| `setTimeout` em memória para timeouts | Perde tudo em restart — inaceitável para timeout que decide captura de pagamento           |
+| `pg_cron`                             | Menos visibilidade e testabilidade que um job na aplicação                                 |
+| `LISTEN/NOTIFY` puro, sem tabela      | Notificação não é durável; se ninguém escuta no momento, perde-se                          |
 
 ## Consequências
 
 **Positivas**
+
 - Menos infraestrutura: `docker-compose` com Postgres, API e web apenas.
 - Comando e dado de negócio no mesmo commit — sem inconsistência possível.
 - Fila inspecionável com SQL comum; depuração trivial.
 
 **Negativas**
+
 - Polling gera carga base contínua no banco (irrelevante nesta escala).
 - Latência de até ~1 s no despacho (irrelevante: o carregador responde em segundos).
 - Precisamos escrever ~150 linhas que o BullMQ daria de graça.
 
 **Neutras**
+
 - `docker-compose.yml` já preverá o serviço Redis **comentado**, para quando um
   gatilho for atingido.

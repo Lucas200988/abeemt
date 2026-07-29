@@ -37,14 +37,14 @@ hoje conectado ao servidor OCPP da Tupi.
 
 ## 2. Análise do repositório atual (estado em 2026-07-29)
 
-| Item | Situação |
-| --- | --- |
-| Branch de trabalho | `claude/sonare-charge-ocpp-mvp-ptri6r` |
-| Histórico | 1 commit (`Add files via upload`) |
-| Arquivos versionados | `index.html` (1.316 linhas) |
+| Item                     | Situação                                                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch de trabalho       | `claude/sonare-charge-ocpp-mvp-ptri6r`                                                                                                                           |
+| Histórico                | 1 commit (`Add files via upload`)                                                                                                                                |
+| Arquivos versionados     | `index.html` (1.316 linhas)                                                                                                                                      |
 | Conteúdo do `index.html` | Media kit estático do "Fórum Mato-grossense de Engenharia Elétrica e Energias Sustentáveis (BESS 2026)" da AMEE — HTML + CSS inline, sem build, sem dependências |
-| Relação com este projeto | **Nenhuma.** É material institucional/comercial de outro assunto |
-| Ação tomada | **Nenhum arquivo apagado.** O `index.html` permanece intocado na raiz |
+| Relação com este projeto | **Nenhuma.** É material institucional/comercial de outro assunto                                                                                                 |
+| Ação tomada              | **Nenhum arquivo apagado.** O `index.html` permanece intocado na raiz                                                                                            |
 
 **Conclusão:** o repositório é, para efeitos práticos, um greenfield. Não há
 código de backend, frontend, banco, CI, testes ou infraestrutura a reaproveitar.
@@ -114,7 +114,7 @@ sua autorização, conforme a regra "não apagar/alterar código existente sem j
 ### 3.2 Princípios arquiteturais que guiam todas as fases
 
 1. **O banco é a fonte da verdade do estado comercial.** A conexão WebSocket em
-   memória diz apenas se o carregador está *alcançável agora*. Se a API reiniciar
+   memória diz apenas se o carregador está _alcançável agora_. Se a API reiniciar
    no meio de uma recarga, a sessão continua existindo, com estado consistente, e
    é reconciliada quando o carregador reconecta.
 2. **Dinheiro é sempre inteiro em centavos.** Nenhum `float`/`double` toca valor
@@ -133,18 +133,18 @@ sua autorização, conforme a regra "não apagar/alterar código existente sem j
 
 ### 3.3 Decisões técnicas principais (detalhadas nos ADRs)
 
-| # | Decisão | Resumo |
-| --- | --- | --- |
-| [ADR-0001](adr/0001-monorepo-pnpm-turborepo.md) | Monorepo pnpm + Turborepo | Workspaces pnpm; Turborepo só pelo cache/orquestração de tasks |
-| [ADR-0002](adr/0002-nestjs-ocpp-in-process.md) | Servidor OCPP dentro do processo da API | Um único processo Node no MVP; caminho de extração documentado |
-| [ADR-0003](adr/0003-postgres-outbox-sem-redis.md) | PostgreSQL + outbox, **sem Redis/BullMQ** no MVP | `FOR UPDATE SKIP LOCKED` cobre as necessidades; Redis fica como gatilho documentado |
-| [ADR-0004](adr/0004-payment-provider-port.md) | `PaymentProvider` como porta | Mock + Manual no MVP; adapter real só na FASE 7 |
-| [ADR-0005](adr/0005-dinheiro-centavos-energia-wh.md) | Centavos inteiros e Wh inteiros | Proíbe ponto flutuante em dinheiro e energia |
-| [ADR-0006](adr/0006-estado-de-sessao-no-banco.md) | Estado da sessão persistido | Máquina de estados no banco, recuperável após restart |
-| [ADR-0007](adr/0007-nome-do-produto-configuravel.md) | Marca configurável | "Borá Carregar" vive em config, não espalhado no código |
-| [ADR-0008](adr/0008-pre-autorizacao-e-captura.md) | **Pré-autorização + captura pelo consumo real** | Reserva → entrega → captura parcial; exige parada automática no teto |
-| [ADR-0009](adr/0009-topologia-de-dominios.md) | Subdomínios dedicados em `sonare.com.br` | `ocpp.` / `api.` / `painel.`; `www` intocado; FASE 4 dividida em local + pública |
-| [ADR-0010](adr/0010-pix-valor-fixo.md) | **Pix como crédito de valor fixo** | Sem devolução automática, exceto consumo zero; parada automática ao esgotar o valor |
+| #                                                    | Decisão                                          | Resumo                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| [ADR-0001](adr/0001-monorepo-pnpm-turborepo.md)      | Monorepo pnpm + Turborepo                        | Workspaces pnpm; Turborepo só pelo cache/orquestração de tasks                      |
+| [ADR-0002](adr/0002-nestjs-ocpp-in-process.md)       | Servidor OCPP dentro do processo da API          | Um único processo Node no MVP; caminho de extração documentado                      |
+| [ADR-0003](adr/0003-postgres-outbox-sem-redis.md)    | PostgreSQL + outbox, **sem Redis/BullMQ** no MVP | `FOR UPDATE SKIP LOCKED` cobre as necessidades; Redis fica como gatilho documentado |
+| [ADR-0004](adr/0004-payment-provider-port.md)        | `PaymentProvider` como porta                     | Mock + Manual no MVP; adapter real só na FASE 7                                     |
+| [ADR-0005](adr/0005-dinheiro-centavos-energia-wh.md) | Centavos inteiros e Wh inteiros                  | Proíbe ponto flutuante em dinheiro e energia                                        |
+| [ADR-0006](adr/0006-estado-de-sessao-no-banco.md)    | Estado da sessão persistido                      | Máquina de estados no banco, recuperável após restart                               |
+| [ADR-0007](adr/0007-nome-do-produto-configuravel.md) | Marca configurável                               | "Borá Carregar" vive em config, não espalhado no código                             |
+| [ADR-0008](adr/0008-pre-autorizacao-e-captura.md)    | **Pré-autorização + captura pelo consumo real**  | Reserva → entrega → captura parcial; exige parada automática no teto                |
+| [ADR-0009](adr/0009-topologia-de-dominios.md)        | Subdomínios dedicados em `sonare.com.br`         | `ocpp.` / `api.` / `painel.`; `www` intocado; FASE 4 dividida em local + pública    |
+| [ADR-0010](adr/0010-pix-valor-fixo.md)               | **Pix como crédito de valor fixo**               | Sem devolução automática, exceto consumo zero; parada automática ao esgotar o valor |
 
 ### 3.4 Fluxo financeiro (decidido em 2026-07-29)
 
@@ -189,13 +189,13 @@ recebe energia até esgotar o valor. Sem devolução automática do saldo.
 Isso cria **dois modelos de cobrança no mesmo produto**, e a diferença precisa
 estar visível na interface antes do pagamento:
 
-| | Cartão de crédito | Pix |
-| --- | --- | --- |
-| Cobrança | Depois, pelo consumido | Antes, valor escolhido |
-| Teto da sessão | Valor pré-autorizado | Valor pago |
+|                             | Cartão de crédito                      | Pix                                             |
+| --------------------------- | -------------------------------------- | ----------------------------------------------- |
+| Cobrança                    | Depois, pelo consumido                 | Antes, valor escolhido                          |
+| Teto da sessão              | Valor pré-autorizado                   | Valor pago                                      |
 | Limiar de parada automática | **95%** — ultrapassar é prejuízo nosso | **~100%** — parar antes é prejuízo do motorista |
-| Sobra não consumida | Não existe | Fica com o estabelecimento |
-| Falha antes de iniciar | `void`, nada cobrado | **Devolução automática obrigatória** |
+| Sobra não consumida         | Não existe                             | Fica com o estabelecimento                      |
+| Falha antes de iniciar      | `void`, nada cobrado                   | **Devolução automática obrigatória**            |
 
 Dois pontos que atravessam o projeto:
 
@@ -267,55 +267,55 @@ Segue a estrutura sugerida no briefing, com dois ajustes justificados adiante.
 
 ### Backend — `apps/api`, `apps/worker`
 
-| Dependência | Papel | Observação |
-| --- | --- | --- |
-| Node.js 22 LTS | runtime | LTS ativa; fixada via `.nvmrc` e `engines` |
-| TypeScript 5.x | linguagem | `strict: true` em todos os pacotes |
-| NestJS 11 | framework | módulos, DI, guards, interceptors, validation pipe |
-| `@nestjs/swagger` | OpenAPI | Swagger UI em `/docs` |
-| `ws` | WebSocket | servidor OCPP; escolhido por controle fino do handshake e do subprotocolo |
-| Prisma 6 | ORM + migrations | migrations versionadas em `packages/database` |
-| `zod` | validação de env e payloads OCPP | DTOs REST usam `class-validator` (idiomático NestJS) |
-| `class-validator` / `class-transformer` | DTOs REST | validação declarativa + `whitelist: true` |
-| `pino` + `nestjs-pino` | logs estruturados JSON | `requestId`, `correlationId`, `sessionId`, `chargerId` |
-| `argon2` | hash de senhas e credenciais de carregador | preferido a bcrypt para novos projetos |
-| `@nestjs/jwt` + `passport-jwt` | autenticação | access token curto + refresh |
-| `@nestjs/throttler` | rate limiting | login e webhooks |
-| `@nestjs/schedule` | agendadores do worker | varredura de timeouts e outbox |
-| `@nestjs/terminus` | health/readiness | `/health` e `/ready` com check de banco |
-| `helmet` | headers de segurança | |
+| Dependência                             | Papel                                      | Observação                                                                |
+| --------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
+| Node.js 22 LTS                          | runtime                                    | LTS ativa; fixada via `.nvmrc` e `engines`                                |
+| TypeScript 5.x                          | linguagem                                  | `strict: true` em todos os pacotes                                        |
+| NestJS 11                               | framework                                  | módulos, DI, guards, interceptors, validation pipe                        |
+| `@nestjs/swagger`                       | OpenAPI                                    | Swagger UI em `/docs`                                                     |
+| `ws`                                    | WebSocket                                  | servidor OCPP; escolhido por controle fino do handshake e do subprotocolo |
+| Prisma 6                                | ORM + migrations                           | migrations versionadas em `packages/database`                             |
+| `zod`                                   | validação de env e payloads OCPP           | DTOs REST usam `class-validator` (idiomático NestJS)                      |
+| `class-validator` / `class-transformer` | DTOs REST                                  | validação declarativa + `whitelist: true`                                 |
+| `pino` + `nestjs-pino`                  | logs estruturados JSON                     | `requestId`, `correlationId`, `sessionId`, `chargerId`                    |
+| `argon2`                                | hash de senhas e credenciais de carregador | preferido a bcrypt para novos projetos                                    |
+| `@nestjs/jwt` + `passport-jwt`          | autenticação                               | access token curto + refresh                                              |
+| `@nestjs/throttler`                     | rate limiting                              | login e webhooks                                                          |
+| `@nestjs/schedule`                      | agendadores do worker                      | varredura de timeouts e outbox                                            |
+| `@nestjs/terminus`                      | health/readiness                           | `/health` e `/ready` com check de banco                                   |
+| `helmet`                                | headers de segurança                       |                                                                           |
 
 ### Frontend — `apps/web`
 
-| Dependência | Papel |
-| --- | --- |
-| Next.js 15 (App Router) | framework React |
-| React 19 + TypeScript | UI |
+| Dependência                      | Papel                                                   |
+| -------------------------------- | ------------------------------------------------------- |
+| Next.js 15 (App Router)          | framework React                                         |
+| React 19 + TypeScript            | UI                                                      |
 | Tailwind CSS + shadcn/ui (Radix) | design system acessível, responsivo, sob nosso controle |
-| TanStack Query | cache/estado de servidor, polling do painel ao vivo |
-| `react-hook-form` + `zod` | formulários validados |
-| `date-fns` (locale `pt-BR`) | datas em formato brasileiro |
-| `Intl.NumberFormat('pt-BR')` | moeda em BRL, sem biblioteca extra |
+| TanStack Query                   | cache/estado de servidor, polling do painel ao vivo     |
+| `react-hook-form` + `zod`        | formulários validados                                   |
+| `date-fns` (locale `pt-BR`)      | datas em formato brasileiro                             |
+| `Intl.NumberFormat('pt-BR')`     | moeda em BRL, sem biblioteca extra                      |
 
 ### Banco / Infra
 
-| Dependência | Papel |
-| --- | --- |
-| PostgreSQL 16 | banco relacional |
-| Docker + Docker Compose | ambiente local reproduzível |
-| Nginx | reverse proxy, TLS e WSS (FASE 4) |
+| Dependência             | Papel                             |
+| ----------------------- | --------------------------------- |
+| PostgreSQL 16           | banco relacional                  |
+| Docker + Docker Compose | ambiente local reproduzível       |
+| Nginx                   | reverse proxy, TLS e WSS (FASE 4) |
 
 ### Testes / Qualidade
 
-| Dependência | Papel |
-| --- | --- |
-| Vitest | unitários e de integração (rápido, ESM-first) |
-| Supertest | testes de API HTTP |
-| Testcontainers (ou Postgres do compose) | banco real nos testes de integração |
-| Playwright | E2E do painel nos fluxos críticos (fases 3 e 5) |
-| ESLint + Prettier | lint e formatação |
-| `lint-staged` + `husky` | checagem no pre-commit |
-| GitHub Actions | CI: lint → typecheck → test → build |
+| Dependência                             | Papel                                           |
+| --------------------------------------- | ----------------------------------------------- |
+| Vitest                                  | unitários e de integração (rápido, ESM-first)   |
+| Supertest                               | testes de API HTTP                              |
+| Testcontainers (ou Postgres do compose) | banco real nos testes de integração             |
+| Playwright                              | E2E do painel nos fluxos críticos (fases 3 e 5) |
+| ESLint + Prettier                       | lint e formatação                               |
+| `lint-staged` + `husky`                 | checagem no pre-commit                          |
+| GitHub Actions                          | CI: lint → typecheck → test → build             |
 
 **Deliberadamente ausentes no MVP:** Redis, BullMQ, Kafka, microserviços,
 GraphQL, Kubernetes. Cada um entra apenas quando um gatilho documentado no
@@ -332,14 +332,14 @@ mais `User` (autenticação/RBAC, exigido pela FASE 1) e `OutboxCommand`
 
 Invariantes que serão garantidas **no banco**, não só no código:
 
-| Invariante | Mecanismo |
-| --- | --- |
-| Uma sessão ativa por conector | índice único parcial em `connector_id WHERE status IN (estados ativos)` |
-| Um pagamento inicia no máximo uma sessão | `UNIQUE(payment_id)` em `charging_sessions` |
-| Webhook duplicado não reprocessa | `UNIQUE(provider, provider_event_id)` na tabela de eventos |
-| Comando duplicado não é enviado duas vezes | `UNIQUE(idempotency_key)` em `outbox_commands` |
-| `chargePointIdentity` único | `UNIQUE` em `chargers` |
-| Transação OCPP única por carregador | `UNIQUE(charger_id, ocpp_transaction_id)` |
+| Invariante                                 | Mecanismo                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| Uma sessão ativa por conector              | índice único parcial em `connector_id WHERE status IN (estados ativos)` |
+| Um pagamento inicia no máximo uma sessão   | `UNIQUE(payment_id)` em `charging_sessions`                             |
+| Webhook duplicado não reprocessa           | `UNIQUE(provider, provider_event_id)` na tabela de eventos              |
+| Comando duplicado não é enviado duas vezes | `UNIQUE(idempotency_key)` em `outbox_commands`                          |
+| `chargePointIdentity` único                | `UNIQUE` em `chargers`                                                  |
+| Transação OCPP única por carregador        | `UNIQUE(charger_id, ocpp_transaction_id)`                               |
 
 O detalhamento campo a campo (tipos, nulabilidade, índices) será entregue na
 FASE 1 em `docs/architecture/data-model.md`, junto com o schema Prisma real.
@@ -352,19 +352,19 @@ Regra transversal: **nenhuma fase começa sem sua validação explícita da ante
 Antes de cada fase apresento objetivo, decisões, arquivos, riscos e critérios de
 aceite; depois, o que foi feito, testes executados e resultado real.
 
-| Fase | Escopo | Entrega verificável | Depende de |
-| --- | --- | --- | --- |
-| **0** | Descoberta, arquitetura, riscos, ADRs, dados pendentes do WEMOB | Documentos desta entrega | — |
-| **1** | Fundação: monorepo, API, web, Postgres, Docker, migrations, auth+RBAC, health, Swagger, logger, lint, CI | `docker compose up` sobe tudo; login funciona; testes básicos passam | 0 |
-| **2** | Núcleo OCPP 1.6J + simulador; fluxo completo Boot→Start→Meter→Stop | Teste automatizado E2E com simulador, verde | 1 |
-| **3** | Painel de carregadores e operação manual (start/stop, sessão ao vivo, mensagens OCPP) | Operador inicia/encerra carga pelo painel contra o simulador | 2 |
-| **4a** | Teste com o WEMOB real em **rede local** (Ethernet, `ws://`, sem DNS/TLS/VPS) | WEMOB conecta ao notebook na LAN; Boot/Heartbeat/Status recebidos; sessão remota inicia e encerra | 3 + **sua autorização explícita** |
-| **4b** | Teste com **infraestrutura pública** (`wss://ocpp.sonare.com.br`, VPS, TLS) | Mesmo fluxo pela internet, com o equipamento em condição de produção | 4a |
-| **5** | Pagamento simulado: `PaymentProvider` com autorizar/capturar/cancelar, Mock, webhook, idempotência, parada no teto | Falha antes do início gera `void`; sessão para sozinha no teto; webhook duplicado não duplica | 2 (real: 4) |
-| **6** | Tarifação: kWh, taxa fixa, tempo, mínimo, máximo, arredondamento, snapshot na sessão | Casos-limite cobertos por testes determinísticos | 5 |
-| **7** | Matriz comparativa de adquirentes → **você escolhe** → adapter real em sandbox | Sandbox aprovando e iniciando recarga, webhook assinado | 6 + sua escolha |
-| **8** | SmartPOS (caminho A) ou terminal web/quiosque (caminho B) | Terminal identificado inicia sessão no carregador correto | 7 |
-| **9** | Endurecimento para piloto: backup, alertas, testes de caos, runbooks | Checklist de piloto assinado; nenhuma sessão sem estado definido | 8 |
+| Fase   | Escopo                                                                                                             | Entrega verificável                                                                               | Depende de                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------- |
+| **0**  | Descoberta, arquitetura, riscos, ADRs, dados pendentes do WEMOB                                                    | Documentos desta entrega                                                                          | —                                 |
+| **1**  | Fundação: monorepo, API, web, Postgres, Docker, migrations, auth+RBAC, health, Swagger, logger, lint, CI           | `docker compose up` sobe tudo; login funciona; testes básicos passam                              | 0                                 |
+| **2**  | Núcleo OCPP 1.6J + simulador; fluxo completo Boot→Start→Meter→Stop                                                 | Teste automatizado E2E com simulador, verde                                                       | 1                                 |
+| **3**  | Painel de carregadores e operação manual (start/stop, sessão ao vivo, mensagens OCPP)                              | Operador inicia/encerra carga pelo painel contra o simulador                                      | 2                                 |
+| **4a** | Teste com o WEMOB real em **rede local** (Ethernet, `ws://`, sem DNS/TLS/VPS)                                      | WEMOB conecta ao notebook na LAN; Boot/Heartbeat/Status recebidos; sessão remota inicia e encerra | 3 + **sua autorização explícita** |
+| **4b** | Teste com **infraestrutura pública** (`wss://ocpp.sonare.com.br`, VPS, TLS)                                        | Mesmo fluxo pela internet, com o equipamento em condição de produção                              | 4a                                |
+| **5**  | Pagamento simulado: `PaymentProvider` com autorizar/capturar/cancelar, Mock, webhook, idempotência, parada no teto | Falha antes do início gera `void`; sessão para sozinha no teto; webhook duplicado não duplica     | 2 (real: 4)                       |
+| **6**  | Tarifação: kWh, taxa fixa, tempo, mínimo, máximo, arredondamento, snapshot na sessão                               | Casos-limite cobertos por testes determinísticos                                                  | 5                                 |
+| **7**  | Matriz comparativa de adquirentes → **você escolhe** → adapter real em sandbox                                     | Sandbox aprovando e iniciando recarga, webhook assinado                                           | 6 + sua escolha                   |
+| **8**  | SmartPOS (caminho A) ou terminal web/quiosque (caminho B)                                                          | Terminal identificado inicia sessão no carregador correto                                         | 7                                 |
+| **9**  | Endurecimento para piloto: backup, alertas, testes de caos, runbooks                                               | Checklist de piloto assinado; nenhuma sessão sem estado definido                                  | 8                                 |
 
 ### Por que a FASE 4 foi dividida (revisão de 2026-07-29)
 
@@ -408,13 +408,13 @@ Mantemos essa numeração, mas registro uma observação para sua decisão:
 
 Detalhamento completo virá em `docs/testing/strategy.md` na FASE 1.
 
-| Nível | O quê | Onde |
-| --- | --- | --- |
-| Unitário | parser OCPP, cálculo de energia, cálculo tarifário, máquina de estados, arredondamento | `packages/*`, sem banco, sem rede |
-| Integração | repositórios, constraints do banco, idempotência sob concorrência real | Postgres real (Docker/Testcontainers) |
-| API | rotas REST, auth, RBAC, validação, rate limit | Supertest sobre app Nest |
-| OCPP | simulador ↔ servidor: handshake, boot, heartbeat, status, remote start/stop, meter values, reconexão, timeout, CALLERROR, JSON inválido, action não suportada | `apps/api` + `apps/ocpp-simulator` |
-| E2E | fluxos críticos do painel: cadastrar carregador → iniciar → acompanhar → encerrar | Playwright |
+| Nível      | O quê                                                                                                                                                         | Onde                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Unitário   | parser OCPP, cálculo de energia, cálculo tarifário, máquina de estados, arredondamento                                                                        | `packages/*`, sem banco, sem rede     |
+| Integração | repositórios, constraints do banco, idempotência sob concorrência real                                                                                        | Postgres real (Docker/Testcontainers) |
+| API        | rotas REST, auth, RBAC, validação, rate limit                                                                                                                 | Supertest sobre app Nest              |
+| OCPP       | simulador ↔ servidor: handshake, boot, heartbeat, status, remote start/stop, meter values, reconexão, timeout, CALLERROR, JSON inválido, action não suportada | `apps/api` + `apps/ocpp-simulator`    |
+| E2E        | fluxos críticos do painel: cadastrar carregador → iniciar → acompanhar → encerrar                                                                             | Playwright                            |
 
 **Compromisso:** nenhuma afirmação de "funciona" sem a saída real do teste
 correspondente colada na entrega da fase.
@@ -423,16 +423,16 @@ correspondente colada na entrega da fase.
 
 ## 9. Critérios de aceite da FASE 0
 
-| Critério | Status |
-| --- | --- |
-| Arquitetura documentada | ✅ este documento + 7 ADRs |
-| Riscos documentados | ✅ [`risks.md`](risks.md) |
-| Premissas documentadas | ✅ [`assumptions.md`](assumptions.md) |
-| Lista de dados pendentes do WEMOB | ✅ [`../operations/wemob-data-collection.md`](../operations/wemob-data-collection.md) |
-| Plano de retorno à Tupi | ✅ [`../operations/tupi-rollback-plan.md`](../operations/tupi-rollback-plan.md) |
-| Checklist de teste do WEMOB | ✅ [`../operations/wemob-test-checklist.md`](../operations/wemob-test-checklist.md) |
-| Nenhuma alteração no equipamento real | ✅ nenhum comando, conexão ou configuração foi executada contra o WEMOB |
-| Nenhum arquivo existente apagado | ✅ `index.html` preservado sem modificação |
+| Critério                              | Status                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| Arquitetura documentada               | ✅ este documento + 7 ADRs                                                            |
+| Riscos documentados                   | ✅ [`risks.md`](risks.md)                                                             |
+| Premissas documentadas                | ✅ [`assumptions.md`](assumptions.md)                                                 |
+| Lista de dados pendentes do WEMOB     | ✅ [`../operations/wemob-data-collection.md`](../operations/wemob-data-collection.md) |
+| Plano de retorno à Tupi               | ✅ [`../operations/tupi-rollback-plan.md`](../operations/tupi-rollback-plan.md)       |
+| Checklist de teste do WEMOB           | ✅ [`../operations/wemob-test-checklist.md`](../operations/wemob-test-checklist.md)   |
+| Nenhuma alteração no equipamento real | ✅ nenhum comando, conexão ou configuração foi executada contra o WEMOB               |
+| Nenhum arquivo existente apagado      | ✅ `index.html` preservado sem modificação                                            |
 
 ---
 

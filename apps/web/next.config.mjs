@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Os pacotes do monorepo são TypeScript sem build próprio para o browser.
-  transpilePackages: ['@bora/contracts'],
+  transpilePackages: ['@bora/contracts', '@bora/ocpp-core'],
   async headers() {
     return [
       {

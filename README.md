@@ -14,9 +14,10 @@ para o motorista.
 
 ## Situação atual do projeto
 
-**FASE 2 concluída.** O fluxo completo de recarga funciona de ponta a ponta
-contra o simulador OCPP 1.6J: conexão, início remoto, medição, encerramento e
-registro. 170 testes automatizados.
+**FASE 3 concluída.** O painel opera o sistema: cadastro de estabelecimento e
+carregador, status ao vivo, início e parada de recarga, acompanhamento da sessão
+com linha do tempo, e área de diagnóstico com as mensagens OCPP cruas.
+207 testes automatizados.
 
 Nada foi conectado ao carregador WEG WEMOB real — isso é a FASE 4, e depende da
 sua autorização explícita.
@@ -129,7 +130,7 @@ pnpm test
 | 0    | Descoberta, arquitetura, riscos, ADRs                         | ✅ concluída — aguardando validação |
 | 1    | Fundação: monorepo, API, web, banco, auth, CI                 | ✅ **concluída**                    |
 | 2    | Núcleo OCPP 1.6J + simulador                                  | ✅ **concluída**                    |
-| 3    | Painel de carregadores e operação manual                      | ⬜ não iniciada                     |
+| 3    | Painel de carregadores e operação manual                      | ✅ **concluída**                    |
 | 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
 | 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
 | 5    | Pagamento simulado                                            | ⬜ não iniciada                     |

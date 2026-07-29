@@ -1,113 +1,191 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { api, clearSession, loadSession, type AuthenticatedUser } from '@/lib/api';
+import Link from 'next/link';
+import { formatCents, formatDateTime, formatRelative, formatWh } from '@bora/contracts';
+import { api } from '@/lib/api';
+import { usePolling } from '@/lib/use-polling';
+import { Alerta, Badge, Cartao, Carregando, Vazio, sessionTone } from '@/components/ui';
 
-const MARCA = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Borá Carregar';
+/** Intervalo curto: esta é a tela que fica aberta durante uma operação. */
+const INTERVALO_MS = 5000;
 
-export default function PainelPage() {
-  const router = useRouter();
-  const [usuario, setUsuario] = useState<AuthenticatedUser | null>(null);
-  const [carregando, setCarregando] = useState(true);
+export default function VisaoGeralPage() {
+  const { dados, erro, carregando } = usePolling(() => api.overview(), INTERVALO_MS);
 
-  useEffect(() => {
-    const sessao = loadSession();
-    if (!sessao) {
-      router.replace('/');
-      return;
-    }
-
-    // Confirma a sessão contra a API: o token pode ter sido revogado desde
-    // que foi guardado.
-    api
-      .me()
-      .then(setUsuario)
-      .catch(() => {
-        clearSession();
-        router.replace('/');
-      })
-      .finally(() => setCarregando(false));
-  }, [router]);
-
-  async function sair() {
-    const sessao = loadSession();
-    if (sessao) {
-      // Revoga do lado do servidor; se falhar, limpamos localmente de todo jeito.
-      await api.logout(sessao.refreshToken).catch(() => undefined);
-    }
-    clearSession();
-    router.replace('/');
-  }
-
-  if (carregando) {
-    return (
-      <main className="tela-centralizada">
-        <p style={{ color: 'var(--texto-suave)' }}>Carregando…</p>
-      </main>
-    );
-  }
-
-  if (!usuario) return null;
-
-  const [primeiraPalavra, ...resto] = MARCA.split(' ');
+  if (carregando && !dados) return <Carregando />;
 
   return (
-    <div className="painel">
-      <header className="cabecalho">
-        <div className="marca">
-          {primeiraPalavra} <span>{resto.join(' ')}</span>
-        </div>
-        <div className="usuario">
-          <div>
-            <div className="nome">{usuario.name}</div>
-            <div className="papel">{usuario.roleLabel}</div>
-          </div>
-          <button className="botao botao-secundario" onClick={sair}>
-            Sair
-          </button>
-        </div>
-      </header>
-
-      <main className="conteudo">
+    <>
+      <header>
         <h1>Visão geral</h1>
         <p className="descricao">
-          Os indicadores abaixo passam a ter dados reais quando o núcleo OCPP entrar (FASE 2).
+          Atualiza a cada {INTERVALO_MS / 1000} segundos
+          {dados && ` · "hoje" começa em ${formatDateTime(dados.dayStartedAt)}`}
         </p>
+      </header>
 
-        <div className="grade">
-          <div className="indicador">
-            <div className="rotulo">Carregadores online</div>
-            <div className="valor">—</div>
-            <div className="nota">Disponível na FASE 2</div>
-          </div>
-          <div className="indicador">
-            <div className="rotulo">Em uso</div>
-            <div className="valor">—</div>
-            <div className="nota">Disponível na FASE 2</div>
-          </div>
-          <div className="indicador">
-            <div className="rotulo">Energia hoje</div>
-            <div className="valor">—</div>
-            <div className="nota">Disponível na FASE 2</div>
-          </div>
-          <div className="indicador">
-            <div className="rotulo">Recebido hoje</div>
-            <div className="valor">—</div>
-            <div className="nota">Disponível na FASE 5</div>
-          </div>
-        </div>
+      {erro && <Alerta>{erro}</Alerta>}
 
-        <div className="aviso-fase">
-          <strong>FASE 1 concluída — fundação do projeto</strong>O que já funciona: autenticação com
-          quatro perfis, verificação de saúde, banco migrado e documentação da API.
-          <ul>
-            <li>FASE 2 — núcleo OCPP e simulador</li>
-            <li>FASE 3 — telas de carregadores e operação manual</li>
-            <li>FASE 5 — pagamento simulado</li>
-          </ul>
-        </div>
-      </main>
-    </div>
+      {dados && (
+        <>
+          <div className="grade">
+            <div className="indicador">
+              <div className="rotulo">Carregadores online</div>
+              <div className="valor">{dados.chargers.online}</div>
+              <div className="nota">de {dados.chargers.total} cadastrados</div>
+            </div>
+            <div className="indicador">
+              <div className="rotulo">Offline</div>
+              <div className="valor">{dados.chargers.offline}</div>
+              <div className="nota">
+                {dados.chargers.blocked > 0
+                  ? `${dados.chargers.blocked} bloqueado(s)`
+                  : 'nenhum bloqueado'}
+              </div>
+            </div>
+            <div className="indicador">
+              <div className="rotulo">Em uso</div>
+              <div className="valor">{dados.chargers.charging}</div>
+              <div className="nota">
+                {dados.chargers.faulted > 0
+                  ? `${dados.chargers.faulted} conector(es) em falha`
+                  : 'nenhuma falha'}
+              </div>
+            </div>
+            <div className="indicador">
+              <div className="rotulo">Energia hoje</div>
+              <div className="valor">{formatWh(dados.today.energyWh)}</div>
+              <div className="nota">{dados.today.sessionsCompleted} sessão(ões) concluída(s)</div>
+            </div>
+            <div className="indicador">
+              <div className="rotulo">Recebido hoje</div>
+              <div className="valor">{formatCents(dados.today.receivedCents)}</div>
+              {/* Honesto: sem cálculo financeiro, este número é zero por construção. */}
+              <div className="nota">valor final chega na FASE 6</div>
+            </div>
+            <div className="indicador">
+              <div className="rotulo">Conexões OCPP</div>
+              <div className="valor">{dados.ocpp.connectedNow}</div>
+              <div className="nota">
+                {dados.ocpp.pendingCommands} comando(s) aguardando resposta
+              </div>
+            </div>
+          </div>
+
+          <Cartao titulo={`Sessões em andamento (${dados.activeSessions.length})`}>
+            {dados.activeSessions.length === 0 ? (
+              <Vazio>Nenhuma recarga em andamento.</Vazio>
+            ) : (
+              <div className="tabela-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Carregador</th>
+                      <th>Conector</th>
+                      <th>Situação</th>
+                      <th>Início</th>
+                      <th className="numero">Energia</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dados.activeSessions.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.chargerName}</td>
+                        <td>#{s.connectorNumber}</td>
+                        <td>
+                          <Badge tone={sessionTone(s.status)}>{s.statusLabel}</Badge>
+                        </td>
+                        <td>{formatRelative(s.startedAt)}</td>
+                        <td className="numero">
+                          {s.energyWh === null ? '—' : formatWh(s.energyWh)}
+                        </td>
+                        <td>
+                          <Link href={`/painel/sessoes/${s.id}`}>Acompanhar</Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Cartao>
+
+          <Cartao titulo="Sessões recentes" acao={<Link href="/painel/sessoes">Ver todas</Link>}>
+            {dados.recentSessions.length === 0 ? (
+              <Vazio>Nenhuma sessão registrada ainda.</Vazio>
+            ) : (
+              <div className="tabela-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Carregador</th>
+                      <th>Situação</th>
+                      <th>Quando</th>
+                      <th className="numero">Energia</th>
+                      <th className="numero">Valor</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dados.recentSessions.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.chargerName}</td>
+                        <td>
+                          <Badge tone={sessionTone(s.status)}>{s.statusLabel}</Badge>
+                        </td>
+                        <td>{formatRelative(s.requestedAt)}</td>
+                        <td className="numero">
+                          {s.energyWh === null ? '—' : formatWh(s.energyWh)}
+                        </td>
+                        <td className="numero">
+                          {s.finalAmountCents === null ? '—' : formatCents(s.finalAmountCents)}
+                        </td>
+                        <td>
+                          <Link href={`/painel/sessoes/${s.id}`}>Detalhe</Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Cartao>
+
+          {dados.recentFailures.length > 0 && (
+            <Cartao titulo="Falhas recentes">
+              <div className="tabela-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Carregador</th>
+                      <th>Situação</th>
+                      <th>Motivo</th>
+                      <th>Quando</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dados.recentFailures.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.chargerName}</td>
+                        <td>
+                          <Badge tone="bad">{s.statusLabel}</Badge>
+                        </td>
+                        <td>{s.failureReason ?? '—'}</td>
+                        <td>{formatRelative(s.requestedAt)}</td>
+                        <td>
+                          <Link href={`/painel/sessoes/${s.id}`}>Detalhe</Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Cartao>
+          )}
+        </>
+      )}
+    </>
   );
 }

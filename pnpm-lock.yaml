@@ -175,6 +175,9 @@ importers:
       '@bora/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@bora/ocpp-core':
+        specifier: workspace:*
+        version: link:../../packages/ocpp-core
       next:
         specifier: ^16.2.12
         version: 16.2.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

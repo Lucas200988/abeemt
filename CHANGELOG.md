@@ -5,6 +5,54 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 3 — Painel de carregadores e operação manual — 2026-07-29
+
+O painel passa a operar o sistema. **Nada foi conectado ao WEMOB real** — é a FASE 4.
+
+#### Adicionado
+
+**API**
+
+- `sites` — cadastro e edição de estabelecimento, com fuso horário e teto próprio.
+- `chargers` — cadastro com conectores, edição, bloqueio/liberação, geração e rotação de credencial individual, e listagem das mensagens OCPP para diagnóstico. A resposta traz o teto efetivo **e de onde ele veio** na hierarquia do ADR-0008 §9.
+- `sessions` — listagem, detalhe com linha do tempo, leituras de energia relativas ao início, início manual, parada e cancelamento.
+- `dashboard/overview` — indicadores do dia, sessões ativas, recentes e falhas. O recorte de "hoje" usa o fuso do estabelecimento, não UTC: em Mato Grosso a diferença é de 4 horas.
+- `AuditService` — toda operação manual registra quem, o quê, quando, de onde, e o valor antes e depois. Falha de auditoria nunca interrompe a operação.
+- `tenant-scope` — escopo por organização aplicado no **serviço**, não no controller: um endpoint novo que esqueça de filtrar não passa a vazar dados.
+
+**Painel**
+
+- Navegação lateral com visão geral, carregadores, sessões, estabelecimentos e diagnóstico.
+- Detalhe do carregador com operação: iniciar, parar, bloquear, liberar, gerar credencial.
+- Sessão ao vivo com linha do tempo, gráfico de energia em SVG puro e área de diagnóstico técnico.
+- Diagnóstico OCPP com filtros por ação, direção e erro, e botão de pausar para conseguir ler uma mensagem.
+- Ações de operação aparecem conforme o papel: visualizador não vê botão que não pode usar.
+
+**Decisão**
+
+- [ADR-0011](docs/architecture/adr/0011-painel-por-polling.md) — atualização por polling, não WebSocket, com intervalo por tela e redução automática em sessão encerrada.
+
+#### Corrigido durante a fase
+
+- **Início manual com carregador offline travava o conector para sempre.** As pré-condições do `remoteStart` retornavam sem alterar o status, e a sessão ficava em `PAYMENT_APPROVED` — ocupando o conector pelo índice da regra 11.1 e impedindo qualquer tentativa nova. Descoberto testando com o simulador desconectado.
+- **Listagens quebravam com 400.** Dois `@Query()` no mesmo endpoint fazem cada DTO validar a query inteira, e `forbidNonWhitelisted` rejeitava o que o outro declarava: `?pageSize=50` derrubava a tela. Um DTO por endpoint, herdando a paginação.
+- **Sessão saudável aparecia com alerta vermelho.** O início manual gravava uma nota em `failureReason`, campo que significa falha. A informação já está no `AuditLog`; a ausência de `paymentId` é o que identifica sessão sem pagamento.
+- **Erros de tipo que o SWC dos testes não acusava.** Os `include` do Prisma vinham de métodos, o que faz a inferência cair no modelo base sem as relações. Passaram a ser consts com `satisfies`. Também um `TS2742` na listagem de mensagens, resolvido com um tipo de visão próprio em vez do modelo do Prisma.
+- Supressão de lint removida do hook de polling: a assinatura passou a receber uma chave em vez de um array de dependências.
+
+#### Testes
+
+207 testes no total (37 novos), todos passando. Os novos cobrem principalmente o que não dá para verificar clicando: isolamento entre duas organizações independentes (listagens, detalhe, mensagens, sessões, indicadores do dia), controle por papel, hierarquia do teto, auditoria, e a regressão dos dois defeitos acima.
+
+O critério de aceite da fase foi verificado em navegador com o simulador real: administrador cadastra carregador e recebe a credencial uma única vez; operador vê o simulador online, inicia a recarga, acompanha a energia subir (0,02 → 0,07 kWh), encerra e vê o resultado final com motivo e `transactionId`; bloqueia e libera; abre o diagnóstico com os payloads crus; e o visualizador não tem nenhum botão de operação.
+
+#### Notas
+
+- Nenhuma alteração, conexão ou comando foi executado contra o carregador WEG WEMOB real.
+- `ChangeAvailability` continua não implementado: o bloqueio é registrado do nosso lado e impede novas sessões, sem enviar comando ao equipamento.
+
+---
+
 ### FASE 2 — Núcleo OCPP 1.6J e simulador — 2026-07-29
 
 O fluxo completo de recarga funciona de ponta a ponta contra o simulador.

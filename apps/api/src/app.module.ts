@@ -10,6 +10,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { OcppModule } from './modules/ocpp/ocpp.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { SitesModule } from './modules/sites/sites.module';
+import { ChargersModule } from './modules/chargers/chargers.module';
+import { SessionsModule } from './modules/sessions/sessions.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -67,9 +72,14 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
       { name: 'default', ttl: env.RATE_LIMIT_TTL_SECONDS * 1000, limit: env.RATE_LIMIT_MAX },
     ]),
 
+    AuditModule,
     AuthModule,
     HealthModule,
     OcppModule,
+    SitesModule,
+    ChargersModule,
+    SessionsModule,
+    DashboardModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

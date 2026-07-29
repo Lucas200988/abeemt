@@ -38,19 +38,7 @@ export function canStartCharging(status: DomainConnectorStatus): boolean {
 }
 
 /**
- * Frases em português para o operador (briefing seção 14).
- *
- * O painel nunca deve mostrar "SuspendedEVSE" cru. O termo técnico fica na área
- * de diagnóstico.
+ * Os rótulos em português para exibição vivem em `@bora/contracts`
+ * (`CONNECTOR_STATUS_LABELS`). Aqui fica só o mapeamento de protocolo: este
+ * pacote não conhece apresentação.
  */
-export const CONNECTOR_STATUS_LABELS: Record<DomainConnectorStatus, string> = {
-  AVAILABLE: 'Disponível',
-  PREPARING: 'Veículo conectado',
-  CHARGING: 'Carregando',
-  SUSPENDED_EV: 'Pausado pelo veículo',
-  SUSPENDED_EVSE: 'Pausado pelo carregador',
-  FINISHING: 'Finalizando',
-  RESERVED: 'Reservado',
-  UNAVAILABLE: 'Indisponível',
-  FAULTED: 'Em falha',
-};

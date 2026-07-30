@@ -5,6 +5,27 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### Documentação de pagamentos — 2026-07-29
+
+#### Adicionado
+
+- `docs/payments/arquitetura-de-cobranca.md` — como o motorista paga, os dois caminhos possíveis (SmartPOS com app próprio, e QR Code no navegador do motorista) desenhados passo a passo, e o que já funciona em cada etapa. Deixa explícito que tudo até a FASE 6 é independente da escolha de fornecedor: o que depende é um adapter na FASE 7.
+- `docs/payments/matriz-adquirentes.md` — cinco critérios eliminatórios, matriz para preencher e roteiro de e-mail para consulta a fornecedores.
+
+#### Prova de mercado
+
+Registrada publicação da **Go Electric E-Mobility** mostrando o modelo do ADR-0008 **rodando em produção no Brasil**: terminal montado no carregador, autoatendimento, pré-autorização e cobrança do valor exato consumido.
+
+Isso resolve na prática três critérios que estavam sem resposta — pré-autorização, captura parcial e operação não assistida. O terminal aparente nas imagens parece ser uma Moderninha Smart 2 (PagBank), com leitura não nítida — registrado como indício, não como certeza.
+
+Dois detalhes de projeto extraídos: eles exigem **senha no cartão físico** (o que confirma a preocupação com limite de valor por aproximação) e oferecem **NFC por celular ou smartwatch** como alternativa, já que carteira digital tem biometria. E mantêm os **dois canais** — o QR do aplicativo e a maquininha convivem.
+
+#### Alterado
+
+- **Recomendação revisada.** A primeira versão favorecia o caminho QR pesando que o SmartPOS tinha viabilidade não confirmada. Com a prova de mercado, esse risco caiu: a escolha deixou de ser técnica e passou a ser econômica. A revisão está marcada no documento, com o que passou a favorecer cada lado.
+
+---
+
 ### FASE 3 — Painel de carregadores e operação manual — 2026-07-29
 
 O painel passa a operar o sistema. **Nada foi conectado ao WEMOB real** — é a FASE 4.

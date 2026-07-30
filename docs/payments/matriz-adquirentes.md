@@ -9,10 +9,73 @@ abstração. Ela está pronta — a `PaymentProvider` do
 
 ---
 
+## Prova de mercado — a solução já existe
+
+Registrado em 2026-07-29, a partir de publicação da **Go Electric E-Mobility**
+divulgada em 16 de junho.
+
+Uma operadora brasileira já roda **exatamente o modelo do
+[ADR-0008](../architecture/adr/0008-pre-autorizacao-e-captura.md)**: terminal de
+pagamento montado no próprio carregador, autoatendimento, sem aplicativo.
+
+Descrição publicada por eles:
+
+> 1. Você chega, conecta o plug ao veículo e **inicia o processo direto na tela
+>    da maquininha**.
+> 2. Aceita **cartão físico (com exigência de senha por segurança)** ou por
+>    **aproximação (NFC) via celular ou smartwatch**.
+> 3. O sistema faz uma **pré-autorização** no cartão e, ao final, **cobra apenas
+>    o valor exato da energia** que o seu carro consumiu.
+
+**O que isso confirma:**
+
+| Critério                    | Situação                                             |
+| --------------------------- | ---------------------------------------------------- |
+| E1 · Pré-autorização        | ✅ existe em produção no Brasil                      |
+| E2 · Captura parcial        | ✅ "cobra apenas o valor exato da energia consumida" |
+| E3 · Operação não assistida | ✅ terminal no carregador, sem operador              |
+
+Os três eliminatórios que estavam em aberto **são viáveis**. Deixa de ser aposta
+técnica e passa a ser decisão econômica.
+
+**Hardware:** o terminal aparente nas imagens tem etiqueta amarela com texto que
+parece ser _"Moderninha Smart 2"_ — marca do PagBank. A leitura não é nítida na
+resolução disponível; tratar como indício forte, não como certeza.
+
+**Dois detalhes de projeto que eles resolveram bem:**
+
+1. **Senha obrigatória no cartão físico.** Confirma a preocupação com o limite de
+   valor por aproximação: pré-autorização de valor alto não passa em contactless
+   sem autenticação.
+2. **NFC por celular ou smartwatch como alternativa.** Carteira digital tem
+   biometria, então não esbarra no limite de aproximação. Quem tem Apple Pay ou
+   Google Pay encosta o telefone; quem usa cartão físico digita senha.
+
+**E eles fazem os dois caminhos.** O adesivo no carregador mostra instruções em
+três passos com QR Code — o fluxo por aplicativo. A maquininha foi **adicionada**
+como alternativa para quem não quer app. Não substituiu; convive.
+
+**O que a evidência NÃO responde:**
+
+- Qual adquirente e sob quais condições contratuais. Uma operadora com várias
+  estações negocia diferente de quem tem um carregador.
+- Se usam o SDK do fabricante do terminal, e **onde a captura acontece** —
+  no terminal ou pela API online.
+- O terminal está sob cobertura (a estrutura de telhado aparece na imagem). Não é
+  exposição total a chuva e sol.
+
+Nada disso invalida a consulta formal aos fornecedores: a viabilidade está
+provada, as **condições** ainda não.
+
+---
+
 ## Critérios eliminatórios
 
 Se a resposta for "não" em qualquer um destes, o fornecedor **não atende** o
 modelo escolhido. Verifique estes primeiro, antes de discutir preço.
+
+> A prova de mercado acima mostra que E1, E2 e E3 **são obteníveis**. Se um
+> fornecedor disser que não faz, o problema é do fornecedor — não do modelo.
 
 | #      | Critério                                           | Por que elimina                                                                                    |
 | ------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -134,5 +197,9 @@ Vale consultar mais de uma categoria — os modelos comerciais são bem diferent
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
 PagBank vem de documentação pública e **não substitui a resposta deles** — o
-portal de desenvolvedores bloqueia acesso automatizado, e os pontos críticos
-(captura parcial no terminal, operação não assistida) ficaram sem confirmação.
+portal de desenvolvedores bloqueia acesso automatizado.
+
+Os pontos que estavam sem confirmação (captura parcial e operação não assistida)
+ganharam **prova de mercado** — ver a seção no início deste documento. Isso muda o
+tom da consulta: em vez de perguntar _"vocês conseguem fazer isso?"_, dá para
+perguntar _"em que condições vocês fazem isso, que um concorrente já faz?"_.

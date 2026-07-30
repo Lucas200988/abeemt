@@ -79,8 +79,12 @@ Motorista chega
 adapter do adquirente + endpoints de terminal.
 
 **Risco específico:** um terminal ao ar livre, sem ninguém por perto, sujeito a
-chuva, sol, furto e vandalismo. E depende de a adquirente **permitir operação
-não assistida em contrato** — que é a pergunta sem resposta.
+chuva, sol, furto e vandalismo.
+
+**Este caminho está provado em produção** por uma operadora brasileira — ver
+[matriz-adquirentes.md](matriz-adquirentes.md), "Prova de mercado". O que resta
+confirmar não é a viabilidade, e sim **as condições comerciais** que cada
+fornecedor oferece.
 
 ---
 
@@ -146,31 +150,56 @@ aplicativo" não é o mesmo que "sem celular".
 | Exposição a furto/vandalismo       | ⚠️ Terminal ao relento                  | ✅ Nada a roubar                  |
 | Manutenção em campo                | Bateria, papel, travamento, chuva       | Nenhuma                           |
 | Acompanhamento da recarga          | Só no terminal                          | ✅ No bolso do motorista          |
-| Operação não assistida permitida?  | ⚠️ **Pergunta em aberto**               | Não se aplica                     |
-| Pré-autorização + captura parcial  | ⚠️ **A confirmar no SDK**               | Depende do gateway                |
+| Operação não assistida permitida?  | ✅ **Provado em produção**              | Não se aplica                     |
+| Pré-autorização + captura parcial  | ✅ **Provado em produção**              | Depende do gateway                |
+| Limite de valor por aproximação    | Resolvido com senha ou carteira digital | Depende do checkout               |
 
 ---
 
-## 4. Recomendação
+## 4. Recomendação — revisada em 2026-07-29
 
-**Comece pelo Caminho C. Adicione o A quando o negócio justificar.**
+> **Revisão.** A primeira versão deste documento recomendava o Caminho C pesando,
+> entre outros fatores, que o Caminho A tinha viabilidade **não confirmada**.
+> Surgiu prova de mercado — uma operadora brasileira já roda o Caminho A em
+> produção (ver [matriz-adquirentes.md](matriz-adquirentes.md), "Prova de
+> mercado"). Esse risco caiu, e a recomendação precisa ser reponderada com
+> honestidade.
 
-Cinco razões:
+**A escolha deixou de ser técnica e passou a ser econômica.** Os dois caminhos
+funcionam. O que os separa agora é capital, prazo e alcance.
 
-1. **Pode ser construído agora**, sem esperar resposta de fornecedor nenhum.
-2. **Custo fixo zero por ponto.** Num MVP validando se o modelo funciona,
-   colocar um terminal alugado em cada carregador antes de saber se alguém vai
-   usar é assumir custo antes de receita.
-3. **Um terminal ao ar livre é um problema operacional real** — furto, chuva,
-   bateria, travamento. Um adesivo com QR não tem nenhum desses.
-4. **Respeita a premissa do produto.** "Sem aplicativo" continua verdadeiro:
-   navegador não é aplicativo, e não há cadastro nem login.
-5. **A decisão continua reversível.** A porta `PaymentProvider` é a mesma; o
-   SmartPOS entra depois como um segundo canal, sem refazer nada do domínio.
+### O que continua favorecendo o Caminho C
 
-**Quando o Caminho A passa a fazer sentido:** quando houver evidência de demanda
-de motorista sem celular ou sem dados, ou quando um estabelecimento específico
-exigir terminal físico. Aí o investimento é decidido com dado, não com suposição.
+1. **Custo fixo zero por ponto.** Num MVP validando se alguém vai usar, alugar
+   terminal antes de ter receita é assumir custo cedo.
+2. **Pode ser construído agora**, sem depender de homologação de fornecedor.
+3. **Reversível.** A porta `PaymentProvider` é a mesma; o SmartPOS entra depois
+   como segundo canal, sem refazer domínio.
+
+### O que passou a favorecer o Caminho A
+
+1. **Viabilidade provada por um concorrente**, não suposta.
+2. **Alcance maior.** Atende quem não tem celular, dados ou bateria. É a
+   premissa "sem aplicativo" cumprida de forma mais completa — o navegador ainda
+   exige um smartphone com internet.
+3. **Possível expectativa de mercado.** Se o pagamento direto no totem virar
+   padrão, ser só-QR pode passar a ser desvantagem competitiva.
+
+### Como decidir
+
+| Se a prioridade for…                               | Caminho                       |
+| -------------------------------------------------- | ----------------------------- |
+| Validar o negócio com o menor capital possível     | **C** — QR/navegador          |
+| Cobertura máxima de motorista desde o primeiro dia | **A** — SmartPOS              |
+| Acompanhar o que o mercado está fazendo            | **A**, com C como complemento |
+
+**O que o concorrente fez, e vale copiar:** eles têm os **dois**. O adesivo com
+QR para quem usa o aplicativo deles, e a maquininha adicionada depois para quem
+não quer app. Não é escolha excludente — é ordem de implementação.
+
+**Recomendação prática:** construa a FASE 5 e 6 (que não dependem de nada disso),
+e use esse tempo para obter as condições comerciais. Com o custo real do terminal
+na mão, a decisão deixa de ser sobre risco e passa a ser sobre número.
 
 ---
 
@@ -179,6 +208,11 @@ exigir terminal físico. Aí o investimento é decidido com dado, não com supos
 Consulta feita em 2026-07-29. **O portal de desenvolvedores bloqueia acesso
 automatizado**, então parte disto vem de resultados de busca e **não de leitura
 direta da documentação**. Trate como indício, não como fato confirmado.
+
+> **Atualização.** Uma operadora brasileira já roda este modelo em produção, e o
+> terminal aparente nas imagens parece ser uma **Moderninha Smart 2** — marca do
+> PagBank. Se confirmado, os itens marcados abaixo como "confirmar" estão
+> respondidos na prática. Ver [matriz-adquirentes.md](matriz-adquirentes.md).
 
 | Item                               | O que encontrei                                                                                                                                       | Confiança               |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |

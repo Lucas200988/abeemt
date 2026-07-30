@@ -11,6 +11,7 @@ const ITENS = [
   { href: '/painel', label: 'Visão geral' },
   { href: '/painel/carregadores', label: 'Carregadores' },
   { href: '/painel/sessoes', label: 'Sessões' },
+  { href: '/painel/pagamentos', label: 'Pagamentos' },
   { href: '/painel/estabelecimentos', label: 'Estabelecimentos' },
   { href: '/painel/diagnostico', label: 'Diagnóstico' },
 ];

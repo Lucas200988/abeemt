@@ -12,6 +12,10 @@ export { PrismaClient, Prisma };
  * deixa de ser garantida pelo banco — que é onde ela precisa ser garantida.
  */
 export const ACTIVE_SESSION_STATUSES = [
+  // Inclui AWAITING_PAYMENT: a sessão reserva o conector ANTES de o cartão ser
+  // consultado, senão dois motoristas pagariam pelo mesmo ponto (ver a migration
+  // 20260730080000).
+  'AWAITING_PAYMENT',
   'PAYMENT_APPROVED',
   'AWAITING_CHARGER',
   'COMMAND_SENT',

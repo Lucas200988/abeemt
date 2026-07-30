@@ -16,11 +16,15 @@
     "@bora/contracts": "workspace:*",
     "@bora/database": "workspace:*",
     "@bora/logger": "workspace:*",
+    "@bora/ocpp-core": "workspace:*",
+    "@bora/payment-core": "workspace:*",
+    "@bora/pricing": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/schedule": "^6.1.3",
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/terminus": "^11.0.0",
     "@nestjs/throttler": "^6.4.0",
@@ -34,10 +38,10 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "ws": "^8.19.0",
-    "@bora/ocpp-core": "workspace:*"
+    "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@bora/ocpp-simulator": "workspace:*",
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.6",
@@ -45,11 +49,10 @@
     "@types/node": "^22.19.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.3",
+    "@types/ws": "^8.18.1",
     "supertest": "^7.1.4",
     "typescript": "^5.9.3",
     "unplugin-swc": "^1.5.7",
-    "vitest": "^3.2.4",
-    "@types/ws": "^8.18.1",
-    "@bora/ocpp-simulator": "workspace:*"
+    "vitest": "^3.2.4"
   }
 }

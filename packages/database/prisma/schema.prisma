@@ -338,11 +338,48 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   session ChargingSession?
+  events  PaymentEvent[]
 
   @@index([status])
   @@index([providerPaymentId])
   @@index([expiresAt])
   @@map("payments")
+}
+
+/// Evento recebido por webhook do provedor.
+///
+/// Existe por causa do risco R-08: adquirentes reenviam o mesmo evento até
+/// receber 200, e um reenvio não pode capturar duas vezes. A idempotência é o
+/// índice único `(provider, eventId)` — o banco recusa o segundo INSERT antes de
+/// qualquer lógica rodar. Guardar o evento também dá o rastro para conciliar
+/// quando o processamento falha.
+model PaymentEvent {
+  id       String @id @default(uuid()) @db.Uuid
+  provider String
+  /// Identificador do evento NO PROVEDOR. É a chave da idempotência.
+  eventId  String
+
+  paymentId String?  @db.Uuid
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  /// Guardado mesmo quando não encontramos o pagamento: sem isto, um evento de
+  /// pagamento desconhecido desapareceria sem deixar rastro.
+  providerPaymentId String?
+  status            PaymentStatus
+  amountCents       Int?
+
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+
+  processedAt     DateTime?
+  processingError String?
+
+  payload Json
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
+  @@index([processedAt])
+  @@map("payment_events")
 }
 
 // ============================================================================
@@ -402,9 +439,20 @@ model ChargingSession {
   status SessionStatus @default(AWAITING_PAYMENT)
 
   requestedAt  DateTime  @default(now())
+  /// Momento em que o pagamento foi aprovado. NÃO é o momento do comando.
   authorizedAt DateTime?
+  /// Momento em que o RemoteStartTransaction foi enviado.
+  /// Separado de `authorizedAt` porque o worker de timeouts precisa medir a
+  /// espera pelo carregador, e não a espera desde o pagamento (regra 11.5).
+  commandSentAt DateTime?
   startedAt    DateTime?
   stoppedAt    DateTime?
+
+  /// Momento em que o valor corrente cruzou o limiar e a parada automática foi
+  /// disparada (ADR-0008 §4). Preservado porque o `StopTransaction` chega com
+  /// reason "Remote" — sem esta marca, o encerramento por teto seria registrado
+  /// como parada manual e a conciliação perderia o motivo real.
+  ceilingReachedAt DateTime?
 
   // Energia em Wh inteiros (ADR-0005).
   meterStartWh Int?

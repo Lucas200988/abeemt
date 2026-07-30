@@ -16,6 +16,7 @@ import {
 import { Prisma, type SessionStatus } from '@bora/database';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { SessionPricingService } from '../pricing/session-pricing.service';
 import { OcppCommands } from '../ocpp/ocpp-commands.service';
 import { assertSameOrganization, organizationFilter } from '../../common/tenant-scope';
 import { paginated, type Paginated, type PaginationDto } from '../../common/dto/pagination.dto';
@@ -41,6 +42,7 @@ const SESSION_INCLUDE = {
       method: true,
       amountAuthorizedCents: true,
       amountCapturedCents: true,
+      amountRefundedCents: true,
     },
   },
 } satisfies Prisma.ChargingSessionInclude;
@@ -55,6 +57,7 @@ type SessaoComRelacoes = Prisma.ChargingSessionGetPayload<{ include: typeof SESS
  * considera ativo.
  */
 const STATUS_ATIVOS: SessionStatus[] = [
+  'AWAITING_PAYMENT',
   'PAYMENT_APPROVED',
   'AWAITING_CHARGER',
   'COMMAND_SENT',
@@ -101,6 +104,10 @@ export interface SessionView {
   estimatedAmountCents: number | null;
   finalAmountCents: number | null;
   ceilingAmountCents: number | null;
+  /** Valor corrente, recalculado agora. Nulo em sessão sem tarifa congelada. */
+  runningAmountCents: number | null;
+  /** Quando o teto foi atingido e a parada automática disparou (ADR-0008 §4). */
+  ceilingReachedAt: Date | null;
 
   stopReason: string | null;
   stopReasonLabel: string | null;
@@ -114,6 +121,7 @@ export interface SessionView {
     methodLabel: string;
     amountAuthorizedCents: number;
     amountCapturedCents: number;
+    amountRefundedCents: number;
   } | null;
 
   createdAt: Date;
@@ -125,6 +133,7 @@ export class SessionsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly commands: OcppCommands,
+    private readonly pricing: SessionPricingService,
   ) {}
 
   async list(
@@ -502,10 +511,8 @@ export class SessionsService {
       {
         key: 'command',
         label: 'Comando enviado ao carregador',
-        at: sessao.authorizedAt,
-        done: ['COMMAND_SENT', 'STARTING', 'CHARGING', 'FINISHING', 'COMPLETED'].includes(
-          sessao.status,
-        ),
+        at: sessao.commandSentAt,
+        done: sessao.commandSentAt !== null,
       },
       {
         key: 'started',
@@ -527,9 +534,11 @@ export class SessionsService {
       },
       {
         key: 'amount',
-        label: 'Valor calculado',
+        label:
+          sessao.stopReason === 'CEILING_REACHED'
+            ? 'Valor cobrado (encerrada por atingir o teto)'
+            : 'Valor cobrado',
         at: null,
-        // Cálculo financeiro é FASE 6; por isso este passo fica pendente.
         done: sessao.finalAmountCents !== null,
       },
     ];
@@ -571,6 +580,13 @@ export class SessionsService {
       estimatedAmountCents: sessao.estimatedAmountCents,
       finalAmountCents: sessao.finalAmountCents,
       ceilingAmountCents: sessao.ceilingAmountCents,
+      // Recalculado a cada leitura em vez de guardado: gravar a cada MeterValues
+      // daria uma escrita por minuto por sessão sem nenhum ganho — o número só
+      // existe para a tela.
+      runningAmountCents: isActiveSession(sessao.status)
+        ? this.pricing.runningAmount(sessao, agora)
+        : null,
+      ceilingReachedAt: sessao.ceilingReachedAt,
 
       stopReason: sessao.stopReason,
       stopReasonLabel: sessao.stopReason ? labelOf(STOP_REASON_LABELS, sessao.stopReason) : null,
@@ -585,6 +601,7 @@ export class SessionsService {
             methodLabel: labelOf(PAYMENT_METHOD_LABELS, sessao.payment.method),
             amountAuthorizedCents: sessao.payment.amountAuthorizedCents,
             amountCapturedCents: sessao.payment.amountCapturedCents,
+            amountRefundedCents: sessao.payment.amountRefundedCents,
           }
         : null,
 

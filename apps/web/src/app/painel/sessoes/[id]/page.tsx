@@ -156,14 +156,46 @@ export default function SessaoPage() {
           <div className="nota">valor máximo a cobrar</div>
         </div>
         <div className="indicador">
-          <div className="rotulo">Valor final</div>
+          <div className="rotulo">{dados.isActive ? 'Valor até agora' : 'Valor final'}</div>
           <div className="valor">
-            {dados.finalAmountCents === null ? '—' : formatCents(dados.finalAmountCents)}
+            {dados.isActive
+              ? dados.runningAmountCents === null
+                ? '—'
+                : formatCents(dados.runningAmountCents)
+              : dados.finalAmountCents === null
+                ? '—'
+                : formatCents(dados.finalAmountCents)}
           </div>
-          {/* Honesto sobre o que ainda não existe. */}
-          <div className="nota">cálculo chega na FASE 6</div>
+          <div className="nota">
+            {dados.isActive
+              ? 'estimativa; o valor definitivo é calculado no encerramento'
+              : dados.finalAmountCents === null
+                ? 'aguardando fechamento'
+                : dados.payment
+                  ? `cobrado ${formatCents(dados.payment.amountCapturedCents)}`
+                  : 'sem cobrança'}
+          </div>
         </div>
       </div>
+
+      {/* A barra existe porque o número sozinho não responde a pergunta que o
+          motorista faz: "quanto ainda posso carregar?". */}
+      {dados.isActive && dados.ceilingAmountCents !== null && dados.runningAmountCents !== null && (
+        <Cartao titulo="Consumo do valor reservado">
+          <BarraTeto
+            corrente={dados.runningAmountCents}
+            teto={dados.ceilingAmountCents}
+            atingido={dados.ceilingReachedAt !== null}
+          />
+        </Cartao>
+      )}
+
+      {dados.ceilingReachedAt && (
+        <Alerta tipo="aviso">
+          A recarga foi encerrada automaticamente ao atingir o valor reservado, em{' '}
+          {formatDateTime(dados.ceilingReachedAt)}. Nada acima desse valor foi cobrado.
+        </Alerta>
+      )}
 
       {podeOperar && (podeParar || podeCancelar) && (
         <Cartao titulo="Operação">
@@ -279,9 +311,23 @@ export default function SessaoPage() {
           <div className="def">
             <div className="rotulo">Pagamento</div>
             <div className="valor">
+              {dados.payment ? (
+                <Link href={`/painel/pagamentos?id=${dados.payment.id}`}>
+                  {dados.payment.methodLabel} · {dados.payment.statusLabel}
+                </Link>
+              ) : (
+                'sem pagamento vinculado'
+              )}
+            </div>
+          </div>
+          <div className="def">
+            <div className="rotulo">Reservado / cobrado</div>
+            <div className="valor">
               {dados.payment
-                ? `${dados.payment.methodLabel} · ${dados.payment.statusLabel}`
-                : 'sem pagamento vinculado'}
+                ? `${formatCents(dados.payment.amountAuthorizedCents)} / ${formatCents(
+                    dados.payment.amountCapturedCents,
+                  )}`
+                : '—'}
             </div>
           </div>
         </div>
@@ -305,6 +351,51 @@ export default function SessaoPage() {
  * Uma biblioteca de gráficos para uma linha só seria peso desnecessário no MVP
  * (regra 18.7). Se o painel ganhar mais gráficos, aí sim vale a dependência.
  */
+/**
+ * Quanto do valor reservado já foi consumido.
+ *
+ * O percentual é calculado sobre o teto, e não sobre o limiar de parada: o
+ * motorista quer saber quanto falta para o limite dele, não para a regra
+ * interna do sistema.
+ */
+function BarraTeto({
+  corrente,
+  teto,
+  atingido,
+}: {
+  corrente: number;
+  teto: number;
+  atingido: boolean;
+}) {
+  const percentual = Math.min(100, Math.round((corrente / teto) * 100));
+  const classe = atingido ? 'atingido' : percentual >= 80 ? 'perto' : '';
+
+  return (
+    <>
+      <div
+        className={`barra-teto ${classe}`}
+        role="progressbar"
+        aria-valuenow={percentual}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="valor consumido do reservado"
+      >
+        <span style={{ width: `${percentual}%` }} />
+      </div>
+      <div className="barra-legenda">
+        <span>
+          {formatCents(corrente)} de {formatCents(teto)} ({percentual}%)
+        </span>
+        <span>
+          {atingido
+            ? 'teto atingido — recarga encerrada'
+            : `restam ${formatCents(Math.max(0, teto - corrente))}`}
+        </span>
+      </div>
+    </>
+  );
+}
+
 function GraficoEnergia({ leituras }: { leituras: { timestamp: string; energyWh: number }[] }) {
   if (leituras.length < 2) return null;
 

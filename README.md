@@ -14,13 +14,29 @@ para o motorista.
 
 ## Situação atual do projeto
 
-**FASE 3 concluída.** O painel opera o sistema: cadastro de estabelecimento e
-carregador, status ao vivo, início e parada de recarga, acompanhamento da sessão
-com linha do tempo, e área de diagnóstico com as mensagens OCPP cruas.
-207 testes automatizados.
+**FASE 5 concluída.** O fluxo financeiro funciona de ponta a ponta contra o
+simulador OCPP: reserva o valor, acompanha o consumo, **encerra a recarga
+sozinha ao atingir o teto** e cobra apenas o que foi consumido. Pix é cobrado
+integralmente no início e devolvido por inteiro quando nenhuma energia é
+entregue. 285 testes automatizados.
+
+O provedor de pagamento é **simulado**. Não existe adquirente real ligado, e o
+sistema **recusa subir em produção** com um provedor simulado como padrão — o
+que evitaria justamente o pior defeito possível: recarga de graça com o painel
+reportando "pagamento aprovado".
 
 Nada foi conectado ao carregador WEG WEMOB real — isso é a FASE 4, e depende da
 sua autorização explícita.
+
+### O que já dá para ver funcionando
+
+| Fluxo                                    | Onde                                            |
+| ---------------------------------------- | ----------------------------------------------- |
+| Reserva → consumo → cobrança do consumido | Painel → Pagamentos → "Simular cobrança"        |
+| Parada automática no teto                 | mesma tela, com teto baixo (ex.: R$ 4,00)       |
+| Pix com devolução por consumo zero        | mesma tela, meio de pagamento "Pix"             |
+| Valor corrente durante a recarga          | Painel → Sessões → detalhe da sessão            |
+| Devolução manual, com motivo auditado     | Painel → Pagamentos (perfil de administrador)   |
 
 ---
 
@@ -133,7 +149,7 @@ pnpm test
 | 3    | Painel de carregadores e operação manual                      | ✅ **concluída**                    |
 | 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
 | 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
-| 5    | Pagamento simulado                                            | ⬜ não iniciada                     |
+| 5    | Pagamento simulado                                            | ✅ **concluída**                    |
 | 6    | Tarifação e regras comerciais                                 | ⬜ não iniciada                     |
 | 7    | Integração com pagamento real                                 | ⬜ não iniciada                     |
 | 8    | SmartPOS / terminal de autoatendimento                        | ⬜ não iniciada                     |
@@ -160,6 +176,7 @@ Cada fase só começa após validação explícita da anterior.
 
 - [Arquitetura de cobrança](docs/payments/arquitetura-de-cobranca.md) — como o motorista paga, os dois caminhos possíveis e o que muda no código
 - [Matriz de adquirentes](docs/payments/matriz-adquirentes.md) — critérios eliminatórios e roteiro de consulta a fornecedores
+- [Fluxo financeiro implementado](docs/payments/fluxo-implementado.md) — o que a FASE 5 entregou, com os caminhos de falha cobertos
 
 ### Operações
 

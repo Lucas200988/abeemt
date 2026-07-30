@@ -25,6 +25,7 @@ export type SessionStatusKey = keyof typeof SESSION_STATUS_LABELS;
 
 /** Situações em que a sessão ainda está em curso. */
 export const ACTIVE_SESSION_STATUSES = [
+  'AWAITING_PAYMENT',
   'PAYMENT_APPROVED',
   'AWAITING_CHARGER',
   'COMMAND_SENT',

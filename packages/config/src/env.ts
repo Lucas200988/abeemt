@@ -59,6 +59,24 @@ export const envSchema = z
     BORA_PREAUTH_CEILING_CENTS: z.coerce.number().int().positive().default(20000),
     BORA_AUTOSTOP_THRESHOLD_CARD_PCT: percent.default(95),
     BORA_AUTOSTOP_THRESHOLD_PIX_PCT: percent.default(100),
+
+    // Pagamento
+    /// Provedor usado para novos pagamentos. Em produção, um provedor simulado
+    /// é recusado no boot (ver PaymentProviderRegistry).
+    BORA_PAYMENT_PROVIDER: z.string().min(1).default('mock'),
+    /**
+     * Prazo, em segundos, para o carregador aceitar o comando de início
+     * (regra 11.5). Estourado, a reserva é cancelada e nada é cobrado.
+     */
+    BORA_CHARGER_ACCEPT_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(120),
+    /**
+     * Prazo, em segundos, para o veículo efetivamente começar a carregar depois
+     * do comando aceito (regra 11.5). Maior que o anterior: o carro pode estar
+     * negociando com o carregador.
+     */
+    BORA_VEHICLE_START_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
+    /** Intervalo do worker que fecha sessões e captura valores, em segundos. */
+    BORA_SETTLEMENT_INTERVAL_SECONDS: z.coerce.number().int().positive().default(15),
   })
   .superRefine((env, ctx) => {
     // Os dois segredos não podem ser iguais: um token de refresh assinado com a

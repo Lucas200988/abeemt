@@ -131,9 +131,17 @@ export class OcppCommands {
     // porque o OCPP limita a 20 caracteres — um UUID completo não cabe.
     const idTag = sessao.idTag ?? this.gerarIdTag(sessao.id);
 
+    /**
+     * `commandSentAt`, e não `authorizedAt`.
+     *
+     * Antes esta atualização sobrescrevia `authorizedAt`, apagando o momento em
+     * que o pagamento foi aprovado e deixando o worker de timeouts sem como
+     * distinguir "esperando o carregador" de "esperando o veículo" (regra 11.5).
+     * São dois instantes diferentes e agora têm duas colunas.
+     */
     await this.prisma.chargingSession.update({
       where: { id: sessao.id },
-      data: { status: 'COMMAND_SENT', idTag, authorizedAt: new Date() },
+      data: { status: 'COMMAND_SENT', idTag, commandSentAt: new Date() },
     });
 
     const resultado = await this.dispatcher.call(

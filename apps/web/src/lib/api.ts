@@ -106,6 +106,8 @@ export interface SessionView {
   estimatedAmountCents: number | null;
   finalAmountCents: number | null;
   ceilingAmountCents: number | null;
+  runningAmountCents: number | null;
+  ceilingReachedAt: string | null;
   stopReason: string | null;
   stopReasonLabel: string | null;
   failureReason: string | null;
@@ -117,8 +119,56 @@ export interface SessionView {
     methodLabel: string;
     amountAuthorizedCents: number;
     amountCapturedCents: number;
+    amountRefundedCents: number;
   } | null;
   createdAt: string;
+}
+
+export interface PaymentView {
+  id: string;
+  provider: string;
+  method: string;
+  methodLabel: string;
+  status: string;
+  statusLabel: string;
+  amountAuthorizedCents: number;
+  amountCapturedCents: number;
+  amountRefundedCents: number;
+  cardBrand: string | null;
+  cardLastFour: string | null;
+  nsu: string | null;
+  authorizedAt: string | null;
+  capturedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  session: {
+    id: string;
+    status: string;
+    energyWh: number | null;
+    finalAmountCents: number | null;
+  } | null;
+}
+
+export interface ProviderInfo {
+  default: string;
+  available: {
+    name: string;
+    initiatedBy: 'backend' | 'terminal';
+    methods: string[];
+    /** Verdadeiro quando o pagamento é simulado — a tela precisa avisar. */
+    simulated: boolean;
+  }[];
+}
+
+export interface StartPaidSessionResult {
+  sessionId: string;
+  paymentId: string;
+  status: string;
+  approved: boolean;
+  message: string;
+  amountAuthorizedCents: number;
+  ceilingAmountCents: number;
+  command?: CommandResult;
 }
 
 export interface TimelineStep {
@@ -370,5 +420,29 @@ export const api = {
     request<SessionView>(`/sessions/${id}/cancel`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+
+  payments: (params: { status?: string; method?: string } = {}) =>
+    request<Paginated<PaymentView>>(`/payments${query({ pageSize: 50, ...params })}`),
+
+  payment: (id: string) => request<PaymentView>(`/payments/${id}`),
+
+  paymentProviders: () => request<ProviderInfo>('/payments/providers'),
+
+  startPaidSession: (body: {
+    connectorId: string;
+    method: string;
+    amountCents?: number;
+    idempotencyKey?: string;
+  }) =>
+    request<StartPaidSessionResult>('/payments/start-session', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  refundPayment: (id: string, reason: string, amountCents?: number) =>
+    request<{ status: string }>(`/payments/${id}/refund`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, amountCents }),
     }),
 };

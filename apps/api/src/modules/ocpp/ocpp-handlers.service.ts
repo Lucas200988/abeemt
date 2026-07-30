@@ -13,7 +13,8 @@ import {
 } from '@bora/ocpp-core';
 import { Prisma, type SessionStatus, type StopReason } from '@bora/database';
 import { PrismaService } from '../../prisma/prisma.service';
-import { runtimeEnv } from '../../config/runtime-env';
+import { SessionPricingService } from '../pricing/session-pricing.service';
+import { OcppCommands } from './ocpp-commands.service';
 
 /** Contexto de cada mensagem recebida, montado pelo gateway. */
 export interface HandlerContext {
@@ -37,7 +38,11 @@ export class OcppHandlers {
   /** Intervalo de heartbeat que pedimos ao carregador, em segundos. */
   private static readonly HEARTBEAT_INTERVAL = 300;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pricing: SessionPricingService,
+    private readonly commands: OcppCommands,
+  ) {}
 
   // -------------------------------------------------------------------------
   // BootNotification
@@ -341,7 +346,13 @@ export class OcppHandlers {
   ): Promise<{ idTagInfo?: { status: string } }> {
     const sessao = await this.prisma.chargingSession.findFirst({
       where: { chargerId: ctx.chargerId, ocppTransactionId: payload.transactionId },
-      select: { id: true, meterStartWh: true, startedAt: true, status: true },
+      select: {
+        id: true,
+        meterStartWh: true,
+        startedAt: true,
+        status: true,
+        ceilingReachedAt: true,
+      },
     });
 
     if (!sessao) {
@@ -374,7 +385,13 @@ export class OcppHandlers {
         meterStopWh: payload.meterStop,
         energyWh: energia.wh,
         durationSeconds: duracao,
-        stopReason: this.mapStopReason(payload.reason),
+        // A parada por teto chega do carregador como "Remote", igual a um
+        // encerramento pelo painel. A marca gravada no disparo é o que distingue
+        // os dois — sem ela, a conciliação não saberia quantas recargas foram
+        // interrompidas por falta de saldo pré-autorizado.
+        stopReason: sessao.ceilingReachedAt
+          ? 'CEILING_REACHED'
+          : this.mapStopReason(payload.reason),
         failureReason: energia.inconsistente
           ? `leitura final (${payload.meterStop} Wh) menor que a inicial (${sessao.meterStartWh} Wh)`
           : undefined,
@@ -505,9 +522,134 @@ export class OcppHandlers {
           data: { energyWh: reconciliado.valor },
         });
       }
+
+      await this.verificarTeto(sessao.id, reconciliado.valor, ctx);
     }
 
     return {};
+  }
+
+  /**
+   * Parada automática ao atingir o teto (ADR-0008 §4, ADR-0010 §3) — risco R-22.
+   *
+   * É a proteção mais importante do modelo de pré-autorização: o adquirente
+   * recusa capturar acima do valor reservado, então energia entregue além do
+   * teto é prejuízo direto e não recuperável.
+   *
+   * Roda aqui, no MeterValues, porque é o único momento em que o consumo real
+   * chega — e chega a cada poucos minutos. O worker de conciliação não serve:
+   * uma varredura periódica atrasaria a decisão justamente quando o consumo está
+   * mais rápido.
+   */
+  private async verificarTeto(
+    sessionId: string,
+    energyWh: number,
+    ctx: HandlerContext,
+  ): Promise<void> {
+    const sessao = await this.prisma.chargingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        status: true,
+        startedAt: true,
+        tariffSnapshot: true,
+        ceilingAmountCents: true,
+        ceilingReachedAt: true,
+        payment: { select: { method: true } },
+      },
+    });
+
+    // Sem teto não há o que verificar: é o caso da recarga manual e da iniciada
+    // no próprio carregador, que não têm valor reservado.
+    if (!sessao?.ceilingAmountCents) return;
+    if (sessao.status !== 'CHARGING') return;
+    // Já disparada: o comando de parada está em andamento. Reenviar a cada
+    // MeterValues encheria o carregador de comandos redundantes.
+    if (sessao.ceilingReachedAt) return;
+
+    const valorCorrente = this.pricing.runningAmount(
+      { ...sessao, energyWh },
+      ctx.receivedAt,
+    );
+
+    if (valorCorrente === null) return;
+
+    const limiar = this.pricing.autoStopThreshold(
+      sessao.ceilingAmountCents,
+      sessao.payment?.method ?? null,
+    );
+
+    if (valorCorrente < limiar) return;
+
+    /**
+     * A marca é gravada ANTES de enviar o comando.
+     *
+     * Se fosse depois, um erro no envio deixaria a sessão sem marca e o próximo
+     * MeterValues dispararia tudo de novo. Gravando antes, o pior caso é uma
+     * sessão marcada cuja parada falhou — visível no painel e tratável — em vez
+     * de uma enxurrada de comandos.
+     */
+    await this.prisma.chargingSession.update({
+      where: { id: sessionId },
+      data: { ceilingReachedAt: ctx.receivedAt },
+    });
+
+    this.logger.warn(
+      {
+        sessionId,
+        valorCorrenteCents: valorCorrente,
+        limiarCents: limiar,
+        tetoCents: sessao.ceilingAmountCents,
+        energyWh,
+        correlationId: ctx.correlationId,
+      },
+      'teto atingido — encerrando a recarga automaticamente',
+    );
+
+    /**
+     * O comando sai FORA deste handler, de propósito.
+     *
+     * Esperar aqui pela resposta do `RemoteStopTransaction` trava: o carregador
+     * está bloqueado aguardando a resposta do MeterValues que estamos
+     * processando, e nós ficaríamos aguardando a resposta do comando que ele não
+     * vai processar enquanto não for respondido. Impasse dos dois lados.
+     *
+     * Descoberto em 2026-07-30 pelo teste da parada automática, que estourava o
+     * tempo limite do MeterValues. Aconteceria igual com o WEMOB — o
+     * enfileiramento por conexão é do protocolo, não do simulador.
+     *
+     * Então: respondemos o MeterValues primeiro e o comando parte em seguida.
+     */
+    void this.dispararParada(sessionId);
+  }
+
+  /** Envia a parada por teto sem prender o processamento da mensagem atual. */
+  private async dispararParada(sessionId: string): Promise<void> {
+    try {
+      const comando = await this.commands.remoteStop({ sessionId });
+      if (comando.accepted) return;
+
+      // O carregador não parou. Continua consumindo acima do reservado, e o
+      // excedente não será cobrável. Precisa de intervenção humana.
+      this.logger.error(
+        { sessionId, code: comando.code, message: comando.message },
+        'PARADA AUTOMÁTICA FALHOU: consumo pode ultrapassar o valor pré-autorizado',
+      );
+
+      await this.prisma.chargingSession.update({
+        where: { id: sessionId },
+        data: {
+          failureReason:
+            'o teto foi atingido mas o carregador não aceitou o comando de parada: ' +
+            comando.message,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        { err: error, sessionId },
+        'PARADA AUTOMÁTICA FALHOU: erro ao enviar o comando de encerramento',
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -614,16 +756,5 @@ export class OcppHandlers {
         'falha ao registrar sessão sem pagamento',
       );
     }
-  }
-
-  /** Limiar de parada automática, em centavos (ADR-0008 §4 / ADR-0010 §3). */
-  static limiarParada(tetoCents: number, metodo: 'PIX' | 'CARTAO'): number {
-    const pct =
-      metodo === 'PIX'
-        ? runtimeEnv.BORA_AUTOSTOP_THRESHOLD_PIX_PCT
-        : runtimeEnv.BORA_AUTOSTOP_THRESHOLD_CARD_PCT;
-
-    // Divisão inteira: nada de float em dinheiro (ADR-0005).
-    return Math.floor((tetoCents * pct) / 100);
   }
 }

@@ -291,3 +291,41 @@ td a:hover { text-decoration: underline; }
   .lateral .rodape .papel { margin-bottom: 0; }
   .principal { padding: 18px 16px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Barra do teto da sessão (ADR-0008 §4)
+   ---------------------------------------------------------------------------
+   Mostra quanto do valor reservado já foi consumido. A cor muda ao cruzar o
+   limiar de parada automática, mas nunca sozinha: o texto ao lado diz o mesmo,
+   para quem não distingue as cores. */
+
+.barra-teto {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--fundo-suave, #eef1f5);
+  overflow: hidden;
+}
+
+.barra-teto > span {
+  display: block;
+  height: 100%;
+  border-radius: 7px;
+  background: var(--ok, #1f9d55);
+  transition: width 0.4s ease;
+}
+
+.barra-teto.perto > span {
+  background: var(--warn, #d98314);
+}
+
+.barra-teto.atingido > span {
+  background: var(--bad, #c53030);
+}
+
+.barra-legenda {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--texto-suave);
+}

@@ -123,8 +123,7 @@ Motorista chega
 ```
 
 **O que precisa ser construído:** página pública do motorista (FASE 8, Caminho B)
-
-- adapter de gateway. **Zero hardware.**
+e o adapter do gateway. **Zero hardware.**
 
 **Vantagem que costuma passar despercebida:** o celular do motorista vira a tela
 de acompanhamento. Numa maquininha ele paga e vai embora — não fica olhando o

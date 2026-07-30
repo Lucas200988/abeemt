@@ -156,6 +156,11 @@ Cada fase só começa após validação explícita da anterior.
 
 - [Mensagens implementadas](docs/ocpp/supported-messages.md) — o que existe hoje, tolerância a divergências de firmware, simulador
 
+### Pagamentos
+
+- [Arquitetura de cobrança](docs/payments/arquitetura-de-cobranca.md) — como o motorista paga, os dois caminhos possíveis e o que muda no código
+- [Matriz de adquirentes](docs/payments/matriz-adquirentes.md) — critérios eliminatórios e roteiro de consulta a fornecedores
+
 ### Operações
 
 - [Levantamento de dados do WEMOB](docs/operations/wemob-data-collection.md) — formulário a preencher
@@ -164,8 +169,7 @@ Cada fase só começa após validação explícita da anterior.
 
 Documentos previstos para fases seguintes: `docs/operations/incident-response.md`
 (FASE 9), `docs/operations/payment-refund.md` (FASE 5), `docs/ocpp/wemob-quirks.md`
-(FASE 4), `docs/architecture/data-model.md` (FASE 1), `docs/testing/strategy.md`
-(FASE 1).
+(FASE 4), `docs/architecture/data-model.md`, `docs/testing/strategy.md`.
 
 ---
 

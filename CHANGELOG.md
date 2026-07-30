@@ -5,6 +5,38 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### Instalação em Windows — 2026-07-30
+
+Primeira instalação do projeto numa máquina Windows expôs três defeitos no
+caminho de primeira execução. Nenhum deles aparecia no ambiente de
+desenvolvimento, onde os comandos eram executados um a um com o `.env` já
+carregado no shell.
+
+#### Corrigido
+
+- **`pnpm setup` nunca chamava o script do projeto.** `setup` é um comando
+  embutido do pnpm e tem precedência sobre scripts do `package.json` — quem
+  digitava acabava rodando a configuração do próprio pnpm. O script foi
+  renomeado para **`pnpm bootstrap`**, que não colide com nenhum comando.
+- **As migrations não achavam o `.env`.** O Prisma procura o arquivo no
+  diretório do pacote, não na raiz do monorepo, e `pnpm db:deploy` falhava com
+  `Environment variable not found: DATABASE_URL`. Os scripts do
+  `@bora/database` passaram a usar `dotenv -e ../../.env --`, que funciona igual
+  nos três sistemas.
+- **O script de instalação era bash.** `scripts/setup.sh` não roda no
+  PowerShell. Reescrito como `scripts/bootstrap.mjs`, em Node, com `shell: true`
+  no Windows (lá o `pnpm` é um `.cmd` e o Node recusa executá-lo direto).
+
+#### Adicionado
+
+- `scripts/bootstrap.mjs` — verifica Node e pnpm, cria o `.env` na primeira
+  execução e para pedindo que seja preenchido, recusa `.env` com placeholders,
+  e explica o que fazer quando o banco não está de pé.
+
+#### Removido
+
+- `scripts/setup.sh`, substituído pelo equivalente multiplataforma.
+
 ### Documentação de pagamentos — 2026-07-29
 
 #### Adicionado
@@ -143,7 +175,7 @@ login funcionando e testes passando. **Nenhuma comunicação OCPP ainda** — é
 - `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json` — monorepo conforme ADR-0001.
 - `eslint.config.mjs`, `.prettierrc.json` — lint e formatação, com `no-explicit-any` como erro.
 - `.github/workflows/ci.yml` — lint, tipos, testes com Postgres real, e um job que falha se houver segredo real no repositório (risco R-20).
-- `scripts/setup.sh` — prepara o ambiente do zero e recusa `.env` com placeholders.
+- `scripts/setup.sh` — prepara o ambiente do zero e recusa `.env` com placeholders. _(substituído por `scripts/bootstrap.mjs` em 2026-07-30.)_
 - `docker-compose.yml`, `infra/docker/*.Dockerfile` — Postgres, API e painel. As migrations rodam num serviço próprio antes da API, para que uma migration falha não deixe a API subir com schema errado. Portas publicadas apenas em `127.0.0.1`. Sem Redis, conforme ADR-0003.
 
 **`packages/config`** — validação de ambiente com Zod, falhando no boot com todos os erros de uma vez. Em produção, recusa placeholders do `.env.example`, `CORS_ORIGINS=*` e Swagger habilitado.

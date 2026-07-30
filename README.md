@@ -51,26 +51,41 @@ sua autorização explícita.
 ### Pré-requisitos
 
 - Node.js 22 (LTS)
-- pnpm 10 (`corepack enable`)
+- pnpm 10 — se `pnpm -v` falhar: `corepack enable` e
+  `corepack prepare pnpm@10.33.0 --activate`, depois reabra o terminal
 - PostgreSQL 16 — ou Docker, se preferir subir tudo em containers
 
 ### Primeira execução
 
 ```bash
-git clone <repositório> && cd bora-carregar
+git clone https://github.com/lucas200988/abeemt.git bora-carregar
+cd bora-carregar
 
-cp .env.example .env
-# Edite o .env: troque os valores CHANGE_ME e TROQUE_ESTA_SENHA.
-# Gere segredos com: openssl rand -hex 32
-
-pnpm setup      # instala, migra o banco, popula dados e constrói tudo
-pnpm dev        # sobe API e painel em modo desenvolvimento
+pnpm bootstrap   # cria o .env e para, pedindo que você o preencha
+# edite o .env (veja a lista de valores que ele imprime)
+pnpm bootstrap   # agora instala, migra, popula e constrói
+pnpm dev         # sobe API e painel
 ```
 
-Com Docker, sem instalar Node nem Postgres na máquina:
+No **Windows**, os mesmos comandos, no PowerShell aberto dentro da pasta do
+projeto. O `bootstrap` é um script Node justamente para funcionar igual nos três
+sistemas.
+
+> **É `pnpm bootstrap`, não `pnpm setup`.** `setup` é um comando embutido do
+> pnpm: um script com esse nome nunca chega a ser chamado, e quem digita acaba
+> rodando a configuração do próprio pnpm. Descoberto na primeira instalação em
+> máquina Windows, em 2026-07-30.
+
+O banco precisa estar de pé antes das migrations. Com Docker, só o Postgres:
 
 ```bash
-cp .env.example .env    # e preencha
+docker compose up -d postgres
+```
+
+Com Docker, tudo em containers (**este caminho ainda não foi testado** — não há
+daemon Docker no ambiente onde o projeto foi desenvolvido):
+
+```bash
 docker compose up -d
 ```
 
@@ -103,7 +118,7 @@ o seed se recusa a rodar com `NODE_ENV=production`.
 
 | Comando                | O que faz                                     |
 | ---------------------- | --------------------------------------------- |
-| `pnpm setup`           | Prepara o ambiente do zero                    |
+| `pnpm bootstrap`       | Prepara o ambiente do zero                    |
 | `pnpm dev`             | API e painel em modo desenvolvimento          |
 | `pnpm build`           | Constrói todos os pacotes                     |
 | `pnpm test`            | Roda toda a suíte                             |

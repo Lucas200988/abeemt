@@ -433,6 +433,35 @@ em rede privada. Se for o caso do WEMOB, a FASE 4a perde a simplicidade.
 - Plano C: pular a 4a e ir direto para a 4b com o endpoint público — mais risco,
   mas o caminho original já estava previsto.
 
+### R-30 — Ociosidade medida na resolução do carregador 🟢 _(novo — 2026-07-30)_
+
+**P 4 · I 2 · Severidade 8 — MÉDIO**
+
+A taxa de ociosidade (FASE 6) é calculada a partir dos `MeterValues`: quando duas
+leituras consecutivas não mostram energia nova, o intervalo entre elas conta como
+ocioso. A precisão é, portanto, a do intervalo de medição do equipamento — um
+carregador que reporta a cada 5 minutos produz ociosidade em blocos de 5 minutos,
+e a cobrança pode divergir do tempo real em até um intervalo.
+
+Não é um defeito corrigível em software: o protocolo não oferece nada mais fino
+do que o carregador informa. Inventar precisão seria pior do que assumir a
+grossura.
+
+**Mitigação:**
+
+- Intervalo menor que um segundo não é creditado **e não avança o marcador** — o
+  resto sobrevive para a leitura seguinte, em vez de ser truncado a zero. Sem
+  isso, um carregador que reporta com frequência alta nunca acumularia
+  ociosidade nenhuma (encontrado em teste, 2026-07-30).
+- O tempo ocioso é limitado à duração total da sessão: relógio adiantado ou
+  leitura fora de ordem não podem cobrar tempo que não existiu.
+- Incremento atômico no banco (`increment`), não ler-somar-escrever: duas
+  medições concorrentes não perdem cobrança.
+- `MeterValues` do WEMOB precisa ser configurado com intervalo curto na FASE 4
+  se a ociosidade for cobrada — item a acrescentar ao checklist do equipamento.
+- Enquanto a periodicidade real do WEMOB não for conhecida, a recomendação é
+  **não cobrar ociosidade** (deixar o campo em zero, que é o padrão).
+
 ### R-19 — Simulador que "concorda consigo mesmo" 🟠
 
 **P 3 · I 4 · Severidade 12 → mitigado por design**

@@ -83,7 +83,9 @@ export function organizationForCreate(
     if (!informada) {
       throw new ForbiddenException({
         code: 'ORGANIZATION_REQUIRED',
-        message: 'Informe o estabelecimento (organizationId) ao criar como administrador global.',
+        // Dizia "estabelecimento" onde o campo é a ORGANIZAÇÃO — são coisas
+        // diferentes no modelo, e a confusão aparecia na tela do painel.
+        message: 'Informe a organização (organizationId) ao criar como administrador global.',
       });
     }
     return informada;

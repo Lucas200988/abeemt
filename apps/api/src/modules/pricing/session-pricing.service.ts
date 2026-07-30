@@ -105,9 +105,16 @@ export class SessionPricingService {
         // A do estabelecimento ou a geral da organização; nunca a de outro site.
         AND: [{ OR: [{ siteId: site.id }, { siteId: null }] }],
       },
-      // `siteId desc` põe a tarifa específica antes da geral no Postgres, que
-      // ordena NULL por último em ordem decrescente.
-      orderBy: [{ siteId: 'desc' }, { validFrom: 'desc' }],
+      /**
+       * `nulls: 'last'` é obrigatório aqui.
+       *
+       * Em `DESC`, o Postgres ordena NULL PRIMEIRO — o contrário do que eu havia
+       * assumido. Sem a cláusula explícita, a tarifa geral da organização
+       * (`siteId` nulo) vinha antes da específica do estabelecimento e a
+       * precedência ficava invertida: o preço específico nunca era aplicado.
+       * Encontrado pelo teste "a tarifa do estabelecimento vence a da organização".
+       */
+      orderBy: [{ siteId: { sort: 'desc', nulls: 'last' } }, { validFrom: 'desc' }],
     });
 
     if (!tarifa) {
@@ -167,6 +174,7 @@ export class SessionPricingService {
     tariffSnapshot: unknown;
     energyWh: number | null;
     durationSeconds: number | null;
+    idleSeconds?: number;
     ceilingAmountCents: number | null;
   }): PricingBreakdown | null {
     const snapshot = this.parseSnapshot(sessao.tariffSnapshot);
@@ -176,6 +184,7 @@ export class SessionPricingService {
       snapshot,
       energyWh: sessao.energyWh ?? 0,
       durationSeconds: sessao.durationSeconds ?? 0,
+      idleSeconds: sessao.idleSeconds ?? 0,
       ceilingAmountCents: sessao.ceilingAmountCents,
     });
   }
@@ -193,6 +202,7 @@ export class SessionPricingService {
       tariffSnapshot: unknown;
       energyWh: number | null;
       startedAt: Date | null;
+      idleSeconds?: number;
       ceilingAmountCents: number | null;
     },
     agora = new Date(),
@@ -208,6 +218,7 @@ export class SessionPricingService {
       snapshot,
       energyWh: sessao.energyWh ?? 0,
       durationSeconds: duracao,
+      idleSeconds: sessao.idleSeconds ?? 0,
       ceilingAmountCents: sessao.ceilingAmountCents,
     });
   }

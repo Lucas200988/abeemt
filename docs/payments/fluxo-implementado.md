@@ -26,6 +26,7 @@ Em código:
 | Manda o carregador ligar       | `OcppCommands.remoteStart`                                 |
 | Acompanha o consumo            | `OcppHandlers.meterValues`                                 |
 | Decide a parada automática     | `OcppHandlers.verificarTeto` + `@bora/pricing`             |
+| Mede a ociosidade              | `OcppHandlers.medirOciosidade`                             |
 | Calcula o valor final          | `SessionPricingService.finalAmount`                        |
 | Cobra                          | `PaymentsService.settleSession` → `PaymentProvider.capture` |
 | Reexecuta o que falhou         | `SessionWorker.tick`                                       |
@@ -100,8 +101,7 @@ Nunca ultrapassou o reservado.
 | ---------------------------------------------- | ---------- |
 | Adquirente real                                | FASE 7     |
 | Maquininha (SmartPOS) chamando a API           | FASE 8     |
-| Cadastro de tarifas pelo painel                | FASE 6     |
-| Tarifa por faixa de horário, ociosidade        | FASE 6     |
+| Tarifa por faixa de horário                    | pós-piloto |
 | Relatório de conciliação e fechamento de caixa | FASE 9     |
 
 A interface `PaymentProvider` já prevê a maquininha: `initiatedBy: 'terminal'`

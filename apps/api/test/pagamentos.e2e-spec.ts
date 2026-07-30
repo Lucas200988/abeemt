@@ -745,3 +745,118 @@ describe('autorização vinda da maquininha (FASE 8)', () => {
     expect(segunda.message).toMatch(/já registrado/);
   });
 });
+
+describe('ociosidade medida pelo OCPP (FASE 6)', () => {
+  /**
+   * O veículo termina de carregar e fica plugado. O medidor continua
+   * reportando, com o mesmo valor — é assim que um carregador real se comporta.
+   */
+  it('acumula o tempo em que a energia não sobe', async () => {
+    // `powerKw: 0` é o ponto do teste: sem potência, a medição periódica do
+    // simulador repete a mesma leitura, que é exatamente como um carregador real
+    // se comporta com o veículo cheio. Com potência, o medidor nunca fica
+    // parado e a ociosidade jamais aconteceria.
+    const sim = await simuladorPronto({ powerKw: 0 });
+
+    const resultado = await payments.startPaidSession({
+      connectorId,
+      method: 'CREDIT_CARD',
+      amountCents: 20_000,
+    });
+
+    await aguardarCarregando(sim, resultado.sessionId);
+
+    // Primeira leitura com energia nova: não conta como ociosa, e não teria
+    // como — não existe intervalo anterior para medir.
+    sim.advanceMeter(2000);
+    await sim.meterValues(1);
+
+    await aguardar(async () => {
+      const s = await prisma.chargingSession.findUnique({ where: { id: resultado.sessionId } });
+      return (s?.energyWh ?? 0) >= 2000;
+    });
+
+    const aposCarga = await prisma.chargingSession.findUniqueOrThrow({
+      where: { id: resultado.sessionId },
+    });
+    expect(aposCarga.idleSeconds).toBe(0);
+    expect(aposCarga.lastMeterAt).not.toBeNull();
+
+    // Agora o carro está cheio: o medidor repete a mesma leitura.
+    await new Promise((r) => setTimeout(r, 1100));
+    await sim.meterValues(1);
+
+    await aguardar(
+      async () => {
+        const s = await prisma.chargingSession.findUnique({ where: { id: resultado.sessionId } });
+        return (s?.idleSeconds ?? 0) >= 1;
+      },
+      { descricao: 'ociosidade acumulada' },
+    );
+
+    const ocioso = await prisma.chargingSession.findUniqueOrThrow({
+      where: { id: resultado.sessionId },
+    });
+
+    // A energia não regrediu: leitura repetida não pode reduzir o que já foi medido.
+    expect(ocioso.energyWh).toBe(aposCarga.energyWh);
+    expect(ocioso.idleSeconds).toBeGreaterThanOrEqual(1);
+  });
+
+  it('a ociosidade entra no valor cobrado', async () => {
+    // Tarifa com ociosidade: R$ 1,00 por minuto parado.
+    await prisma.tariff.updateMany({
+      where: { organizationId },
+      data: { idleFeePerMinuteCents: 100, pricePerMinuteCents: 0 },
+    });
+
+    const sim = await simuladorPronto({ powerKw: 0 });
+
+    const resultado = await payments.startPaidSession({
+      connectorId,
+      method: 'CREDIT_CARD',
+      amountCents: 20_000,
+    });
+
+    await aguardarCarregando(sim, resultado.sessionId);
+
+    sim.advanceMeter(4000);
+    await sim.meterValues(1);
+    await aguardar(async () => {
+      const s = await prisma.chargingSession.findUnique({ where: { id: resultado.sessionId } });
+      return (s?.energyWh ?? 0) >= 4000;
+    });
+
+    await sim.stopTransaction('Remote');
+    await aguardar(async () => {
+      const s = await prisma.chargingSession.findUnique({ where: { id: resultado.sessionId } });
+      return s?.status === 'COMPLETED';
+    });
+
+    /**
+     * Meia hora de sessão, dez minutos dela parada — gravados depois do
+     * encerramento, quando não há mais medições disputando a mesma linha.
+     *
+     * A duração precisa ser coerente com a ociosidade: o cálculo limita o tempo
+     * ocioso à duração total, e a primeira versão deste teste pedia 10 minutos
+     * parados numa sessão de um segundo. O limite estava certo; o teste é que
+     * descrevia algo impossível.
+     */
+    await prisma.chargingSession.update({
+      where: { id: resultado.sessionId },
+      data: { idleSeconds: 600, durationSeconds: 1800 },
+    });
+
+    await payments.settleSession(resultado.sessionId);
+
+    const sessao = await prisma.chargingSession.findUniqueOrThrow({
+      where: { id: resultado.sessionId },
+    });
+
+    // R$ 3,00 conexão + R$ 10,00 energia (4 kWh) + R$ 10,00 de ociosidade (10 min).
+    expect(sessao.finalAmountCents).toBe(2300);
+
+    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    expect(pagamento.amountCapturedCents).toBe(2300);
+  });
+});

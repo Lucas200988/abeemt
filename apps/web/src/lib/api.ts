@@ -149,6 +149,43 @@ export interface PaymentView {
   } | null;
 }
 
+export interface TariffView {
+  id: string;
+  organizationId: string;
+  siteId: string | null;
+  siteName: string | null;
+  name: string;
+  pricePerKwhCents: number;
+  connectionFeeCents: number;
+  pricePerMinuteCents: number;
+  idleFeePerMinuteCents: number;
+  minimumAmountCents: number;
+  maximumAmountCents: number | null;
+  active: boolean;
+  validFrom: string;
+  validUntil: string | null;
+  inEffect: boolean;
+  scopeLabel: string;
+  sessionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PricingBreakdown {
+  connectionFeeCents: number;
+  energyCents: number;
+  timeCents: number;
+  idleCents: number;
+  subtotalCents: number;
+  totalCents: number;
+  minimumApplied: boolean;
+  tariffMaximumApplied: boolean;
+  ceilingApplied: boolean;
+  energyKwh: number;
+  durationMinutes: number;
+  idleMinutes: number;
+}
+
 export interface ProviderInfo {
   default: string;
   available: {
@@ -436,6 +473,27 @@ export const api = {
     idempotencyKey?: string;
   }) =>
     request<StartPaidSessionResult>('/payments/start-session', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  tariffs: (params: { siteId?: string; includeInactive?: boolean } = {}) =>
+    request<Paginated<TariffView>>(`/tariffs${query({ pageSize: 50, ...params })}`),
+
+  createTariff: (body: Record<string, unknown>) =>
+    request<TariffView>('/tariffs', { method: 'POST', body: JSON.stringify(body) }),
+
+  updateTariff: (id: string, body: Record<string, unknown>) =>
+    request<TariffView>(`/tariffs/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+
+  deactivateTariff: (id: string) =>
+    request<TariffView>(`/tariffs/${id}/deactivate`, { method: 'POST' }),
+
+  simulateTariff: (
+    id: string,
+    body: { energyWh: number; durationSeconds: number; idleSeconds?: number },
+  ) =>
+    request<PricingBreakdown>(`/tariffs/${id}/simulate`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

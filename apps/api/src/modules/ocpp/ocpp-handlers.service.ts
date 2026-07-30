@@ -455,7 +455,14 @@ export class OcppHandlers {
     const sessao = payload.transactionId
       ? await this.prisma.chargingSession.findFirst({
           where: { chargerId: ctx.chargerId, ocppTransactionId: payload.transactionId },
-          select: { id: true, meterStartWh: true, energyWh: true, meterStopWh: true },
+          select: {
+            id: true,
+            meterStartWh: true,
+            energyWh: true,
+            meterStopWh: true,
+            idleSeconds: true,
+            lastMeterAt: true,
+          },
         })
       : null;
 
@@ -506,7 +513,10 @@ export class OcppHandlers {
       const energiaCandidata = Math.max(0, maiorLeitura - sessao.meterStartWh);
       const reconciliado = reconcileMeterReading(sessao.energyWh, energiaCandidata);
 
-      if (reconciliado.foraDeOrdem) {
+      // Leitura MENOR que a conhecida é mensagem atrasada; leitura IGUAL é
+      // veículo parado. As duas voltam `foraDeOrdem`, mas só a primeira merece
+      // alarme — a segunda é o caso normal de um carro que terminou de carregar.
+      if (reconciliado.foraDeOrdem && energiaCandidata < (sessao.energyWh ?? 0)) {
         this.logger.warn(
           {
             sessionId: sessao.id,
@@ -516,17 +526,92 @@ export class OcppHandlers {
           },
           'MeterValues fora de ordem — energia acumulada preservada',
         );
-      } else {
-        await this.prisma.chargingSession.update({
-          where: { id: sessao.id },
-          data: { energyWh: reconciliado.valor },
-        });
       }
+
+      /**
+       * A atualização é uma só, e acontece sempre.
+       *
+       * A medição de ociosidade ficava dentro do `else` e, com isso, nunca
+       * rodava no caso que ela existe para detectar: energia que não sobe faz
+       * `reconcileMeterReading` devolver `foraDeOrdem`. O veículo cheio caía
+       * justamente no ramo que não media nada.
+       */
+      await this.prisma.chargingSession.update({
+        where: { id: sessao.id },
+        data: {
+          energyWh: reconciliado.valor,
+          ...this.medirOciosidade(sessao, reconciliado.valor, ctx.receivedAt),
+        },
+      });
 
       await this.verificarTeto(sessao.id, reconciliado.valor, ctx);
     }
 
     return {};
+  }
+
+  /**
+   * Acumula o tempo em que o veículo ocupou o ponto sem carregar (FASE 6).
+   *
+   * A regra é simples e é a única possível com o que o protocolo dá: se a
+   * energia acumulada não subiu desde a leitura anterior, o intervalo entre as
+   * duas leituras foi ocioso.
+   *
+   * **Limite conhecido (risco R-30):** a resolução é a do intervalo de medição
+   * do carregador. Um equipamento que reporta a cada 5 minutos produz
+   * ociosidade em blocos de 5 minutos. Não há como ser mais fino do que o
+   * equipamento informa, e inventar precisão seria pior do que assumir a
+   * grossura.
+   *
+   * O primeiro MeterValues da sessão nunca conta como ocioso: não existe
+   * intervalo anterior para medir, e assumir que existiu cobraria o motorista
+   * por tempo que não aconteceu.
+   */
+  private medirOciosidade(
+    sessao: { energyWh: number | null; idleSeconds: number; lastMeterAt: Date | null },
+    energiaAgora: number,
+    agora: Date,
+  ): { idleSeconds?: Prisma.IntFieldUpdateOperationsInput; lastMeterAt?: Date } {
+    if (sessao.lastMeterAt === null) {
+      return { lastMeterAt: agora };
+    }
+
+    const subiu = energiaAgora > (sessao.energyWh ?? 0);
+    if (subiu) {
+      return { lastMeterAt: agora };
+    }
+
+    const intervalo = Math.max(
+      0,
+      Math.floor((agora.getTime() - sessao.lastMeterAt.getTime()) / 1000),
+    );
+
+    /**
+     * Intervalo menor que um segundo: nada é creditado e `lastMeterAt` **não**
+     * avança.
+     *
+     * Sem isso, o tempo abaixo de um segundo era truncado a zero e perdido a
+     * cada leitura. Um carregador que reporta com frequência alta nunca
+     * acumularia ociosidade nenhuma — o defeito apareceu no teste, com o
+     * simulador medindo a cada 150 ms. Segurando o instante anterior, o resto
+     * sobrevive para a leitura seguinte.
+     */
+    if (intervalo < 1) {
+      return {};
+    }
+
+    /**
+     * `increment`, e não `idleSeconds: lido + intervalo`.
+     *
+     * O somatório em código é ler-somar-escrever: duas medições processadas em
+     * paralelo leem o mesmo valor e a segunda escrita apaga a primeira. O
+     * incremento acontece dentro do UPDATE, no banco, e não tem esse buraco.
+     *
+     * Na prática o gateway serializa as mensagens de uma mesma conexão, mas
+     * depender disso seria depender de um detalhe de outra camada para não
+     * perder cobrança.
+     */
+    return { idleSeconds: { increment: intervalo }, lastMeterAt: agora };
   }
 
   /**
@@ -553,6 +638,7 @@ export class OcppHandlers {
         status: true,
         startedAt: true,
         tariffSnapshot: true,
+        idleSeconds: true,
         ceilingAmountCents: true,
         ceilingReachedAt: true,
         payment: { select: { method: true } },

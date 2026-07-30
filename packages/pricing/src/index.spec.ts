@@ -356,3 +356,188 @@ describe('cenário completo do ADR-0008', () => {
     expect(final.totalCents).toBeLessThanOrEqual(teto);
   });
 });
+
+// ===========================================================================
+// FASE 6 — ociosidade e casos-limite
+// ===========================================================================
+
+describe('taxa de ociosidade', () => {
+  /** R$ 2,20/kWh, R$ 0,50/min carregando, R$ 1,00/min ocioso. */
+  const comOciosidade = (parcial: Partial<TariffSnapshot> = {}) =>
+    tarifa({
+      connectionFeeCents: 0,
+      minimumAmountCents: 0,
+      pricePerMinuteCents: 50,
+      idleFeePerMinuteCents: 100,
+      ...parcial,
+    });
+
+  it('cobra os minutos ociosos à parte', () => {
+    const r = calculateSessionAmount({
+      snapshot: comOciosidade(),
+      energyWh: 10_000,
+      durationSeconds: 3600, // 60 min no total
+      idleSeconds: 1200, // 20 deles parado
+    });
+
+    // 40 min carregando × R$ 0,50 = R$ 20,00
+    expect(r.timeCents).toBe(2000);
+    // 20 min ociosos × R$ 1,00 = R$ 20,00
+    expect(r.idleCents).toBe(2000);
+    expect(r.energyCents).toBe(2200);
+    expect(r.totalCents).toBe(6200);
+  });
+
+  /**
+   * O erro que essa separação evita: cobrar o tempo total como recarga E a
+   * ociosidade por cima cobraria os mesmos 20 minutos duas vezes.
+   */
+  it('não cobra o mesmo minuto duas vezes', () => {
+    const entrada = {
+      snapshot: comOciosidade(),
+      energyWh: 0,
+      durationSeconds: 3600,
+      idleSeconds: 3600, // a sessão inteira parada
+    };
+
+    const r = calculateSessionAmount(entrada);
+
+    expect(r.timeCents).toBe(0);
+    expect(r.idleCents).toBe(6000); // 60 min × R$ 1,00
+    expect(r.subtotalCents).toBe(6000);
+  });
+
+  it('sem tarifa de ociosidade, o tempo total continua sendo cobrado', () => {
+    // Compatível com o comportamento anterior à FASE 6: quem não configurou
+    // ociosidade não pode ver o valor mudar do nada.
+    const r = calculateSessionAmount({
+      snapshot: comOciosidade({ idleFeePerMinuteCents: 0 }),
+      energyWh: 10_000,
+      durationSeconds: 3600,
+      idleSeconds: 1200,
+    });
+
+    expect(r.timeCents).toBe(3000); // 60 min inteiros
+    expect(r.idleCents).toBe(0);
+  });
+
+  it('ociosidade maior que a duração é limitada à duração', () => {
+    // Relógio do carregador adiantado produziria isso. Sem o limite, o
+    // motorista pagaria por tempo que não existiu.
+    const r = calculateSessionAmount({
+      snapshot: comOciosidade(),
+      energyWh: 0,
+      durationSeconds: 600,
+      idleSeconds: 99_999,
+    });
+
+    expect(r.idleMinutes).toBe(10);
+    expect(r.idleCents).toBe(1000);
+    expect(r.timeCents).toBe(0);
+  });
+
+  it('recusa ociosidade negativa', () => {
+    expect(() =>
+      calculateSessionAmount({
+        snapshot: comOciosidade(),
+        energyWh: 0,
+        durationSeconds: 600,
+        idleSeconds: -1,
+      }),
+    ).toThrow(PricingError);
+  });
+
+  it('arredonda a ociosidade para baixo, como o resto', () => {
+    const r = calculateSessionAmount({
+      snapshot: comOciosidade({ idleFeePerMinuteCents: 7 }),
+      energyWh: 0,
+      durationSeconds: 100,
+      idleSeconds: 100, // 1,666… min × 7 = 11,66 centavos
+    });
+
+    expect(r.idleCents).toBe(11);
+  });
+
+  it('a ociosidade também respeita o teto financeiro', () => {
+    const r = calculateSessionAmount({
+      snapshot: comOciosidade({ idleFeePerMinuteCents: 500 }),
+      energyWh: 0,
+      durationSeconds: 36_000, // 10 horas paradas
+      idleSeconds: 36_000,
+      ceilingAmountCents: 20_000,
+    });
+
+    // R$ 300,00 de ociosidade, limitados ao que foi reservado.
+    expect(r.totalCents).toBe(20_000);
+    expect(r.ceilingApplied).toBe(true);
+  });
+});
+
+describe('casos-limite da FASE 6', () => {
+  it('recarga de um segundo com mínimo configurado paga o mínimo', () => {
+    const r = calculateSessionAmount({
+      snapshot: tarifa(),
+      energyWh: 1,
+      durationSeconds: 1,
+    });
+
+    // R$ 3,00 de conexão + praticamente nada de energia, elevado ao mínimo.
+    expect(r.minimumApplied).toBe(true);
+    expect(r.totalCents).toBe(500);
+  });
+
+  it('energia enorme não estoura o inteiro seguro', () => {
+    // 1 GWh: absurdo na prática, mas prova que não há estouro silencioso.
+    const r = calculateSessionAmount({
+      snapshot: tarifa({ minimumAmountCents: 0, connectionFeeCents: 0 }),
+      energyWh: 1_000_000_000,
+      durationSeconds: 0,
+    });
+
+    expect(Number.isSafeInteger(r.totalCents)).toBe(true);
+    expect(r.totalCents).toBe(220_000_000);
+  });
+
+  it('teto comercial da tarifa vence o consumo, e o financeiro vence os dois', () => {
+    const r = calculateSessionAmount({
+      snapshot: tarifa({
+        minimumAmountCents: 0,
+        connectionFeeCents: 0,
+        maximumAmountCents: 10_000,
+      }),
+      energyWh: 100_000, // R$ 220,00 de energia
+      durationSeconds: 0,
+      ceilingAmountCents: 4000,
+    });
+
+    expect(r.tariffMaximumApplied).toBe(true);
+    expect(r.ceilingApplied).toBe(true);
+    // O menor dos dois limites é o que vale.
+    expect(r.totalCents).toBe(4000);
+  });
+
+  it('tarifa com máximo abaixo do mínimo é recusada', () => {
+    expect(() =>
+      calculateSessionAmount({
+        snapshot: tarifa({ minimumAmountCents: 500, maximumAmountCents: 300 }),
+        energyWh: 1000,
+        durationSeconds: 60,
+      }),
+    ).toThrow(/menor que o mínimo/);
+  });
+
+  it('tarifa zerada cobra zero, sem inventar valor', () => {
+    const r = calculateSessionAmount({
+      snapshot: tarifa({
+        pricePerKwhCents: 0,
+        connectionFeeCents: 0,
+        pricePerMinuteCents: 0,
+        minimumAmountCents: 0,
+      }),
+      energyWh: 50_000,
+      durationSeconds: 3600,
+    });
+
+    expect(r.totalCents).toBe(0);
+  });
+});

@@ -461,6 +461,17 @@ model ChargingSession {
 
   durationSeconds Int?
 
+  /// Tempo, em segundos, em que o veículo ocupou o conector SEM carregar.
+  ///
+  /// Acumulado a partir dos MeterValues: quando duas leituras consecutivas não
+  /// mostram energia nova, o intervalo entre elas conta como ocioso. A resolução
+  /// é a do intervalo de medição do carregador — não há como ser mais fino do
+  /// que o equipamento informa (risco R-30).
+  idleSeconds Int @default(0)
+  /// Instante da última leitura considerada para a ociosidade. Guardado porque
+  /// o cálculo precisa do intervalo entre leituras, não da leitura isolada.
+  lastMeterAt DateTime?
+
   tariffId String? @db.Uuid
   tariff   Tariff? @relation(fields: [tariffId], references: [id], onDelete: SetNull)
 

@@ -18,7 +18,12 @@ para o motorista.
 simulador OCPP: reserva o valor, acompanha o consumo, **encerra a recarga
 sozinha ao atingir o teto** e cobra apenas o que foi consumido. Pix é cobrado
 integralmente no início e devolvido por inteiro quando nenhuma energia é
-entregue. 285 testes automatizados.
+entregue.
+
+**FASE 6 concluída.** O operador cadastra e edita tarifas pelo painel — preço
+por kWh, taxa de conexão, preço por minuto, **ociosidade**, mínimo e máximo — e
+confere quanto sai cada cenário antes de publicar. Alterar uma tarifa não muda o
+valor de recargas já realizadas. 307 testes automatizados.
 
 O provedor de pagamento é **simulado**. Não existe adquirente real ligado, e o
 sistema **recusa subir em produção** com um provedor simulado como padrão — o
@@ -37,6 +42,7 @@ sua autorização explícita.
 | Pix com devolução por consumo zero        | mesma tela, meio de pagamento "Pix"             |
 | Valor corrente durante a recarga          | Painel → Sessões → detalhe da sessão            |
 | Devolução manual, com motivo auditado     | Painel → Pagamentos (perfil de administrador)   |
+| Cadastro de tarifas e simulação de preço  | Painel → Tarifas                                |
 
 ---
 
@@ -150,7 +156,7 @@ pnpm test
 | 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
 | 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
 | 5    | Pagamento simulado                                            | ✅ **concluída**                    |
-| 6    | Tarifação e regras comerciais                                 | ⬜ não iniciada                     |
+| 6    | Tarifação e regras comerciais                                 | ✅ **concluída**                    |
 | 7    | Integração com pagamento real                                 | ⬜ não iniciada                     |
 | 8    | SmartPOS / terminal de autoatendimento                        | ⬜ não iniciada                     |
 | 9    | Endurecimento para piloto                                     | ⬜ não iniciada                     |
@@ -177,6 +183,7 @@ Cada fase só começa após validação explícita da anterior.
 - [Arquitetura de cobrança](docs/payments/arquitetura-de-cobranca.md) — como o motorista paga, os dois caminhos possíveis e o que muda no código
 - [Matriz de adquirentes](docs/payments/matriz-adquirentes.md) — critérios eliminatórios e roteiro de consulta a fornecedores
 - [Fluxo financeiro implementado](docs/payments/fluxo-implementado.md) — o que a FASE 5 entregou, com os caminhos de falha cobertos
+- [Tarifação](docs/payments/tarifacao.md) — como o preço é decidido e por que ele não muda depois
 
 ### Operações
 

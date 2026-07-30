@@ -9,6 +9,10 @@ import { assertCents, roundToCents, whToKwh, type Cents } from '@bora/contracts'
  *           + energia em kWh × tarifa por kWh
  *           + duração em minutos × tarifa por minuto
  *
+ * A FASE 6 acrescenta a ociosidade — o tempo em que o veículo ocupa o ponto sem
+ * carregar. Ela não é uma quarta parcela somada por fora: sai da fatia cobrada
+ * como tempo, para que os mesmos minutos não sejam cobrados duas vezes.
+ *
  * Tudo em centavos inteiros (ADR-0005). O único ponto do sistema autorizado a
  * converter fração em dinheiro é `roundToCents`, e ele exige o modo de
  * arredondamento explícito — porque favorecer o motorista ou o estabelecimento
@@ -45,6 +49,15 @@ export interface PricingInput {
   energyWh: number;
   durationSeconds: number;
   /**
+   * Tempo, em segundos, em que o veículo ocupou o conector **sem carregar**.
+   *
+   * Cobrado à parte porque o custo não é a energia — é o ponto ocupado por
+   * alguém que já terminou, impedindo o próximo motorista. Está contido em
+   * `durationSeconds`, e por isso a tarifa por minuto e a de ociosidade se
+   * aplicam a fatias diferentes da mesma sessão (ver `calculateSessionAmount`).
+   */
+  idleSeconds?: number;
+  /**
    * Teto financeiro da sessão, em centavos — o valor pré-autorizado.
    * O valor final NUNCA ultrapassa isto (ADR-0008 §4).
    */
@@ -55,6 +68,8 @@ export interface PricingBreakdown {
   connectionFeeCents: number;
   energyCents: number;
   timeCents: number;
+  /** Cobrança pelo tempo em que o veículo ocupou o ponto sem carregar. */
+  idleCents: number;
   /** Soma antes de aplicar mínimo e tetos. */
   subtotalCents: number;
   /** Valor final a cobrar. */
@@ -67,6 +82,7 @@ export interface PricingBreakdown {
 
   energyKwh: number;
   durationMinutes: number;
+  idleMinutes: number;
 }
 
 export class PricingError extends Error {
@@ -93,6 +109,7 @@ export class PricingError extends Error {
  */
 export function calculateSessionAmount(input: PricingInput): PricingBreakdown {
   const { snapshot, energyWh, durationSeconds } = input;
+  const idleSeconds = input.idleSeconds ?? 0;
 
   if (!Number.isInteger(energyWh) || energyWh < 0) {
     throw new PricingError(`energia inválida: ${energyWh} Wh (precisa ser inteiro não negativo)`);
@@ -100,25 +117,53 @@ export function calculateSessionAmount(input: PricingInput): PricingBreakdown {
   if (!Number.isInteger(durationSeconds) || durationSeconds < 0) {
     throw new PricingError(`duração inválida: ${durationSeconds} s`);
   }
+  if (!Number.isInteger(idleSeconds) || idleSeconds < 0) {
+    throw new PricingError(`ociosidade inválida: ${idleSeconds} s`);
+  }
 
   validarSnapshot(snapshot);
 
   const energyKwh = whToKwh(energyWh);
   const durationMinutes = durationSeconds / 60;
 
+  /**
+   * A ociosidade não pode ultrapassar a duração.
+   *
+   * Ela é uma FATIA do tempo total, não um período paralelo. Um relógio de
+   * carregador adiantado, ou uma leitura fora de ordem, produziria ocioso maior
+   * que a sessão inteira — e o motorista pagaria por tempo que não existiu.
+   */
+  const idleSecondsEfetivo = Math.min(idleSeconds, durationSeconds);
+  const idleMinutes = idleSecondsEfetivo / 60;
+
   const connectionFeeCents = snapshot.connectionFeeCents;
 
-  // Arredondamento para baixo em ambos: na dúvida, a favor do motorista.
+  // Arredondamento para baixo em todos: na dúvida, a favor do motorista.
   // É uma escolha comercial, registrada aqui de propósito.
   const energyCents =
     snapshot.pricePerKwhCents > 0 ? roundToCents(energyKwh * snapshot.pricePerKwhCents, 'floor') : 0;
 
+  /**
+   * O tempo cobrado é o tempo **carregando** — a duração menos a ociosidade.
+   *
+   * Cobrar os dois sobre o período inteiro seria cobrar duas vezes pelos mesmos
+   * minutos. Quando não há tarifa de ociosidade configurada, `idleMinutes`
+   * entra como zero e o comportamento é o de antes: tempo total.
+   */
+  const minutosCarregando =
+    snapshot.idleFeePerMinuteCents > 0 ? durationMinutes - idleMinutes : durationMinutes;
+
   const timeCents =
     snapshot.pricePerMinuteCents > 0
-      ? roundToCents(durationMinutes * snapshot.pricePerMinuteCents, 'floor')
+      ? roundToCents(Math.max(0, minutosCarregando) * snapshot.pricePerMinuteCents, 'floor')
       : 0;
 
-  const subtotalCents = connectionFeeCents + energyCents + timeCents;
+  const idleCents =
+    snapshot.idleFeePerMinuteCents > 0
+      ? roundToCents(idleMinutes * snapshot.idleFeePerMinuteCents, 'floor')
+      : 0;
+
+  const subtotalCents = connectionFeeCents + energyCents + timeCents + idleCents;
 
   let total = subtotalCents;
   let minimumApplied = false;
@@ -146,6 +191,7 @@ export function calculateSessionAmount(input: PricingInput): PricingBreakdown {
     connectionFeeCents,
     energyCents,
     timeCents,
+    idleCents,
     subtotalCents,
     totalCents: assertCents(total),
     minimumApplied,
@@ -153,6 +199,7 @@ export function calculateSessionAmount(input: PricingInput): PricingBreakdown {
     ceilingApplied,
     energyKwh,
     durationMinutes,
+    idleMinutes,
   };
 }
 

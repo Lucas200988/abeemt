@@ -489,6 +489,15 @@ valor errado, interpretar recusa como aprovação, ou recusar todo webhook.
 **Fecha quando:** houver credenciais de sandbox e a suíte de conformidade passar
 contra elas. Ver `docs/payments/fase-7-o-que-falta.md`.
 
+> **2026-07-31 — fechado para a Rede.** 🟢 O adapter da Rede foi escrito com o
+> manual v1.38 lido na íntegra e **verificado contra o sandbox real: 8 de 8
+> passos**, incluindo captura parcial (R$ 8,00 de R$ 200,00), cancelamento e
+> recusa. As três divergências que só o sandbox mostraria (amount obrigatório
+> no cancelamento, simulador de recusa por valor inerte em pré-autorização,
+> cancelamento voltando pela trilha de refunds) foram encontradas e corrigidas
+> — exatamente o que este risco previa. O adapter PagBank permanece 🟠, travado
+> e não verificado.
+
 ### R-32 — Token de maquininha furtado 🟠 _(novo — 2026-07-31)_
 
 **P 3 · I 4 · Severidade 12 — ALTO**

@@ -255,7 +255,7 @@ aplicativo da maquininha.
 | Fornecedor | Contatado em | Respondeu | Atende                                                                        |
 | ---------- | ------------ | --------- | ----------------------------------------------------------------------------- |
 | PagBank    |              |           | ⏳ pendente — ver [arquitetura-de-cobranca.md §5](arquitetura-de-cobranca.md) |
-| Rede (portal e.Rede) | 2026-07-31 | **manual v1.38 lido na íntegra** | ✅ E1, E2, E4 e E5 confirmados; valor em centavos; OAuth 2.0; respostas e códigos documentados — ver [rede-e-rede-contrato.md](rede-e-rede-contrato.md) |
+| Rede (portal e.Rede) | 2026-07-31 | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md) |
 | Rede Store (SmartPOS) |         |           | 🔴 **não contatado** — é o que trava o aplicativo da maquininha            |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o

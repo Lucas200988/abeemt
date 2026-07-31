@@ -25,12 +25,12 @@ por kWh, taxa de conexão, preço por minuto, **ociosidade**, mínimo e máximo 
 confere quanto sai cada cenário antes de publicar. Alterar uma tarifa não muda o
 valor de recargas já realizadas.
 
-**FASE 7 quase concluída.** O fornecedor escolhido é a **Rede**: o manual
-oficial (v1.38) foi lido na íntegra e o adapter está **escrito e testado** —
-OAuth 2.0, pré-autorização, captura parcial, devolução assíncrona e a regra de
-que número de cartão nunca passa pelo nosso servidor. Ele fica trancado
-(`BORA_REDE_VERIFIED=false`) até a suíte de conformidade passar contra o
-sandbox com as credenciais reais; ver
+**FASE 7 concluída (2026-07-31).** O adquirente é a **Rede**, e o adapter foi
+**verificado contra o sandbox real: 8 de 8 passos** — reservar R$ 200,00,
+cobrar apenas R$ 8,00, devolver, cancelar reserva e mapear recusa. Número de
+cartão nunca passa pelo nosso servidor. Evidência e as duas ressalvas honestas
+(webhook da Rede não tem assinatura; recarga ponta a ponta com cartão depende
+da fonte do token, pergunta na Rede Store) em
 [o contrato da Rede](docs/payments/rede-e-rede-contrato.md).
 
 **FASE 8 concluída no lado do servidor.** A maquininha do poste tem identidade

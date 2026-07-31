@@ -263,7 +263,42 @@ adapter), `BORA_REDE_BASE_URL`/`BORA_REDE_OAUTH_URL` (vazios = sandbox),
 
 ---
 
-## 9. O que ainda depende de fora
+## 9. VERIFICAÇÃO CONTRA O SANDBOX — APROVADA (2026-07-31)
+
+Executada por Lucas, na máquina dele, em três rodadas de `pnpm verificar:rede`.
+Resultado final: **8 de 8 passos aprovados** contra o sandbox real da Rede.
+
+| # | Passo | Evidência |
+| - | ----- | --------- |
+| 1 | OAuth 2.0 | token de 1439 s (24 min, como o manual promete) |
+| 2 | Reserva de R$ 200,00 (`capture:false`) | `tid` real emitido |
+| 3 | Adapter enxerga a reserva | `AUTHORIZED`, autorizado 20000 |
+| 4 | **Captura PARCIAL: R$ 8,00 de R$ 200,00** | `CAPTURED`, capturado 800 — **o modelo do ADR-0008, provado no adquirente** |
+| 5 | Consulta confirma | capturado 800, devolvido 0 |
+| 6 | Devolução dos R$ 8,00 | `REFUNDED`, código 359 (síncrona) |
+| 7 | Cancelamento de reserva sem captura | `VOIDED`, nada cobrado |
+| 8 | Recusa do emissor | recusada e mapeada como recusa |
+
+As rodadas também **encontraram e corrigiram** dois pontos que só o sandbox
+real mostraria:
+
+- o `amount` é obrigatório no cancelamento (POST /refunds sem corpo → 400);
+- o simulador de recusa por valor não reage em pré-autorização — recusa
+  garantida é cartão fora da tabela (código 58);
+- e o cancelamento de reserva volta pela trilha de refunds: sem o ajuste, um
+  estorno fantasma apareceria no extrato de uma cobrança que nunca houve.
+
+**Com isso, `BORA_REDE_VERIFIED=true` está autorizado.** Duas notas honestas:
+
+1. O critério "webhook assinado" da FASE 7 não se aplica literalmente: a Rede
+   **não assina** webhooks (§3.3). O desenho equivalente é token fixo +
+   verdade pela consulta, já implementado e testado.
+2. "Sandbox aprovando e **iniciando recarga**" ponta a ponta com cartão exige
+   uma fonte de token de cartão (SDK da maquininha ou tokenização no
+   navegador) — é exatamente a pergunta pendente na Rede Store. O caminho por
+   `tid` (terminal autoriza → nós capturamos) está provado pelos passos 3–7.
+
+## 10. O que ainda depende de fora
 
 | # | Pendência | Quem destrava |
 | - | --------- | ------------- |

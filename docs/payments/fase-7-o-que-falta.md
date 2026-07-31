@@ -1,12 +1,14 @@
 # FASE 7 — o que falta, e quem destrava
 
-> **Atualização de 2026-07-31.** O fornecedor mais provável mudou de PagBank
-> para **Rede**: você criou o projeto no portal deles e trouxe a coleção
-> Postman e o manual completo (v1.38). As nove perguntas do contrato abaixo
-> estão **respondidas para a Rede** em
-> [rede-e-rede-contrato.md](rede-e-rede-contrato.md) — o adapter dela pode ser
-> escrito, e o que falta são as credenciais do sandbox (item 3.1, que continua
-> valendo, agora para a Rede). O adapter PagBank permanece como está, travado.
+> **CONCLUÍDA PARA A REDE — 2026-07-31.** O fornecedor escolhido é a **Rede**.
+> O manual v1.38 foi lido na íntegra, o adapter foi escrito com o contrato
+> confirmado, e a verificação contra o **sandbox real** passou com **8 de 8**
+> passos — incluindo a prova central do produto: R$ 200,00 reservados e
+> R$ 8,00 capturados. Evidência e ressalvas em
+> [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md).
+>
+> Este documento permanece como registro histórico e continua valendo para o
+> PagBank, cujo adapter segue travado e não verificado.
 
 A FASE 7 pede "sandbox aprovando e iniciando recarga, webhook assinado". Isso
 **não aconteceu**, e este documento diz exatamente por quê e o que resolve.

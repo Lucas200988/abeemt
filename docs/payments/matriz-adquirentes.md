@@ -187,13 +187,76 @@ Vale consultar mais de uma categoria — os modelos comerciais são bem diferent
 
 ---
 
+## Rede — o que o portal do desenvolvedor confirmou (2026-07-31)
+
+Levantado por você, a partir do Portal do Desenvolvedor Rede. Isto **não é
+suposição**: veio da página oficial.
+
+| Item                                    | Confirmado                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| Sandbox                                 | ✅ existe, **gratuito**, e **não exige vínculo contratual** para criar |
+| Como obter credencial                   | Criar conta → "Meus Projetos" → criar projeto → credencial automática  |
+| Autenticação                            | **OAuth 2.0** — `clientId` + `clientSecret` geram um token de acesso   |
+| Prazo da migração para OAuth 2.0        | 05/01/2026 — **já passou**; OAuth 2.0 é o padrão atual                 |
+| Ferramenta de teste                     | Coleção Postman baixável por projeto                                   |
+
+### Consequência técnica: OAuth 2.0 muda a forma da credencial
+
+O `HttpPaymentProvider` de hoje foi escrito para um **token estático** no
+cabeçalho — o modelo do PagBank. A Rede usa **client credentials**: duas chaves
+que são trocadas por um token de curta duração, que precisa ser renovado.
+
+Não é obstáculo — é padrão de mercado (RFC 6749) e cabe na mesma base HTTP. Mas
+significa que o adapter da Rede precisa de **obtenção e renovação de token**, e
+que as variáveis de ambiente serão duas chaves, não um token. **Só será escrito
+quando houver documentação lida** (risco R-31).
+
+### Os pacotes de API oferecidos, e o que cada um é
+
+Vistos na tela de criação de projeto:
+
+| Pacote                          | Serve para nós?                                                  |
+| ------------------------------- | ---------------------------------------------------------------- |
+| **e.Rede**                      | ✅ **é este** — autorização e captura de cartão pela API da Rede |
+| Gateway de Pagamento (maxiPago!)| Alternativa de gateway; segunda opção a avaliar                  |
+| Link de Pagamento               | Cobrança por link — não serve para terminal autoatendido         |
+| Chargeback                      | Contestação de cobrança; útil depois, não agora                  |
+| Credenciamento                  | Abertura de estabelecimento                                      |
+| Gestão de Acessos / de Vendas   | Administrativo                                                   |
+
+### Descoberta importante: o SDK da maquininha **não está neste portal**
+
+Nenhum dos pacotes acima é o SDK do SmartPOS. Este portal entrega as **APIs de
+servidor**. O aplicativo que roda **dentro** do equipamento é outro canal — a
+**Rede Store**, cujo contato é `DevSmartRede@userede.com.br`.
+
+São duas trilhas separadas, e a FASE 8 (caminho A) precisa das duas:
+
+```
+Rede Store (DevSmartRede@)  →  aplicativo que roda na maquininha
+e.Rede (portal + sandbox)   →  autorizar e capturar o cartão
+```
+
+**Isto não invalida o que foi construído.** A arquitetura já tem os dois
+caminhos, e a escolha entre eles é uma linha de configuração:
+
+- se o SDK do terminal fizer pré-autorização e captura parcial →
+  `recordTerminalAuthorization` (o que a FASE 8 entregou)
+- se não fizer → a maquininha só lê o cartão, e quem autoriza e captura é o
+  nosso servidor via e.Rede → `startPaidSession`, o caminho da FASE 5
+
+A pergunta que decide qual dos dois vale continua **aberta** e é o que trava o
+aplicativo da maquininha.
+
+---
+
 ## Situação da consulta
 
 | Fornecedor | Contatado em | Respondeu | Atende                                                                        |
 | ---------- | ------------ | --------- | ----------------------------------------------------------------------------- |
 | PagBank    |              |           | ⏳ pendente — ver [arquitetura-de-cobranca.md §5](arquitetura-de-cobranca.md) |
-|            |              |           |                                                                               |
-|            |              |           |                                                                               |
+| Rede (portal e.Rede) | 2026-07-31 | parcial — página pública lida | ⏳ sandbox gratuito confirmado; falta ler a documentação do e.Rede |
+| Rede Store (SmartPOS) |         |           | 🔴 **não contatado** — é o que trava o aplicativo da maquininha            |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
 PagBank vem de documentação pública e **não substitui a resposta deles** — o

@@ -221,11 +221,20 @@ Tudo abaixo tem teste automatizado, e o fluxo foi exercitado contra a API no ar.
 Esta fase entregou **o lado do servidor**. O aplicativo que roda dentro do
 equipamento depende do SDK do fabricante, e é aí que você precisa entrar.
 
-Para escrevê-lo, preciso das seguintes informações do portal do fabricante
-(Rede, PagBank ou quem for escolhido). **O ambiente onde eu rodo bloqueia o
-acesso a esses portais** — a política de saída do contêiner recusa a conexão
-(`connect_rejected`), não os sites. Você consegue abri-los normalmente no seu
-navegador; cole aqui o conteúdo das páginas:
+> **Atualização de 2026-07-31.** O Portal do Desenvolvedor Rede foi consultado e
+> **não distribui o SDK do SmartPOS** — ele entrega as APIs de servidor
+> (e.Rede, gateway, chargeback). O aplicativo que roda dentro do equipamento é
+> outro canal: a **Rede Store**, contato `DevSmartRede@userede.com.br`. Detalhes
+> em [matriz-adquirentes.md](matriz-adquirentes.md#rede--o-que-o-portal-do-desenvolvedor-confirmou-2026-07-31).
+>
+> Confirmado também: o sandbox da Rede é **gratuito e não exige contrato**, e a
+> autenticação é **OAuth 2.0** (`clientId` + `clientSecret`), não um token
+> estático como o do PagBank.
+
+Para escrevê-lo, preciso das seguintes informações do fabricante. **O ambiente
+onde eu rodo bloqueia o acesso a esses portais** — a política de saída do
+contêiner recusa a conexão (`connect_rejected`), não os sites. Você consegue
+abri-los normalmente no seu navegador; cole aqui o conteúdo das páginas:
 
 | Preciso saber                                                                 | Por quê |
 | ----------------------------------------------------------------------------- | ------- |

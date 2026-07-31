@@ -27,6 +27,12 @@ carregado no shell.
   PowerShell. Reescrito como `scripts/bootstrap.mjs`, em Node, com `shell: true`
   no Windows (lá o `pnpm` é um `.cmd` e o Node recusa executá-lo direto).
 
+- **`pnpm dev` subia dez observadores de TypeScript.** Para *usar* o sistema
+  bastam a API e o painel; os pacotes já estão compilados pelo `bootstrap`. Os
+  dez processos simultâneos derrubaram o Node com `SIGABRT` numa máquina
+  Windows. Agora `pnpm dev` sobe só os dois, e `pnpm dev:watch` mantém o modo
+  completo para quem estiver mexendo nos pacotes. A tarefa `dev` também passou a
+  depender de `^build`, garantindo que os pacotes estejam compilados.
 - **`pnpm dev` não subia.** O turbo exige concorrência maior que o número de
   tarefas persistentes; com os pacotes novos da FASE 5 o total chegou a 10,
   igual ao padrão, e o comando morria com `Invalid task configuration`. Agora

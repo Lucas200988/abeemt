@@ -68,6 +68,12 @@ pnpm bootstrap                  # 3. instala, migra, popula e constrói
 pnpm dev                        # 4. sobe API e painel
 ```
 
+`pnpm dev` sobe **apenas a API e o painel** — dois processos. Para mexer nos
+pacotes internos e vê-los recompilar ao salvar, use `pnpm dev:watch`, que abre
+um observador por pacote. Ele é bem mais pesado: dez processos de `tsc --watch`
+simultâneos derrubaram o Node por falta de memória numa máquina Windows real
+(2026-07-30), e é por isso que ele não é o padrão.
+
 **A ordem importa.** O `docker compose` lê `POSTGRES_PASSWORD` do `.env`, então
 ele só funciona depois que o arquivo existe e está preenchido — e o `.env` é
 criado pelo primeiro `pnpm bootstrap`. Subir o banco antes falha com
@@ -127,6 +133,7 @@ o seed se recusa a rodar com `NODE_ENV=production`.
 | Comando                | O que faz                                     |
 | ---------------------- | --------------------------------------------- |
 | `pnpm bootstrap`       | Prepara o ambiente do zero                    |
+| `pnpm dev:watch`       | Recompila os pacotes ao salvar (desenvolvimento dos pacotes) |
 | `pnpm dev`             | API e painel em modo desenvolvimento          |
 | `pnpm build`           | Constrói todos os pacotes                     |
 | `pnpm test`            | Roda toda a suíte                             |

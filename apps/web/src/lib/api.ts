@@ -254,6 +254,17 @@ export interface SiteView {
   createdAt: string;
 }
 
+export interface OperationalAlert {
+  code: string;
+  severity: 'CRITICAL' | 'WARNING';
+  message: string;
+  /** Nome do roteiro em docs/operations/incident-response.md. */
+  runbook: string;
+  entityType: string;
+  entityId: string;
+  since: string | null;
+}
+
 export interface DashboardOverview {
   chargers: {
     total: number;
@@ -519,6 +530,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  alerts: () => request<OperationalAlert[]>('/alerts'),
 
   terminals: (params: { siteId?: string } = {}) =>
     request<Paginated<TerminalView>>(`/terminals${query({ pageSize: 50, ...params })}`),

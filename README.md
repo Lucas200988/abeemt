@@ -39,8 +39,18 @@ sem aplicativo e sem cadastro para o motorista. O que ainda depende de você é 
 aplicativo que roda **dentro** do equipamento, porque ele exige o SDK do
 fabricante; ver [FASE 8: a maquininha](docs/payments/fase-8-maquininha.md).
 
-**407 testes automatizados**, incluindo o ciclo completo contra o simulador OCPP
-e as tentativas de burlar os limites do terminal.
+**FASE 9 em conclusão.** O sistema agora se defende sozinho: **alertas
+operacionais na primeira tela** do painel (sessão sem medição, cobrança
+pendente, carregador offline, maquininha muda — cada um apontando seu roteiro),
+**testes de caos** provando que a queda de 4G no meio da recarga não perde um
+Wh e que o adquirente fora do ar atrasa a cobrança sem perdê-la, **backup com
+restauração ensaiada** (`pnpm backup`), [roteiros de
+incidente](docs/operations/incident-response.md) e o [checklist do
+piloto](docs/operations/pilot-checklist.md). Os itens restantes do checklist
+dependem da FASE 4 (equipamento real) e do credenciamento de produção.
+
+**440 testes automatizados**, incluindo o ciclo completo contra o simulador
+OCPP, o caos e as tentativas de burlar os limites do terminal.
 
 O provedor de pagamento é **simulado**. Não existe adquirente real ligado, e o
 sistema **recusa subir em produção** com um provedor simulado como padrão — o
@@ -253,12 +263,14 @@ Cada fase só começa após validação explícita da anterior.
 
 ### Operações
 
+- [Roteiros de incidente](docs/operations/incident-response.md) — o que fazer quando cada alerta aparecer, passo a passo
+- [Backup e restauração](docs/operations/backup-restore.md) — gerar é metade; a outra metade é provar que volta
+- [Checklist do piloto](docs/operations/pilot-checklist.md) — o piloto só começa com ele assinado
 - [Levantamento de dados do WEMOB](docs/operations/wemob-data-collection.md) — formulário a preencher
 - [Plano de retorno à Tupi](docs/operations/tupi-rollback-plan.md) — rollback obrigatório antes da FASE 4
 - [Checklist de teste do WEMOB](docs/operations/wemob-test-checklist.md) — roteiro da FASE 4
 
-Documentos previstos para fases seguintes: `docs/operations/incident-response.md`
-(FASE 9), `docs/operations/payment-refund.md` (FASE 5), `docs/ocpp/wemob-quirks.md`
+Documentos previstos para fases seguintes: `docs/ocpp/wemob-quirks.md`
 (FASE 4), `docs/architecture/data-model.md`, `docs/testing/strategy.md`.
 
 ---

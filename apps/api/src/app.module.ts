@@ -19,6 +19,7 @@ import { TariffsModule } from './modules/tariffs/tariffs.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { TerminalsModule } from './modules/terminals/terminals.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -88,6 +89,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PaymentsModule,
     TerminalsModule,
     DashboardModule,
+    AlertsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

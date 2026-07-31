@@ -11,6 +11,8 @@ const INTERVALO_MS = 5000;
 
 export default function VisaoGeralPage() {
   const { dados, erro, carregando } = usePolling(() => api.overview(), INTERVALO_MS);
+  // Alertas mudam devagar; consultar junto com o overview seria desperdício.
+  const { dados: alertas } = usePolling(() => api.alerts(), 15000);
 
   if (carregando && !dados) return <Carregando />;
 
@@ -25,6 +27,22 @@ export default function VisaoGeralPage() {
       </header>
 
       {erro && <Alerta>{erro}</Alerta>}
+
+      {/* Alertas operacionais na PRIMEIRA tela, antes de qualquer número
+          (risco R-34: alerta que ninguém vê não é alerta). */}
+      {alertas && alertas.length > 0 && (
+        <Cartao titulo={`⚠ Precisa de atenção (${alertas.length})`}>
+          {alertas.map((a) => (
+            <Alerta
+              key={`${a.code}-${a.entityId}`}
+              tipo={a.severity === 'CRITICAL' ? 'erro' : 'aviso'}
+              detalhe={`desde ${formatRelative(a.since)} · roteiro: ${a.runbook}`}
+            >
+              {a.message}
+            </Alerta>
+          ))}
+        </Cartao>
+      )}
 
       {dados && (
         <>

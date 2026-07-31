@@ -544,6 +544,46 @@ consulta ao adquirente prova que a cobrança existe. **Fecha quando** houver
 sandbox real e a autorização declarada pelo terminal for conferida contra o
 adquirente antes de o carregador ligar (item para a FASE 7/9).
 
+### R-33 — Backup nunca restaurado 🟠 _(novo — 2026-07-31, FASE 9)_
+
+**P 3 · I 5 · Severidade 15 — CRÍTICO até o ensaio no piloto**
+
+Backup que nunca foi restaurado não é backup — é esperança. O modo clássico de
+descobrir isso é às 2h da manhã, com o banco corrompido e um `.dump` que não
+abre.
+
+**Mitigação:**
+
+- `pnpm backup`: formato `custom` do pg_dump, retenção automática, e recusa de
+  arquivo suspeito de vazio (< 1 KB).
+- Roteiro de restauração escrito (`backup-restore.md`), incluindo o caso de
+  incidente real (preservar o banco ferido, janela de perda, conciliação pela
+  Rede via `tid`).
+- **Ensaio completo executado em 2026-07-31** no ambiente de desenvolvimento:
+  gerar → restaurar em banco limpo → conferir contagens → descartar.
+- O mesmo ensaio na máquina do piloto é item **bloqueante** (🔒) do
+  `pilot-checklist.md`.
+
+**Fecha quando:** o ensaio rodar na máquina do piloto, com backup copiado para
+fora dela.
+
+### R-34 — Alerta que ninguém vê 🟢 _(novo — 2026-07-31, FASE 9)_
+
+**P 3 · I 4 · Severidade 12 → mitigado por desenho**
+
+Um sistema que detecta o problema e o exibe numa aba que ninguém abre falhou
+igual — só que com a consciência limpa.
+
+**Mitigação:** os alertas ficam na **primeira tela** do painel (Visão Geral),
+acima de qualquer número, recalculados do banco a cada consulta (alerta
+gravado envelhece e mente). Cada alerta carrega o nome do runbook — alerta sem
+"e agora?" só gera pânico. Todo alerta tem teste que o força a aparecer
+(`caos.e2e-spec.ts`), inclusive o isolamento entre estabelecimentos.
+
+**Resíduo aceito:** se ninguém abrir o painel, ninguém vê. Canal externo
+(e-mail/push) entra se o piloto mostrar necessidade — decisão registrada, não
+esquecida.
+
 ### R-19 — Simulador que "concorda consigo mesmo" 🟠
 
 **P 3 · I 4 · Severidade 12 → mitigado por design**
@@ -589,7 +629,7 @@ autorização. Nada foi apagado.
 | 6    | R-04, R-12, **R-22** + R-29                                       |
 | 7    | R-09, R-10, R-16, **R-23, R-27** + R-24                           |
 | 8    | **R-32** (bloqueante) + R-16, R-25, R-28                          |
-| 9    | todos revisados                                                   |
+| 9    | **R-33** (bloqueante) + R-34, R-23 + todos revisados              |
 
 ### Riscos com maior severidade atual (após revisão de 2026-07-29)
 

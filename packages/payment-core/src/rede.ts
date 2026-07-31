@@ -607,10 +607,19 @@ export class RedeProvider extends HttpPaymentProvider implements PaymentProvider
         : 0;
 
     // Soma apenas as devoluções CONCLUÍDAS — Processing ainda não é dinheiro.
-    const devolvido = (Array.isArray(refunds) ? refunds : refunds ? [refunds] : [])
+    const devolvidoBruto = (Array.isArray(refunds) ? refunds : refunds ? [refunds] : [])
       .map((r) => r as Record<string, unknown>)
       .filter((r) => typeof r.status === 'string' && r.status.toUpperCase() === 'DONE')
       .reduce((soma, r) => soma + (typeof r.amount === 'number' ? r.amount : 0), 0);
+
+    /**
+     * Devolução só existe sobre dinheiro COBRADO. O cancelamento de uma
+     * pré-autorização também passa pelo caminho de refunds na Rede, mas nada
+     * foi cobrado — registrá-lo como "devolvido" poria no extrato uma
+     * devolução de dinheiro que nunca saiu do cartão. Visto na verificação
+     * contra o sandbox (2026-07-31, passo 7).
+     */
+    const devolvido = capturado > 0 ? devolvidoBruto : 0;
 
     if (status === 'CAPTURED' && capturado === 0) status = 'AUTHORIZED';
     if (status === 'CAPTURED' && devolvido > 0) {

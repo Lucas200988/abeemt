@@ -332,6 +332,31 @@ describe('devolução — 360 é "recebido", não "feito"', () => {
     expect(resultado.status).toBe('VOIDED');
   });
 
+  /**
+   * Visto na verificação real (passo 7): o cancelamento da reserva passa pelo
+   * caminho de refunds na Rede, e a consulta volta com uma "devolução" — mas
+   * nada foi cobrado. Registrar devolução de dinheiro que nunca saiu do cartão
+   * poria no extrato um estorno fantasma.
+   */
+  it('cancelamento de reserva é VOIDED, não devolução — nada foi cobrado', async () => {
+    const { provider } = criar({}, [
+      { body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 5000 } } },
+      { body: { returnCode: '359' } },
+      {
+        body: {
+          authorization: { status: 'Canceled', returnCode: '00', tid: 't1', amount: 5000 },
+          refunds: [{ status: 'Done', amount: 5000 }],
+        },
+      },
+    ]);
+
+    const resultado = await provider.voidPayment('t1');
+
+    expect(resultado.status).toBe('VOIDED');
+    expect(resultado.amountCapturedCents).toBe(0);
+    expect(resultado.amountRefundedCents).toBe(0);
+  });
+
   it('devolver tudo sem informar valor devolve o que resta do capturado', async () => {
     const { provider, servidor } = criar({}, [
       {

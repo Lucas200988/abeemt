@@ -112,7 +112,7 @@ async function obterToken() {
 }
 
 /** Autorização direta com o cartão de teste — fora do adapter, de propósito. */
-async function autorizarDireto(amountCents) {
+async function autorizarDireto(amountCents, cartao = CARTAO_TESTE) {
   const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}/v2/transactions`, {
     method: 'POST',
     headers: {
@@ -124,7 +124,7 @@ async function autorizarDireto(amountCents) {
       kind: 'credit',
       reference: referencia(),
       amount: amountCents,
-      ...CARTAO_TESTE,
+      ...cartao,
     }),
   });
 
@@ -260,9 +260,19 @@ try {
     registrar(false, '7. Reserva de R$ 50,00 cancelada sem cobrar nada', detalheDoErro(e));
   }
 
-  // 8. Recusa do emissor (valor 111 força "Insufficient funds" no sandbox)
+  // 8. Recusa do emissor.
+  //
+  // O simulador por VALOR (amount 111) não reage em pré-autorização — o
+  // sandbox aprovou, visto na rodada de 2026-07-31. O caminho garantido pelo
+  // manual é outro: cartão FORA da lista de teste é sempre recusado com 58.
   try {
-    const { corpo } = await autorizarDireto(111);
+    const { corpo } = await autorizarDireto(1000, {
+      cardholderName: 'Teste Recusa',
+      cardNumber: '4111111111111111', // não está na tabela do sandbox → 58
+      expirationMonth: 1,
+      expirationYear: 2035,
+      securityCode: '123',
+    });
     const recusada = corpo?.returnCode && corpo.returnCode !== '00';
     registrar(
       Boolean(recusada),
@@ -270,7 +280,7 @@ try {
       `código ${corpo?.returnCode ?? '?'} · ${corpo?.returnMessage ?? ''}`,
     );
   } catch (e) {
-    // Recusa costuma vir como HTTP 400 com o código no corpo — também vale.
+    // Recusa também pode vir como HTTP 400 com o código no corpo — vale igual.
     const corpo = e?.raw;
     const recusada = corpo && typeof corpo.returnCode === 'string' && corpo.returnCode !== '00';
     registrar(

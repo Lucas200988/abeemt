@@ -25,11 +25,13 @@ por kWh, taxa de conexão, preço por minuto, **ociosidade**, mínimo e máximo 
 confere quanto sai cada cenário antes de publicar. Alterar uma tarifa não muda o
 valor de recargas já realizadas.
 
-**FASE 7 parcial.** Toda a base de um adquirente real está pronta e testada —
-prazo, retentativa, idempotência, assinatura de webhook, redação de credencial —
-e trancada até haver sandbox. O que falta são as credenciais e as respostas do
-contrato do fornecedor; ver
-[o que falta](docs/payments/fase-7-o-que-falta.md).
+**FASE 7 quase concluída.** O fornecedor escolhido é a **Rede**: o manual
+oficial (v1.38) foi lido na íntegra e o adapter está **escrito e testado** —
+OAuth 2.0, pré-autorização, captura parcial, devolução assíncrona e a regra de
+que número de cartão nunca passa pelo nosso servidor. Ele fica trancado
+(`BORA_REDE_VERIFIED=false`) até a suíte de conformidade passar contra o
+sandbox com as credenciais reais; ver
+[o contrato da Rede](docs/payments/rede-e-rede-contrato.md).
 
 **FASE 8 concluída no lado do servidor.** A maquininha do poste tem identidade
 própria, pareia por código de uso único e inicia a recarga passando o cartão —

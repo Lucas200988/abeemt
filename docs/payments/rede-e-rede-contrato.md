@@ -222,23 +222,44 @@ caminhos convivem.
 
 ---
 
-## 8. Efeito no código (o que fica destravado)
+## 8. O adapter — ESCRITO em 2026-07-31
 
-O adapter e.Rede **pode ser escrito agora** — o R-31 caía sobre "escrever sem
-ler o contrato", e o contrato foi lido. O que ele precisa ter, além do padrão
-`HttpPaymentProvider`:
+`packages/payment-core/src/rede.ts`, com 24 testes em `rede.spec.ts`. O R-31
+caía sobre "escrever sem ler o contrato"; o contrato foi lido, e cada item do
+`CONTRATO_REDE` carrega a procedência. **A única pendência do contrato é o
+prazo da pré-autorização do nosso ramo** (item do credenciamento).
 
-1. **Gerenciador de token OAuth** (24 min, renovar antes; nunca logar o token).
-2. **Rotas V2 sempre**; PV sem zeros à esquerda.
-3. Mapeamento de estados: `Approved/Denied/Canceled/Pending` + `returnCode` das
-   tabelas; desconhecido → FAILED.
-4. **Devolução em dois tempos**: 360 = pendente; reconsultar até `Done`/`Denied`.
-5. Retentativa guiada por reversível/irreversível (ABECS/MAC), não cega.
-6. Webhook tratado como aviso; verdade = consulta por `tid`.
-7. `reference` = nosso id de pagamento (≤16, único — encaixar o formato).
+A trava continua: enquanto `BORA_REDE_VERIFIED=false`, o adapter recusa toda
+operação e a API não sobe com ele como padrão. Manual lido ≠ sandbox
+exercitado.
 
-A trava continua: **nada opera sem passar na suíte de conformidade contra o
-sandbox real** (`BORA_REDE_VERIFIED`, mesmo desenho do PagBank).
+O que foi implementado, e por quê:
+
+1. **Gerenciador de token OAuth** — obtém, reutiliza e renova a 80% da validade;
+   o token nunca aparece em log (redação estendida ao token dinâmico).
+2. **Rotas V2 sempre**; PV normalizado sem zeros à esquerda; credencial
+   recusada (`401`) não é retentada às cegas.
+3. **Mapeamento conservador**: `Pending` de cartão = reserva em pé
+   (`AUTHORIZED`); desconhecido → `FAILED`, nunca sucesso.
+4. **Devolução em dois tempos**: todo cancelamento/devolução é seguido de uma
+   consulta; **360 não vira "devolvido"** — o status vem da reconsulta, e só
+   devolução `Done` conta como dinheiro devolvido.
+5. **`reference` determinístico** (hash de 16 caracteres da chave de
+   idempotência): a retentativa esbarra no erro 42 e **recupera** a transação
+   original em vez de criar outra — é assim que a idempotência funciona na Rede.
+6. **Webhook como aviso**: sem assinatura no corpo, a verificação é o token
+   fixo do portal (comparação em tempo constante) e a verdade é a consulta.
+7. **Seção 12 blindada**: `authorize` exige `cardToken` e **recusa** operar sem
+   ele — número de cartão não tem como passar pelo nosso servidor. Débito
+   recusado enquanto não houver 3DS.
+
+Fora do adapter, registrado para a fase de conformidade: a retentativa do
+`SessionWorker` guiada pelas tabelas reversível/irreversível (ABECS/MAC) — as
+bandeiras multam retentativa cega.
+
+Configuração: `BORA_REDE_PV`, `BORA_REDE_INTEGRATION_KEY` (registram o
+adapter), `BORA_REDE_BASE_URL`/`BORA_REDE_OAUTH_URL` (vazios = sandbox),
+`BORA_REDE_WEBHOOK_TOKEN` e `BORA_REDE_VERIFIED`.
 
 ---
 

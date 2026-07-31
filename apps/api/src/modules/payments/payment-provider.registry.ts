@@ -3,9 +3,11 @@ import {
   ManualPaymentProvider,
   MockPaymentProvider,
   PagBankProvider,
+  RedeProvider,
   TerminalMockPaymentProvider,
   assertProviderSupportsModel,
   pendenciasDoContrato,
+  pendenciasDoContratoRede,
   type PaymentProvider,
 } from '@bora/payment-core';
 import { runtimeEnv } from '../../config/runtime-env';
@@ -43,6 +45,23 @@ export class PaymentProviderRegistry implements OnModuleInit {
           token: runtimeEnv.BORA_PAGBANK_TOKEN,
           webhookSecret: runtimeEnv.BORA_PAGBANK_WEBHOOK_SECRET,
           verificado: runtimeEnv.BORA_PAGBANK_VERIFIED,
+        }),
+      );
+    }
+
+    /**
+     * Rede (e.Rede). Sem PV e chave, nem entra na lista — mesma regra do
+     * PagBank: um provedor que falharia na primeira chamada não é oferecido.
+     */
+    if (runtimeEnv.BORA_REDE_PV && runtimeEnv.BORA_REDE_INTEGRATION_KEY) {
+      this.register(
+        new RedeProvider({
+          pv: runtimeEnv.BORA_REDE_PV,
+          integrationKey: runtimeEnv.BORA_REDE_INTEGRATION_KEY,
+          baseUrl: runtimeEnv.BORA_REDE_BASE_URL,
+          oauthUrl: runtimeEnv.BORA_REDE_OAUTH_URL,
+          webhookToken: runtimeEnv.BORA_REDE_WEBHOOK_TOKEN,
+          verificado: runtimeEnv.BORA_REDE_VERIFIED,
         }),
       );
     }
@@ -88,6 +107,15 @@ export class PaymentProviderRegistry implements OnModuleInit {
         'O adapter do PagBank ainda não foi verificado contra o sandbox e não pode ser o ' +
           `provedor padrão. Itens pendentes no contrato: ${pendenciasDoContrato().join(', ')}.\n` +
           'Ver docs/payments/fase-7-o-que-falta.md.',
+      );
+    }
+
+    if (padrao === 'rede' && !runtimeEnv.BORA_REDE_VERIFIED) {
+      throw new Error(
+        'O adapter da Rede ainda não foi verificado contra o sandbox e não pode ser o ' +
+          'provedor padrão. O manual foi lido, mas a suíte de conformidade precisa passar ' +
+          `com as credenciais reais. Pendências: ${pendenciasDoContratoRede().join(', ') || 'nenhuma'}.\n` +
+          'Ver docs/payments/rede-e-rede-contrato.md.',
       );
     }
 

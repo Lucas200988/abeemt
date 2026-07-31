@@ -114,6 +114,32 @@ export const envSchema = z
      * qualquer operação — ver `docs/payments/fase-7-o-que-falta.md`.
      */
     BORA_PAGBANK_VERIFIED: booleanFromString.default(false),
+
+    /**
+     * Rede/e.Rede (FASE 7 — fornecedor mais provável desde 2026-07-31).
+     * Vazio = adapter não registrado.
+     *
+     * PV e chave de integração vêm do card do projeto no Portal do
+     * Desenvolvedor (sandbox) ou do portal Use Rede (produção). O PV vira
+     * `clientId` e a chave vira `clientSecret` no OAuth 2.0.
+     */
+    BORA_REDE_PV: z.string().optional(),
+    BORA_REDE_INTEGRATION_KEY: z.string().optional(),
+    /** Raiz da API transacional. Vazio = sandbox oficial. */
+    BORA_REDE_BASE_URL: z.string().optional(),
+    /** Raiz do serviço de token OAuth. Vazio = sandbox oficial. */
+    BORA_REDE_OAUTH_URL: z.string().optional(),
+    /**
+     * Token fixo registrado no portal para a URL de notificação. A Rede não
+     * assina o corpo do webhook — este token é a única autenticação dele.
+     */
+    BORA_REDE_WEBHOOK_TOKEN: z.string().optional(),
+    /**
+     * Só `true` depois de a suíte de conformidade passar contra o sandbox.
+     * O manual foi lido na íntegra (v1.38), mas manual lido ≠ sandbox
+     * exercitado — ver `docs/payments/rede-e-rede-contrato.md`.
+     */
+    BORA_REDE_VERIFIED: booleanFromString.default(false),
   })
   .superRefine((env, ctx) => {
     // Os dois segredos não podem ser iguais: um token de refresh assinado com a

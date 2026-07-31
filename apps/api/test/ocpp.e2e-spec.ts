@@ -826,10 +826,23 @@ describe('Encerramento pelo veículo (StopTransaction espontâneo)', () => {
     const sessao = await criarSessaoPaga();
     await commands.remoteStart({ sessionId: sessao.id });
 
-    await aguardar(async () => {
-      const s = await prisma.chargingSession.findUnique({ where: { id: sessao.id } });
-      return s?.status === 'CHARGING';
-    });
+    /**
+     * A espera precisa cobrir os DOIS lados.
+     *
+     * O servidor grava `CHARGING` antes de responder o `StartTransaction`, então
+     * existe um instante em que a sessão já está carregando e o simulador ainda
+     * não recebeu o `transactionId`. Esperar só pelo banco fazia este teste
+     * falhar de forma intermitente, com "não há transação em andamento para
+     * encerrar" — só na suíte completa, onde a máquina está mais carregada.
+     * Observado em 2026-07-30.
+     */
+    await aguardar(
+      async () => {
+        const s = await prisma.chargingSession.findUnique({ where: { id: sessao.id } });
+        return s?.status === 'CHARGING' && sim.transactionId !== null;
+      },
+      { descricao: 'recarga em curso no servidor e no carregador' },
+    );
 
     sim.advanceMeter(5_000);
     await sim.stopTransaction('EVDisconnected');

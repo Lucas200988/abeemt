@@ -181,6 +181,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@bora/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@bora/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

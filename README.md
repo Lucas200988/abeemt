@@ -102,6 +102,14 @@ falhar, a API não sobe com o schema errado.
 | Saúde   | http://localhost:3001/api/health |
 | Pronto  | http://localhost:3001/api/ready  |
 
+**Portas ocupadas?** As duas são configuráveis no `.env`, e valem para
+`pnpm dev`, `pnpm start` e o Docker:
+
+```
+WEB_PORT=3005    # painel
+API_PORT=3006    # API — lembre de ajustar NEXT_PUBLIC_API_URL junto
+```
+
 ### Usuários criados pelo seed
 
 Todos usam a senha definida em `SEED_ADMIN_PASSWORD`. **Somente desenvolvimento** —

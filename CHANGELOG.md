@@ -27,6 +27,14 @@ carregado no shell.
   PowerShell. Reescrito como `scripts/bootstrap.mjs`, em Node, com `shell: true`
   no Windows (lá o `pnpm` é um `.cmd` e o Node recusa executá-lo direto).
 
+- **`pnpm dev` não subia.** O turbo exige concorrência maior que o número de
+  tarefas persistentes; com os pacotes novos da FASE 5 o total chegou a 10,
+  igual ao padrão, e o comando morria com `Invalid task configuration`. Agora
+  `turbo.json` fixa `concurrency: 20`, com folga para os próximos pacotes.
+- **A porta do painel usava sintaxe de bash.** `next dev -p ${WEB_PORT:-3000}`
+  não expande no `cmd.exe`, que é quem roda os scripts no Windows. Substituído
+  por `apps/web/scripts/next.mjs`, que lê `WEB_PORT` do `.env` da raiz e
+  funciona nos três sistemas.
 - **A ordem documentada era impossível.** O README mandava subir o banco antes
   de preencher o `.env`, mas o `docker compose` lê `POSTGRES_PASSWORD` desse
   mesmo arquivo e falhava com `required variable POSTGRES_PASSWORD is missing a

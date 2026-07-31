@@ -514,15 +514,32 @@ export class RedeProvider extends HttpPaymentProvider implements PaymentProvider
    * Dois motivos: a resposta da devolução não traz os valores totais do
    * pagamento — e o código 360 significa "recebido", não "feito". A consulta é
    * a única fonte da verdade; o status do pedido só ajusta a mensagem.
+   *
+   * O `amount` é OBRIGATÓRIO no cancelamento da Rede — confirmado na
+   * verificação contra o sandbox em 2026-07-31: sem corpo, HTTP 400. Quando
+   * quem chamou não informa o valor (cancelar reserva, devolver tudo), ele é
+   * descoberto pela consulta: o autorizado se nada foi capturado, ou o que
+   * resta do capturado.
    */
   private async devolverEConsultar(
     tid: string,
     amountCents: Cents | undefined,
   ): Promise<PaymentResult> {
+    let valor = amountCents;
+
+    if (valor === undefined) {
+      const atual = await this.getPayment(tid);
+      valor = assertCents(
+        atual.amountCapturedCents > 0
+          ? atual.amountCapturedCents - atual.amountRefundedCents
+          : atual.amountAuthorizedCents,
+      );
+    }
+
     const { body } = await this.requestRede<Record<string, unknown>>(
       'POST',
       CONTRATO_REDE.cancelar.valor.replace('{tid}', tid),
-      amountCents === undefined ? undefined : { [CONTRATO_REDE.campoValor.valor]: amountCents },
+      { [CONTRATO_REDE.campoValor.valor]: valor },
     );
 
     const codigo = typeof body?.returnCode === 'string' ? body.returnCode : '';

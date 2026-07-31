@@ -139,6 +139,12 @@ function limpo(texto) {
   return t;
 }
 
+/** Descreve um erro mostrando o que a Rede respondeu, não só o HTTP. */
+function detalheDoErro(e) {
+  const corpo = e?.raw ? ` · resposta: ${JSON.stringify(e.raw).slice(0, 300)}` : '';
+  return limpo(`${e?.message ?? e}${corpo}`);
+}
+
 // ---------------------------------------------------------------------------
 // O roteiro
 // ---------------------------------------------------------------------------
@@ -183,38 +189,47 @@ try {
     if (!ok) throw new Error('sem reserva não há o que capturar');
   }
 
+  // Daqui em diante, um passo que falhe NÃO derruba os seguintes: cada um
+  // registra o próprio ❌ com a resposta da Rede, e o roteiro segue.
+
   // 3. O adapter enxerga a reserva
-  {
+  try {
     const r = await adapter.getPayment(tid);
     registrar(
       r.status === 'AUTHORIZED',
       '3. Consulta pelo adapter mostra a reserva em pé',
       `status ${r.status}, autorizado ${r.amountAuthorizedCents}`,
     );
+  } catch (e) {
+    registrar(false, '3. Consulta pelo adapter mostra a reserva em pé', detalheDoErro(e));
   }
 
   // 4. Captura de R$ 8,00 — MENOS que o reservado. É o produto inteiro.
-  {
+  try {
     const r = await adapter.capture(tid, 800);
     registrar(
       r.status === 'CAPTURED' && r.amountCapturedCents === 800,
       '4. Captura PARCIAL de R$ 8,00 sobre R$ 200,00 reservados',
       `status ${r.status}, capturado ${r.amountCapturedCents}`,
     );
+  } catch (e) {
+    registrar(false, '4. Captura PARCIAL de R$ 8,00 sobre R$ 200,00 reservados', detalheDoErro(e));
   }
 
   // 5. A consulta confirma a captura
-  {
+  try {
     const r = await adapter.getPayment(tid);
     registrar(
       r.status === 'CAPTURED' && r.amountCapturedCents === 800,
       '5. Consulta confirma R$ 8,00 cobrados',
       `status ${r.status}, capturado ${r.amountCapturedCents}, devolvido ${r.amountRefundedCents}`,
     );
+  } catch (e) {
+    registrar(false, '5. Consulta confirma R$ 8,00 cobrados', detalheDoErro(e));
   }
 
   // 6. Devolução do valor cobrado
-  {
+  try {
     const r = await adapter.refund(tid, 800);
     const ok = r.status === 'REFUNDED' || r.providerCode === '360' || r.providerCode === '359';
     registrar(
@@ -222,10 +237,12 @@ try {
       '6. Devolução dos R$ 8,00',
       `status ${r.status}, código ${r.providerCode ?? '—'} (360 = processa em D+1, é normal)`,
     );
+  } catch (e) {
+    registrar(false, '6. Devolução dos R$ 8,00', detalheDoErro(e));
   }
 
   // 7. Nova reserva e cancelamento SEM captura (o caso "recarga não aconteceu")
-  {
+  try {
     const { corpo } = await autorizarDireto(5000);
     const tid2 = corpo?.tid;
     if (corpo?.returnCode === '00' && tid2) {
@@ -239,10 +256,12 @@ try {
     } else {
       registrar(false, '7. Reserva para o teste de cancelamento', limpo(JSON.stringify(corpo).slice(0, 200)));
     }
+  } catch (e) {
+    registrar(false, '7. Reserva de R$ 50,00 cancelada sem cobrar nada', detalheDoErro(e));
   }
 
   // 8. Recusa do emissor (valor 111 força "Insufficient funds" no sandbox)
-  {
+  try {
     const { corpo } = await autorizarDireto(111);
     const recusada = corpo?.returnCode && corpo.returnCode !== '00';
     registrar(
@@ -250,10 +269,19 @@ try {
       '8. Recusa do emissor é tratada como recusa',
       `código ${corpo?.returnCode ?? '?'} · ${corpo?.returnMessage ?? ''}`,
     );
+  } catch (e) {
+    // Recusa costuma vir como HTTP 400 com o código no corpo — também vale.
+    const corpo = e?.raw;
+    const recusada = corpo && typeof corpo.returnCode === 'string' && corpo.returnCode !== '00';
+    registrar(
+      Boolean(recusada),
+      '8. Recusa do emissor é tratada como recusa',
+      recusada ? `código ${corpo.returnCode} · ${corpo.returnMessage ?? ''}` : detalheDoErro(e),
+    );
   }
 } catch (e) {
   console.log('');
-  console.log(`Interrompido: ${limpo(e.message)}`);
+  console.log(`Interrompido: ${detalheDoErro(e)}`);
 }
 
 // ---------------------------------------------------------------------------

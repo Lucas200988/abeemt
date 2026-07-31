@@ -279,7 +279,7 @@ describe('devolução — 360 é "recebido", não "feito"', () => {
       },
     ]);
 
-    const resultado = await provider.refund('t1');
+    const resultado = await provider.refund('t1', assertCents(2000));
 
     // O dinheiro AINDA está cobrado; só a reconsulta confirma a devolução.
     expect(resultado.status).toBe('CAPTURED');
@@ -300,10 +300,65 @@ describe('devolução — 360 é "recebido", não "feito"', () => {
       },
     ]);
 
-    const resultado = await provider.refund('t1');
+    const resultado = await provider.refund('t1', assertCents(2000));
 
     expect(resultado.status).toBe('REFUNDED');
     expect(resultado.amountRefundedCents).toBe(2000);
+  });
+
+  /**
+   * O defeito que a verificação contra o sandbox encontrou (2026-07-31, passo
+   * 7): o cancelamento SEM corpo devolvia HTTP 400 — o `amount` é obrigatório
+   * na Rede, mesmo para cancelar a reserva inteira. O valor tem que vir da
+   * consulta, porque quem cancela uma reserva não sabe (nem deve precisar
+   * saber) quanto foi reservado.
+   */
+  it('cancelar a reserva descobre o valor na consulta e o envia no corpo', async () => {
+    const { provider, servidor } = criar({}, [
+      // 1ª chamada: a consulta que descobre o valor reservado.
+      { body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 5000 } } },
+      // 2ª: o cancelamento em si.
+      { body: { returnCode: '359', returnMessage: 'Refund successful' } },
+      // 3ª: a consulta final, que confirma.
+      { body: { authorization: { status: 'Canceled', returnCode: '00', tid: 't1', amount: 5000 } } },
+    ]);
+
+    const resultado = await provider.voidPayment('t1');
+
+    const cancelamento = servidor.transacionais()[1];
+    expect(cancelamento.url).toContain('/refunds');
+    expect(JSON.parse(String(cancelamento.init.body))).toEqual({ amount: 5000 });
+
+    expect(resultado.status).toBe('VOIDED');
+  });
+
+  it('devolver tudo sem informar valor devolve o que resta do capturado', async () => {
+    const { provider, servidor } = criar({}, [
+      {
+        body: {
+          authorization: { status: 'Approved', returnCode: '00', tid: 't1', amount: 2000 },
+          capture: { amount: 2000 },
+          refunds: [{ status: 'Done', amount: 500 }],
+        },
+      },
+      { body: { returnCode: '360' } },
+      {
+        body: {
+          authorization: { status: 'Approved', returnCode: '00', tid: 't1', amount: 2000 },
+          capture: { amount: 2000 },
+          refunds: [
+            { status: 'Done', amount: 500 },
+            { status: 'Processing', amount: 1500 },
+          ],
+        },
+      },
+    ]);
+
+    await provider.refund('t1');
+
+    const devolucao = servidor.transacionais()[1];
+    // 2000 capturados − 500 já devolvidos = 1500.
+    expect(JSON.parse(String(devolucao.init.body))).toEqual({ amount: 1500 });
   });
 });
 

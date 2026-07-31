@@ -117,6 +117,11 @@ API_PORT=3006    # API
 NEXT_PUBLIC_API_URL=http://localhost:3006/api/v1   # precisa acompanhar a API
 ```
 
+Fora de produção, a API libera automaticamente o CORS para o painel local na
+porta configurada em `WEB_PORT` — sem isso, trocar a porta do painel quebrava o
+login de um jeito que não parecia CORS. Em produção vale exatamente o que
+estiver em `CORS_ORIGINS`.
+
 > **Ao mudar `NEXT_PUBLIC_API_URL`, reinicie o painel.** O Next congela as
 > variáveis `NEXT_PUBLIC_*` no momento em que o servidor inicia — editar o
 > `.env` com o painel já rodando não tem efeito. No navegador, recarregue com

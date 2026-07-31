@@ -80,9 +80,49 @@ describe('corsOrigins', () => {
   it('separa, apara espaços e descarta vazios', () => {
     const env = parseEnv({
       ...base,
+      NODE_ENV: 'production',
+      SWAGGER_ENABLED: 'false',
       CORS_ORIGINS: 'http://a.com, http://b.com ,,',
     } as NodeJS.ProcessEnv);
 
     expect(corsOrigins(env)).toEqual(['http://a.com', 'http://b.com']);
+  });
+
+  /**
+   * O painel numa porta diferente da configurada em CORS_ORIGINS é o caminho
+   * normal em desenvolvimento — basta a 3000 estar ocupada. Sem esta liberação,
+   * o navegador bloqueia a chamada e o sintoma não parece CORS: o painel diz que
+   * não conecta, enquanto a API responde bem se testada direto.
+   */
+  it('libera o painel local automaticamente fora de produção', () => {
+    const env = parseEnv({ ...base, WEB_PORT: '3005' } as NodeJS.ProcessEnv);
+
+    expect(corsOrigins(env)).toContain('http://localhost:3005');
+    expect(corsOrigins(env)).toContain('http://127.0.0.1:3005');
+    // A lista configurada continua valendo.
+    expect(corsOrigins(env)).toContain('http://localhost:3000');
+  });
+
+  it('não duplica quando a origem já está configurada', () => {
+    const env = parseEnv({
+      ...base,
+      WEB_PORT: '3000',
+      CORS_ORIGINS: 'http://localhost:3000',
+    } as NodeJS.ProcessEnv);
+
+    expect(corsOrigins(env).filter((o) => o === 'http://localhost:3000')).toHaveLength(1);
+  });
+
+  /** Em produção não há liberação por conveniência. */
+  it('em produção vale exatamente a lista configurada', () => {
+    const env = parseEnv({
+      ...base,
+      NODE_ENV: 'production',
+      SWAGGER_ENABLED: 'false',
+      WEB_PORT: '3005',
+      CORS_ORIGINS: 'https://painel.sonare.com.br',
+    } as NodeJS.ProcessEnv);
+
+    expect(corsOrigins(env)).toEqual(['https://painel.sonare.com.br']);
   });
 });

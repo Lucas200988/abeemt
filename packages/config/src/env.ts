@@ -37,6 +37,11 @@ export const envSchema = z
 
     // API
     API_PORT: port.default(3001),
+    /**
+     * Porta do painel. A API precisa conhecê-la para liberar o CORS em
+     * desenvolvimento — ver `corsOrigins`.
+     */
+    WEB_PORT: port.default(3000),
     API_PREFIX: z.string().default('api'),
     SWAGGER_ENABLED: booleanFromString.default(true),
     CORS_ORIGINS: z.string().default('http://localhost:3000'),
@@ -150,9 +155,30 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return result.data;
 }
 
-/** Origens de CORS já separadas, para uso direto. */
+/**
+ * Origens de CORS já separadas, para uso direto.
+ *
+ * **Fora de produção**, o endereço local do painel é incluído automaticamente.
+ * Sem isso, trocar `WEB_PORT` porque a 3000 estava ocupada quebrava o login de
+ * um jeito que não parecia CORS: o navegador bloqueia a chamada antes de sair, e
+ * o painel só consegue dizer "não foi possível conectar ao servidor" — enquanto
+ * a API responde normalmente se testada direto. Aconteceu numa instalação real
+ * em 2026-07-31 e custou várias tentativas até alguém desconfiar do CORS.
+ *
+ * Em produção não há mágica: vale exatamente a lista configurada, porque liberar
+ * origem por conveniência é como se abre a porta que não devia.
+ */
 export function corsOrigins(env: Env): string[] {
-  return env.CORS_ORIGINS.split(',')
+  const configuradas = env.CORS_ORIGINS.split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+
+  if (env.NODE_ENV === 'production') return configuradas;
+
+  const painelLocal = [
+    `http://localhost:${env.WEB_PORT}`,
+    `http://127.0.0.1:${env.WEB_PORT}`,
+  ].filter((origem) => !configuradas.includes(origem));
+
+  return [...configuradas, ...painelLocal];
 }

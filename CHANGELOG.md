@@ -47,6 +47,14 @@ carregado no shell.
   value`. A sequência correta — criar o `.env`, preencher, subir o banco,
   instalar — passou a estar no README e na mensagem do próprio script.
 
+- **CORS bloqueava o painel numa porta diferente da 3000.** `CORS_ORIGINS` tem
+  `http://localhost:3000` como padrão; com o painel em outra porta, o navegador
+  barrava a chamada antes de sair e o sintoma não parecia CORS — o painel dizia
+  "não foi possível conectar ao servidor" enquanto a API respondia normalmente
+  quando testada direto. Fora de produção, `corsOrigins()` passa a incluir o
+  painel local em `WEB_PORT` automaticamente. Em produção, nada muda: vale
+  exatamente a lista configurada.
+
 #### Adicionado
 
 - `scripts/bootstrap.mjs` — verifica Node e pnpm, cria o `.env` na primeira

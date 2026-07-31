@@ -5,6 +5,7 @@
   "globalEnv": [
     "NODE_ENV",
     "DATABASE_URL",
+    "DATABASE_URL_TEST",
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     "BORA_BRAND_NAME",

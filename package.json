@@ -27,7 +27,7 @@
     "bootstrap": "node scripts/bootstrap.mjs",
     "dev:watch": "turbo run dev",
     "sim": "node apps/ocpp-simulator/dist/cli.js",
-    "verificar:rede": "pnpm --filter @bora/payment-core build && pnpm --filter @bora/payment-core verificar"
+    "verificar:rede": "turbo run build --filter=@bora/payment-core && pnpm --filter @bora/payment-core verificar"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

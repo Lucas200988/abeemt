@@ -202,7 +202,7 @@ pnpm test
 | 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
 | 5    | Pagamento simulado                                            | ✅ **concluída**                    |
 | 6    | Tarifação e regras comerciais                                 | ✅ **concluída**                    |
-| 7    | Integração com pagamento real                                 | ⬜ não iniciada                     |
+| 7    | Integração com pagamento real                                 | 🟡 parcial — falta sandbox          |
 | 8    | SmartPOS / terminal de autoatendimento                        | ⬜ não iniciada                     |
 | 9    | Endurecimento para piloto                                     | ⬜ não iniciada                     |
 
@@ -229,6 +229,7 @@ Cada fase só começa após validação explícita da anterior.
 - [Matriz de adquirentes](docs/payments/matriz-adquirentes.md) — critérios eliminatórios e roteiro de consulta a fornecedores
 - [Fluxo financeiro implementado](docs/payments/fluxo-implementado.md) — o que a FASE 5 entregou, com os caminhos de falha cobertos
 - [Tarifação](docs/payments/tarifacao.md) — como o preço é decidido e por que ele não muda depois
+- [FASE 7: o que falta](docs/payments/fase-7-o-que-falta.md) — o que já está pronto e testado, e o que só as credenciais de sandbox destravam
 
 ### Operações
 

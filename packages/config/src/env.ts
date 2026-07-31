@@ -82,6 +82,17 @@ export const envSchema = z
     BORA_VEHICLE_START_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
     /** Intervalo do worker que fecha sessões e captura valores, em segundos. */
     BORA_SETTLEMENT_INTERVAL_SECONDS: z.coerce.number().int().positive().default(15),
+
+    // Adquirente real (FASE 7). Vazio = adapter não registrado.
+    BORA_PAGBANK_BASE_URL: z.string().optional(),
+    BORA_PAGBANK_TOKEN: z.string().optional(),
+    BORA_PAGBANK_WEBHOOK_SECRET: z.string().optional(),
+    /**
+     * Só `true` depois de o adapter ter sido exercitado contra o sandbox e a
+     * suíte de conformidade ter passado. Enquanto for falso, o adapter recusa
+     * qualquer operação — ver `docs/payments/fase-7-o-que-falta.md`.
+     */
+    BORA_PAGBANK_VERIFIED: booleanFromString.default(false),
   })
   .superRefine((env, ctx) => {
     // Os dois segredos não podem ser iguais: um token de refresh assinado com a

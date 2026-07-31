@@ -37,10 +37,11 @@ export class PaymentWebhooksService {
     providerName: string,
     payload: unknown,
     headers: Record<string, string>,
+    rawBody?: Buffer,
   ): Promise<WebhookOutcome> {
     const provider = this.providers.get(providerName);
 
-    const assinaturaValida = await provider.verifyWebhook(payload, headers);
+    const assinaturaValida = await provider.verifyWebhook(payload, headers, rawBody);
     if (!assinaturaValida) {
       this.logger.warn({ provider: providerName }, 'webhook com assinatura inválida — recusado');
 

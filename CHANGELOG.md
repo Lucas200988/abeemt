@@ -5,6 +5,33 @@ Este projeto ainda não versiona releases — as entradas são organizadas por f
 
 ## [Não lançado]
 
+### FASE 7 — integração com adquirente real (parcial) — 2026-07-31
+
+A fase **não fecha** sem credenciais de sandbox, e isso está registrado em
+`docs/payments/fase-7-o-que-falta.md` em vez de disfarçado.
+
+#### Adicionado
+
+- **Suíte de conformidade** (`packages/payment-core/src/conformance.ts`) — o
+  contrato que todo adapter precisa cumprir, escrito uma vez e rodado contra
+  cada implementação. Hoje cobre `mock` e `manual`; o adapter real entra com uma
+  linha quando houver sandbox.
+- **`HttpPaymentProvider`** — base com o que é igual em qualquer adquirente:
+  prazo por tentativa, retentativa só no recuperável (4xx nunca), chave de
+  idempotência, verificação HMAC sobre os bytes originais com comparação em
+  tempo constante, e redação da credencial em qualquer texto que vire log.
+- **Adapter PagBank** com estrutura completa, os pontos do fornecedor isolados
+  no objeto `CONTRATO` (cada item marcado como `confirmado` ou `a confirmar`) e
+  uma trava: recusa toda operação enquanto `BORA_PAGBANK_VERIFIED` for falso.
+
+#### Corrigido
+
+- **A assinatura do webhook era conferida sobre o JSON reconvertido.** O Nest
+  entrega o corpo já interpretado, e reconverter muda espaçamento e ordem de
+  chaves — a assinatura de qualquer adquirente real deixaria de bater, e o
+  sintoma seria "todo webhook é recusado". A API passa a guardar o corpo cru
+  (`rawBody: true`) e a porta o recebe.
+
 ### Instalação em Windows — 2026-07-30
 
 Primeira instalação do projeto numa máquina Windows expôs três defeitos no

@@ -462,6 +462,33 @@ grossura.
 - Enquanto a periodicidade real do WEMOB não for conhecida, a recomendação é
   **não cobrar ociosidade** (deixar o campo em zero, que é o padrão).
 
+### R-31 — Adapter de adquirente escrito sem contrato verificado 🟠 _(novo — 2026-07-31)_
+
+**P 4 · I 4 · Severidade 16 — CRÍTICO enquanto não verificado**
+
+O portal de documentação do PagBank recusa acesso automatizado (HTTP 403,
+verificado em 2026-07-31). O adapter foi escrito com a estrutura completa, mas
+caminhos, nomes de campos e estados são **suposição** — podem divergir do real.
+
+Um adapter assim, se entrasse em operação, falharia de formas caras: capturar o
+valor errado, interpretar recusa como aprovação, ou recusar todo webhook.
+
+**Mitigação:**
+
+- Tudo que **não** depende do fornecedor está em `HttpPaymentProvider` e é
+  testado de verdade: prazo, retentativa, idempotência, HMAC, redação de
+  credencial.
+- Tudo que depende está em um único objeto `CONTRATO`, com a procedência de cada
+  item marcada como `confirmado` ou `a confirmar`.
+- **Trava:** o adapter recusa toda operação enquanto `BORA_PAGBANK_VERIFIED` for
+  falso, e a API não sobe se ele for o provedor padrão sem verificação.
+- Mapeamento conservador: estado desconhecido vira `FAILED`, nunca sucesso.
+- Suíte de conformidade pronta para rodar contra o sandbox — é ela o critério de
+  "funciona", não a impressão de que funcionou.
+
+**Fecha quando:** houver credenciais de sandbox e a suíte de conformidade passar
+contra elas. Ver `docs/payments/fase-7-o-que-falta.md`.
+
 ### R-19 — Simulador que "concorda consigo mesmo" 🟠
 
 **P 3 · I 4 · Severidade 12 → mitigado por design**

@@ -13,7 +13,15 @@ import { OcppGateway } from './modules/ocpp/ocpp.gateway';
 async function bootstrap(): Promise<void> {
   const env = parseEnv();
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  /**
+   * `rawBody: true` guarda os bytes originais da requisição.
+   *
+   * A assinatura HMAC de um webhook é calculada sobre o corpo **como veio**.
+   * Reconverter o JSON já convertido pelo Nest muda espaçamento e ordem de
+   * chaves, e a assinatura passa a não bater — a falha só apareceria com um
+   * adquirente real, na forma de "todo webhook é recusado".
+   */
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   app.useLogger(app.get(PinoLogger));
 

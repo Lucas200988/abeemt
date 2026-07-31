@@ -1,0 +1,162 @@
+import { createHmac } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import { assertCents } from '@bora/contracts';
+import { CONTRATO, PagBankProvider, pendenciasDoContrato } from './pagbank';
+import { assertProviderSupportsModel } from './provider';
+
+/**
+ * O que estes testes provam — e o que NÃO provam.
+ *
+ * Provam: a trava funciona, o mapeamento de estados é conservador, a assinatura
+ * do webhook é conferida sobre os bytes originais, e nenhum dado proibido é
+ * guardado.
+ *
+ * **Não provam** que o adapter fala com o PagBank. Isso só a suíte de
+ * conformidade contra o sandbox pode dizer, e ela depende de credenciais que
+ * ainda não temos. Testar contra respostas que eu mesmo inventei confirmaria
+ * apenas que sei repetir a minha suposição.
+ */
+
+const base = {
+  baseUrl: 'https://sandbox.exemplo/v1',
+  token: 'tok_de_teste',
+  fetchImpl: (async () => new Response('{}', { status: 200 })) as unknown as typeof fetch,
+};
+
+const criar = (extra: Record<string, unknown> = {}) => new PagBankProvider({ ...base, ...extra });
+
+describe('trava de verificação', () => {
+  /**
+   * A garantia mais importante deste arquivo. Um adapter cujo contrato não foi
+   * conferido, operando em produção, é como se descobre a divergência com
+   * dinheiro de motorista.
+   */
+  it('recusa qualquer operação enquanto não for verificado', async () => {
+    const p = criar();
+
+    await expect(
+      p.authorize({ amountCents: assertCents(1000), method: 'CREDIT_CARD', idempotencyKey: 'k' }),
+    ).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
+
+    await expect(p.capture('c1', assertCents(500))).rejects.toMatchObject({
+      code: 'ADAPTER_NOT_VERIFIED',
+    });
+    await expect(p.voidPayment('c1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
+    await expect(p.refund('c1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
+    await expect(p.getPayment('c1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
+  });
+
+  it('a mensagem diz o que falta e onde olhar', async () => {
+    try {
+      await criar().getPayment('c1');
+      expect.unreachable('deveria ter lançado');
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toContain('não foi verificado');
+      expect(msg).toContain('fase-7-o-que-falta.md');
+      // Lista os itens pendentes, para não obrigar ninguém a caçar.
+      expect(msg).toContain('criarPedido');
+    }
+  });
+
+  it('o contrato admite o que ainda não foi confirmado', () => {
+    const pendentes = pendenciasDoContrato();
+
+    // Se algum dia isto ficar vazio sem alguém ter lido a documentação, o
+    // problema é maior do que um teste quebrado.
+    expect(pendentes.length).toBeGreaterThan(0);
+    expect(pendentes).toContain('cabecalhoAssinatura');
+  });
+
+  it('o que já é sabido está marcado como confirmado', () => {
+    // Pré-autorização por `capture: false` é o item que sustenta o ADR-0008
+    // neste fornecedor, e veio de material público do PagBank.
+    expect(CONTRATO.campoPreAutorizacao.procedencia).toBe('confirmado');
+    expect(CONTRATO.campoPreAutorizacao.valor).toBe('capture');
+    expect(CONTRATO.campoPrazoCaptura.valor).toBe('capture_before');
+  });
+});
+
+describe('capacidades', () => {
+  it('atende o modelo do produto', () => {
+    expect(() => assertProviderSupportsModel(criar())).not.toThrow();
+  });
+
+  it('não oferece Pix enquanto o fluxo não for confirmado', () => {
+    // Declarar um meio que o adapter não sabe executar faria o painel oferecer
+    // ao motorista algo que falharia na hora do pagamento.
+    expect(criar().capabilities.methods).not.toContain('PIX');
+  });
+
+  it('avisa que a reserva expira, para o alerta do risco R-23', () => {
+    expect(criar().capabilities.authorizationValidityDays).toBe(6);
+  });
+});
+
+describe('assinatura do webhook', () => {
+  const segredo = 'segredo';
+  const corpo = Buffer.from('{"id":"evt_1","charges":[{"id":"chg_1","status":"PAID"}]}');
+  const assinatura = createHmac('sha256', segredo).update(corpo).digest('hex');
+
+  it('aceita assinatura correta no cabeçalho do fornecedor', async () => {
+    const p = criar({ webhookSecret: segredo });
+    const headers = { [CONTRATO.cabecalhoAssinatura.valor]: assinatura };
+
+    expect(await p.verifyWebhook({}, headers, corpo)).toBe(true);
+  });
+
+  it('recusa corpo adulterado', async () => {
+    const p = criar({ webhookSecret: segredo });
+    const adulterado = Buffer.from('{"id":"evt_1","charges":[{"id":"chg_1","status":"PAID","x":1}]}');
+
+    expect(
+      await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, adulterado),
+    ).toBe(false);
+  });
+
+  /**
+   * A verificação de assinatura funciona mesmo sem o adapter estar verificado:
+   * é criptografia, não depende do contrato. Bloqueá-la só atrapalharia o dia
+   * de ligar o sandbox.
+   */
+  it('funciona sem depender da trava', async () => {
+    const p = criar({ webhookSecret: segredo });
+    expect(p.verificado).toBe(false);
+    expect(await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, corpo)).toBe(
+      true,
+    );
+  });
+});
+
+describe('leitura do evento', () => {
+  it('extrai identificadores e estado', async () => {
+    const evento = await criar().parseWebhook({
+      id: 'evt_1',
+      charges: [{ id: 'chg_1', status: 'PAID', summary: { paid: 2800 } }],
+    });
+
+    expect(evento.eventId).toBe('evt_1');
+    expect(evento.providerPaymentId).toBe('chg_1');
+    expect(evento.status).toBe('CAPTURED');
+    expect(evento.amountCents).toBe(2800);
+  });
+
+  it('recusa evento sem identificador', async () => {
+    await expect(criar().parseWebhook({ charges: [{ status: 'PAID' }] })).rejects.toMatchObject({
+      code: 'MALFORMED',
+    });
+  });
+
+  /**
+   * Estado desconhecido vira FALHA, nunca sucesso. Tratar o que não se entende
+   * como aprovado é como se confirma recarga sem pagamento.
+   */
+  it('estado desconhecido vira FAILED', async () => {
+    const evento = await criar().parseWebhook({
+      id: 'evt_2',
+      charges: [{ id: 'chg_2', status: 'ALGO_QUE_NAO_CONHECEMOS' }],
+    });
+
+    expect(evento.status).toBe('FAILED');
+  });
+});

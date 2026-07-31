@@ -2,7 +2,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   ManualPaymentProvider,
   MockPaymentProvider,
+  PagBankProvider,
   assertProviderSupportsModel,
+  pendenciasDoContrato,
   type PaymentProvider,
 } from '@bora/payment-core';
 import { runtimeEnv } from '../../config/runtime-env';
@@ -25,6 +27,23 @@ export class PaymentProviderRegistry implements OnModuleInit {
   constructor() {
     this.register(new MockPaymentProvider());
     this.register(new ManualPaymentProvider());
+
+    /**
+     * O adquirente real só é registrado quando há credencial configurada.
+     *
+     * Registrar sempre significaria oferecer no painel um provedor que falharia
+     * na primeira chamada. Sem credencial, ele simplesmente não existe.
+     */
+    if (runtimeEnv.BORA_PAGBANK_BASE_URL && runtimeEnv.BORA_PAGBANK_TOKEN) {
+      this.register(
+        new PagBankProvider({
+          baseUrl: runtimeEnv.BORA_PAGBANK_BASE_URL,
+          token: runtimeEnv.BORA_PAGBANK_TOKEN,
+          webhookSecret: runtimeEnv.BORA_PAGBANK_WEBHOOK_SECRET,
+          verificado: runtimeEnv.BORA_PAGBANK_VERIFIED,
+        }),
+      );
+    }
   }
 
   /**
@@ -52,6 +71,21 @@ export class PaymentProviderRegistry implements OnModuleInit {
       throw new Error(
         `BORA_PAYMENT_PROVIDER="${padrao}" é um provedor simulado e não pode ser o padrão em ` +
           'produção: toda recarga seria aprovada sem cobrança. Configure o adquirente real.',
+      );
+    }
+
+    /**
+     * Adapter de adquirente não verificado nunca pode ser o padrão.
+     *
+     * Ele recusaria toda operação, e o sintoma seria motorista sem conseguir
+     * pagar. Falhar no boot deixa claro que falta confirmar o contrato — e não
+     * é um detalhe: é a diferença entre "escrito" e "funciona".
+     */
+    if (padrao === 'pagbank' && !runtimeEnv.BORA_PAGBANK_VERIFIED) {
+      throw new Error(
+        'O adapter do PagBank ainda não foi verificado contra o sandbox e não pode ser o ' +
+          `provedor padrão. Itens pendentes no contrato: ${pendenciasDoContrato().join(', ')}.\n` +
+          'Ver docs/payments/fase-7-o-que-falta.md.',
       );
     }
 

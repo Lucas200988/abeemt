@@ -1,5 +1,7 @@
-import { Body, Controller, Headers, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Param, Post, Req } from '@nestjs/common';
 import { ApiExcludeController, ApiOperation } from '@nestjs/swagger';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { PaymentWebhooksService } from './payment-webhooks.service';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -28,7 +30,10 @@ export class PaymentWebhooksController {
     @Param('provider') provider: string,
     @Body() payload: unknown,
     @Headers() headers: Record<string, string>,
+    @Req() request: RawBodyRequest<Request>,
   ) {
-    return this.webhooks.handle(provider, payload, headers);
+    // O corpo cru é o que a assinatura cobre. Passamos os dois: o objeto para
+    // interpretar o evento, os bytes para conferir a assinatura.
+    return this.webhooks.handle(provider, payload, headers, request.rawBody);
   }
 }

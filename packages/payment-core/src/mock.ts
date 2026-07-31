@@ -255,7 +255,11 @@ export class MockPaymentProvider implements PaymentProvider {
    * Não é criptografia de verdade — é para que o **caminho** de verificação
    * exista e seja testado. Um adapter real substitui isto por HMAC.
    */
-  async verifyWebhook(_payload: unknown, headers: Record<string, string>): Promise<boolean> {
+  async verifyWebhook(
+    _payload: unknown,
+    headers: Record<string, string>,
+    _rawBody?: Buffer,
+  ): Promise<boolean> {
     return headers['x-mock-signature'] === 'valida';
   }
 

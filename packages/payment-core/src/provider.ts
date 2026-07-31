@@ -160,8 +160,21 @@ export interface PaymentProvider {
 
   getPayment(providerPaymentId: string): Promise<PaymentResult>;
 
-  /** Verifica a assinatura do webhook. Sem isso, qualquer um confirma pagamento. */
-  verifyWebhook(payload: unknown, headers: Record<string, string>): Promise<boolean>;
+  /**
+   * Verifica a assinatura do webhook.
+   *
+   * `rawBody` são os **bytes originais** da requisição, e é sobre eles que a
+   * assinatura é calculada. Reconverter o objeto já interpretado muda
+   * espaçamento e ordem de chaves — a assinatura deixa de bater, e o sintoma é
+   * "o adquirente manda webhook e nós recusamos todos".
+   *
+   * Provedores simulados podem ignorar `rawBody`; adapters reais, não.
+   */
+  verifyWebhook(
+    payload: unknown,
+    headers: Record<string, string>,
+    rawBody?: Buffer,
+  ): Promise<boolean>;
 
   parseWebhook(payload: unknown): Promise<PaymentWebhookEvent>;
 }

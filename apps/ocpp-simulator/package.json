@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@bora/ocpp-core": "workspace:*",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "@bora/config": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

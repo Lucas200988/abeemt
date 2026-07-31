@@ -159,6 +159,9 @@ importers:
 
   apps/ocpp-simulator:
     dependencies:
+      '@bora/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@bora/ocpp-core':
         specifier: workspace:*
         version: link:../../packages/ocpp-core

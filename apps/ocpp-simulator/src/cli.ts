@@ -2,13 +2,23 @@
 /**
  * Simulador OCPP por linha de comando.
  *
- *   pnpm --filter @bora/ocpp-simulator start -- --identity SIM-001
+ *   pnpm sim --identity SIM-001 --plug-in
  *
  * Sobe um carregador simulado que conecta, se apresenta, manda heartbeat e
  * responde aos comandos do servidor. Serve para exercitar o painel sem
  * equipamento físico.
  */
+import { resolve } from 'node:path';
+import { loadRootEnv } from '@bora/config';
 import { OcppSimulator, type SimulatorOptions } from './simulator';
+
+// O endereço padrão acompanha a API_PORT do .env da raiz. Antes ele era fixo em
+// 3001, e quem trocava a porta da API (porque a 3001 estava ocupada) via o
+// simulador tentar conectar no lugar errado sem nenhuma pista do motivo.
+loadRootEnv(resolve(__dirname, '../../..'));
+
+const PORTA_API = process.env.API_PORT ?? '3001';
+const URL_PADRAO = `ws://localhost:${PORTA_API}/ocpp`;
 
 interface CliArgs extends SimulatorOptions {
   plugIn: boolean;
@@ -49,7 +59,7 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   return {
-    url: args.get('url') ?? 'ws://localhost:3001/ocpp',
+    url: args.get('url') ?? URL_PADRAO,
     chargePointIdentity: args.get('identity') ?? 'SIM-001',
     password: args.get('password'),
     connectors: numero('connectors', 2),
@@ -71,7 +81,7 @@ function ajuda(): void {
   console.log(`
 Simulador OCPP 1.6J — Borá Carregar
 
-  --url <url>              endereço do servidor (padrão: ws://localhost:3001/ocpp)
+  --url <url>              endereço do servidor (padrão: ${URL_PADRAO})
   --identity <id>          Charge Point Identity (padrão: SIM-001)
   --password <senha>       credencial para Basic Auth, se o carregador tiver uma
   --connectors <n>         número de conectores (padrão: 2)

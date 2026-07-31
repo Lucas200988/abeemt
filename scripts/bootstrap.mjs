@@ -156,5 +156,5 @@ Pronto. Para subir tudo:
 
 Para ligar um carregador simulado, em outro terminal:
 
-    pnpm --filter @bora/ocpp-simulator exec bora-sim --identity SIM-001 --plug-in --meter-interval 3
+    pnpm sim --identity SIM-001 --plug-in --meter-interval 3
 `);

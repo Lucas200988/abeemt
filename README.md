@@ -148,6 +148,7 @@ o seed se recusa a rodar com `NODE_ENV=production`.
 | ---------------------- | --------------------------------------------- |
 | `pnpm bootstrap`       | Prepara o ambiente do zero                    |
 | `pnpm dev:watch`       | Recompila os pacotes ao salvar (desenvolvimento dos pacotes) |
+| `pnpm sim`             | Sobe um carregador OCPP simulado              |
 | `pnpm dev`             | API e painel em modo desenvolvimento          |
 | `pnpm build`           | Constrói todos os pacotes                     |
 | `pnpm test`            | Roda toda a suíte                             |

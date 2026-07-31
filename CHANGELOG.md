@@ -55,6 +55,12 @@ carregado no shell.
   painel local em `WEB_PORT` automaticamente. Em produção, nada muda: vale
   exatamente a lista configurada.
 
+- **O simulador não tinha atalho utilizável.** `bora-sim` só é ligado como
+  comando dentro dos pacotes que *dependem* do simulador, não dentro dele mesmo,
+  então o comando documentado falhava com `Command "bora-sim" not found`. Agora
+  há `pnpm sim` na raiz. O endereço padrão também deixou de ser fixo em 3001 e
+  passa a acompanhar `API_PORT` do `.env`.
+
 #### Adicionado
 
 - `scripts/bootstrap.mjs` — verifica Node e pnpm, cria o `.env` na primeira

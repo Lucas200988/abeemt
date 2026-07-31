@@ -192,13 +192,13 @@ Vale consultar mais de uma categoria — os modelos comerciais são bem diferent
 Levantado por você, a partir do Portal do Desenvolvedor Rede. Isto **não é
 suposição**: veio da página oficial.
 
-| Item                                    | Confirmado                                                             |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| Sandbox                                 | ✅ existe, **gratuito**, e **não exige vínculo contratual** para criar |
-| Como obter credencial                   | Criar conta → "Meus Projetos" → criar projeto → credencial automática  |
-| Autenticação                            | **OAuth 2.0** — `clientId` + `clientSecret` geram um token de acesso   |
-| Prazo da migração para OAuth 2.0        | 05/01/2026 — **já passou**; OAuth 2.0 é o padrão atual                 |
-| Ferramenta de teste                     | Coleção Postman baixável por projeto                                   |
+| Item                             | Confirmado                                                             |
+| -------------------------------- | ---------------------------------------------------------------------- |
+| Sandbox                          | ✅ existe, **gratuito**, e **não exige vínculo contratual** para criar |
+| Como obter credencial            | Criar conta → "Meus Projetos" → criar projeto → credencial automática  |
+| Autenticação                     | **OAuth 2.0** — `clientId` + `clientSecret` geram um token de acesso   |
+| Prazo da migração para OAuth 2.0 | 05/01/2026 — **já passou**; OAuth 2.0 é o padrão atual                 |
+| Ferramenta de teste              | Coleção Postman baixável por projeto                                   |
 
 ### Consequência técnica: OAuth 2.0 muda a forma da credencial
 
@@ -215,14 +215,14 @@ quando houver documentação lida** (risco R-31).
 
 Vistos na tela de criação de projeto:
 
-| Pacote                          | Serve para nós?                                                  |
-| ------------------------------- | ---------------------------------------------------------------- |
-| **e.Rede**                      | ✅ **é este** — autorização e captura de cartão pela API da Rede |
-| Gateway de Pagamento (maxiPago!)| Alternativa de gateway; segunda opção a avaliar                  |
-| Link de Pagamento               | Cobrança por link — não serve para terminal autoatendido         |
-| Chargeback                      | Contestação de cobrança; útil depois, não agora                  |
-| Credenciamento                  | Abertura de estabelecimento                                      |
-| Gestão de Acessos / de Vendas   | Administrativo                                                   |
+| Pacote                           | Serve para nós?                                                  |
+| -------------------------------- | ---------------------------------------------------------------- |
+| **e.Rede**                       | ✅ **é este** — autorização e captura de cartão pela API da Rede |
+| Gateway de Pagamento (maxiPago!) | Alternativa de gateway; segunda opção a avaliar                  |
+| Link de Pagamento                | Cobrança por link — não serve para terminal autoatendido         |
+| Chargeback                       | Contestação de cobrança; útil depois, não agora                  |
+| Credenciamento                   | Abertura de estabelecimento                                      |
+| Gestão de Acessos / de Vendas    | Administrativo                                                   |
 
 ### Descoberta importante: o SDK da maquininha **não está neste portal**
 
@@ -252,11 +252,11 @@ aplicativo da maquininha.
 
 ## Situação da consulta
 
-| Fornecedor | Contatado em | Respondeu | Atende                                                                        |
-| ---------- | ------------ | --------- | ----------------------------------------------------------------------------- |
-| PagBank    |              |           | ⏳ pendente — ver [arquitetura-de-cobranca.md §5](arquitetura-de-cobranca.md) |
-| Rede (portal e.Rede) | 2026-07-31 | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md) |
-| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo |
+| Fornecedor            | Contatado em                                                      | Respondeu                         | Atende                                                                                                                                           |
+| --------------------- | ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PagBank               |                                                                   |                                   | ⏳ pendente — ver [arquitetura-de-cobranca.md §5](arquitetura-de-cobranca.md)                                                                    |
+| Rede (portal e.Rede)  | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)             |
+| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                        | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
 PagBank vem de documentação pública e **não substitui a resposta deles** — o

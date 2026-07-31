@@ -653,10 +653,7 @@ export class OcppHandlers {
     // MeterValues encheria o carregador de comandos redundantes.
     if (sessao.ceilingReachedAt) return;
 
-    const valorCorrente = this.pricing.runningAmount(
-      { ...sessao, energyWh },
-      ctx.receivedAt,
-    );
+    const valorCorrente = this.pricing.runningAmount({ ...sessao, energyWh }, ctx.receivedAt);
 
     if (valorCorrente === null) return;
 

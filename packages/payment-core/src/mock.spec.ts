@@ -82,7 +82,9 @@ describe('ciclo de vida do ADR-0008', () => {
     const a = await autorizar();
     await provider.capture(a.providerPaymentId, assertCents(5000));
 
-    await expect(provider.voidPayment(a.providerPaymentId)).rejects.toThrow(/INVALID_STATE|não é possível/);
+    await expect(provider.voidPayment(a.providerPaymentId)).rejects.toThrow(
+      /INVALID_STATE|não é possível/,
+    );
   });
 
   it('devolve valor já capturado, total e parcialmente', async () => {

@@ -28,7 +28,11 @@ function servidorFalso(respostas: Array<{ status?: number; body: unknown }>) {
     if (endereco.includes('/oauth2/token')) {
       tokensEmitidos += 1;
       return new Response(
-        JSON.stringify({ access_token: `tok_${tokensEmitidos}`, token_type: 'Bearer', expires_in: 1440 }),
+        JSON.stringify({
+          access_token: `tok_${tokensEmitidos}`,
+          token_type: 'Bearer',
+          expires_in: 1440,
+        }),
         { status: 200 },
       );
     }
@@ -45,7 +49,10 @@ function servidorFalso(respostas: Array<{ status?: number; body: unknown }>) {
   };
 }
 
-const criar = (extra: Partial<RedeConfig> = {}, respostas: Array<{ status?: number; body: unknown }> = []) => {
+const criar = (
+  extra: Partial<RedeConfig> = {},
+  respostas: Array<{ status?: number; body: unknown }> = [],
+) => {
   const servidor = servidorFalso(respostas);
   const provider = new RedeProvider({
     pv: '12345678',
@@ -76,12 +83,18 @@ describe('trava de verificação', () => {
     const { provider } = criar({ verificado: false });
 
     await expect(
-      provider.authorize({ amountCents: assertCents(1000), method: 'CREDIT_CARD', idempotencyKey: 'k' }),
+      provider.authorize({
+        amountCents: assertCents(1000),
+        method: 'CREDIT_CARD',
+        idempotencyKey: 'k',
+      }),
     ).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
     await expect(provider.capture('t1', assertCents(500))).rejects.toMatchObject({
       code: 'ADAPTER_NOT_VERIFIED',
     });
-    await expect(provider.voidPayment('t1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
+    await expect(provider.voidPayment('t1')).rejects.toMatchObject({
+      code: 'ADAPTER_NOT_VERIFIED',
+    });
     await expect(provider.refund('t1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
     await expect(provider.getPayment('t1')).rejects.toMatchObject({ code: 'ADAPTER_NOT_VERIFIED' });
   });
@@ -112,10 +125,9 @@ describe('OAuth', () => {
   });
 
   it('o pedido de token usa Basic base64(pv:chave) e o PV perde zeros à esquerda', async () => {
-    const { provider, servidor } = criar(
-      { pv: '00987654' },
-      [{ body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 1 } } }],
-    );
+    const { provider, servidor } = criar({ pv: '00987654' }, [
+      { body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 1 } } },
+    ]);
 
     await provider.getPayment('t1');
 
@@ -129,7 +141,8 @@ describe('OAuth', () => {
 
   it('credencial recusada não é retentada às cegas', async () => {
     const servidor = {
-      fetchImpl: (async () => new Response('{"error":"invalid_client"}', { status: 401 })) as unknown as typeof fetch,
+      fetchImpl: (async () =>
+        new Response('{"error":"invalid_client"}', { status: 401 })) as unknown as typeof fetch,
     };
     const provider = new RedeProvider({
       pv: '1',
@@ -150,7 +163,11 @@ describe('autorização', () => {
     const { provider } = criar();
 
     await expect(
-      provider.authorize({ amountCents: assertCents(20000), method: 'CREDIT_CARD', idempotencyKey: 'k1' }),
+      provider.authorize({
+        amountCents: assertCents(20000),
+        method: 'CREDIT_CARD',
+        idempotencyKey: 'k1',
+      }),
     ).rejects.toMatchObject({ code: 'MISSING_CARD_TOKEN' });
   });
 
@@ -320,7 +337,9 @@ describe('devolução — 360 é "recebido", não "feito"', () => {
       // 2ª: o cancelamento em si.
       { body: { returnCode: '359', returnMessage: 'Refund successful' } },
       // 3ª: a consulta final, que confirma.
-      { body: { authorization: { status: 'Canceled', returnCode: '00', tid: 't1', amount: 5000 } } },
+      {
+        body: { authorization: { status: 'Canceled', returnCode: '00', tid: 't1', amount: 5000 } },
+      },
     ]);
 
     const resultado = await provider.voidPayment('t1');
@@ -390,7 +409,9 @@ describe('devolução — 360 é "recebido", não "feito"', () => {
 describe('consulta — a fonte da verdade', () => {
   it('Pending com autorização aprovada é reserva em pé (AUTHORIZED)', async () => {
     const { provider } = criar({}, [
-      { body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 20000 } } },
+      {
+        body: { authorization: { status: 'Pending', returnCode: '00', tid: 't1', amount: 20000 } },
+      },
     ]);
 
     const resultado = await provider.getPayment('t1');
@@ -433,7 +454,9 @@ describe('webhook — aviso com token fixo, sem assinatura', () => {
   it('aceita o token registrado e recusa qualquer outro', async () => {
     const { provider } = criar({ webhookToken: 'Bearer segredo-do-portal' });
 
-    expect(await provider.verifyWebhook({}, { authorization: 'Bearer segredo-do-portal' })).toBe(true);
+    expect(await provider.verifyWebhook({}, { authorization: 'Bearer segredo-do-portal' })).toBe(
+      true,
+    );
     expect(await provider.verifyWebhook({}, { authorization: 'Bearer errado' })).toBe(false);
     expect(await provider.verifyWebhook({}, {})).toBe(false);
   });
@@ -471,7 +494,9 @@ describe('credencial nunca vaza', () => {
   it('mensagem de erro de rede não contém a chave de integração', async () => {
     const fetchQueFalha = (async (url: string | URL) => {
       if (String(url).includes('/oauth2/token')) {
-        return new Response(JSON.stringify({ access_token: 'tok_x', expires_in: 1440 }), { status: 200 });
+        return new Response(JSON.stringify({ access_token: 'tok_x', expires_in: 1440 }), {
+          status: 200,
+        });
       }
       throw new Error('connect falhou para https://user:chave_secreta_de_teste@host');
     }) as unknown as typeof fetch;

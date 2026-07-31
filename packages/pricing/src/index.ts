@@ -141,7 +141,9 @@ export function calculateSessionAmount(input: PricingInput): PricingBreakdown {
   // Arredondamento para baixo em todos: na dúvida, a favor do motorista.
   // É uma escolha comercial, registrada aqui de propósito.
   const energyCents =
-    snapshot.pricePerKwhCents > 0 ? roundToCents(energyKwh * snapshot.pricePerKwhCents, 'floor') : 0;
+    snapshot.pricePerKwhCents > 0
+      ? roundToCents(energyKwh * snapshot.pricePerKwhCents, 'floor')
+      : 0;
 
   /**
    * O tempo cobrado é o tempo **carregando** — a duração menos a ociosidade.

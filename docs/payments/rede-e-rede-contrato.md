@@ -23,17 +23,17 @@ separators. Examples: R$10.00 = 1000 · R$0.50 = 50"_.
 
 A coleção estava desatualizada; o manual é explícito:
 
-| Item | Valor |
-| ---- | ----- |
-| Protocolo | OAuth 2.0 (client credentials). O Basic legado será descontinuado |
-| `clientId` | é o **PV** (número de afiliação) — **sem zeros à esquerda**, senão `401 invalid_client` |
-| `clientSecret` | é a **Chave de Integração**, gerada no portal Use Rede (perfil administrador) |
-| Token (sandbox) | `POST https://rl7-sandbox-api.useredecloud.com.br/oauth2/token` |
-| Token (produção) | `POST https://api.userede.com.br/redelabs/oauth2/token` |
-| Corpo | `grant_type=client_credentials`, header `Authorization: Basic base64(clientId:clientSecret)` |
-| Validade | **24 minutos** — renovar entre 15 e 23 minutos |
-| Uso | `Authorization: Bearer {access_token}` em toda chamada |
-| **Regra crítica** | Com OAuth, usar **somente as rotas V2**. V1 com Bearer devolve `370 – Request failed` |
+| Item              | Valor                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| Protocolo         | OAuth 2.0 (client credentials). O Basic legado será descontinuado                            |
+| `clientId`        | é o **PV** (número de afiliação) — **sem zeros à esquerda**, senão `401 invalid_client`      |
+| `clientSecret`    | é a **Chave de Integração**, gerada no portal Use Rede (perfil administrador)                |
+| Token (sandbox)   | `POST https://rl7-sandbox-api.useredecloud.com.br/oauth2/token`                              |
+| Token (produção)  | `POST https://api.userede.com.br/redelabs/oauth2/token`                                      |
+| Corpo             | `grant_type=client_credentials`, header `Authorization: Basic base64(clientId:clientSecret)` |
+| Validade          | **24 minutos** — renovar entre 15 e 23 minutos                                               |
+| Uso               | `Authorization: Bearer {access_token}` em toda chamada                                       |
+| **Regra crítica** | Com OAuth, usar **somente as rotas V2**. V1 com Bearer devolve `370 – Request failed`        |
 
 Consequência para o código: o adapter precisa de um gerenciador de token
 (obter, guardar, renovar antes de expirar). É trabalho pequeno e padrão.
@@ -58,12 +58,12 @@ Consequência para o código: o adapter precisa de um gerenciador de token
 **Consulta** (`GET /v2/transactions/{tid}` ou `?reference=`) devolve
 `authorization/status` com exatamente quatro estados:
 
-| Estado da Rede | No nosso modelo |
-| -------------- | --------------- |
+| Estado da Rede | No nosso modelo                                           |
+| -------------- | --------------------------------------------------------- |
 | `Approved`     | AUTHORIZED / CAPTURED (conforme bloco `capture` presente) |
-| `Denied`       | DECLINED |
-| `Canceled`     | VOIDED / REFUNDED |
-| `Pending`      | PENDING |
+| `Denied`       | DECLINED                                                  |
+| `Canceled`     | VOIDED / REFUNDED                                         |
+| `Pending`      | PENDING                                                   |
 
 Estado desconhecido → FAILED, como sempre (nunca sucesso).
 
@@ -76,13 +76,13 @@ Mastercard, e retornos de cancelamento (351–374).
 
 ## 2. O modelo do produto, confirmado item por item
 
-| # | Critério | Situação | Fonte |
-| - | -------- | -------- | ----- |
-| E1 | Pré-autorização | ✅ `capture: false` | manual §Authorization Flow |
-| E2 | **Captura parcial** | ✅ literal: _"the merchant must request a full cancellation **or capture a lower amount**"_ | manual §Cancellation |
-| E4 | Devolução parcial | ✅ `POST /v2/transactions/{tid}/refunds` com `amount` | manual §Cancellation |
-| — | Consulta por nosso id | ✅ `reference` (60 dias) ou `tid` (400 dias) | manual §Transaction query |
-| — | Sandbox | ✅ gratuito, sem contrato, cartões de teste tabelados | manual §Sandbox Tutorial |
+| #   | Critério              | Situação                                                                                    | Fonte                      |
+| --- | --------------------- | ------------------------------------------------------------------------------------------- | -------------------------- |
+| E1  | Pré-autorização       | ✅ `capture: false`                                                                         | manual §Authorization Flow |
+| E2  | **Captura parcial**   | ✅ literal: _"the merchant must request a full cancellation **or capture a lower amount**"_ | manual §Cancellation       |
+| E4  | Devolução parcial     | ✅ `POST /v2/transactions/{tid}/refunds` com `amount`                                       | manual §Cancellation       |
+| —   | Consulta por nosso id | ✅ `reference` (60 dias) ou `tid` (400 dias)                                                | manual §Transaction query  |
+| —   | Sandbox               | ✅ gratuito, sem contrato, cartões de teste tabelados                                       | manual §Sandbox Tutorial   |
 
 ### As operações, em resumo
 
@@ -211,14 +211,14 @@ caminhos convivem.
 
 ## 7. Critérios eliminatórios da FASE 7 — Rede
 
-| # | Critério | Situação |
-| - | -------- | -------- |
-| E1 Pré-autorização | ✅ confirmado no manual |
-| E2 Captura parcial | ✅ confirmado no manual |
-| E3 Operação não assistida | ⏳ Rede Store (SDK do SmartPOS) |
-| E4 Cancelamento/devolução parcial | ✅ confirmado (D+1 assíncrono, código 360) |
-| E5 Pix com devolução parcial | ✅ por API, síncrona — **exige conta Itaú** |
-| Sandbox | ✅ gratuito, cartões e erros simuláveis |
+| #                                 | Critério                                    | Situação |
+| --------------------------------- | ------------------------------------------- | -------- |
+| E1 Pré-autorização                | ✅ confirmado no manual                     |
+| E2 Captura parcial                | ✅ confirmado no manual                     |
+| E3 Operação não assistida         | ⏳ Rede Store (SDK do SmartPOS)             |
+| E4 Cancelamento/devolução parcial | ✅ confirmado (D+1 assíncrono, código 360)  |
+| E5 Pix com devolução parcial      | ✅ por API, síncrona — **exige conta Itaú** |
+| Sandbox                           | ✅ gratuito, cartões e erros simuláveis     |
 
 ---
 
@@ -268,16 +268,16 @@ adapter), `BORA_REDE_BASE_URL`/`BORA_REDE_OAUTH_URL` (vazios = sandbox),
 Executada por Lucas, na máquina dele, em três rodadas de `pnpm verificar:rede`.
 Resultado final: **8 de 8 passos aprovados** contra o sandbox real da Rede.
 
-| # | Passo | Evidência |
-| - | ----- | --------- |
-| 1 | OAuth 2.0 | token de 1439 s (24 min, como o manual promete) |
-| 2 | Reserva de R$ 200,00 (`capture:false`) | `tid` real emitido |
-| 3 | Adapter enxerga a reserva | `AUTHORIZED`, autorizado 20000 |
-| 4 | **Captura PARCIAL: R$ 8,00 de R$ 200,00** | `CAPTURED`, capturado 800 — **o modelo do ADR-0008, provado no adquirente** |
-| 5 | Consulta confirma | capturado 800, devolvido 0 |
-| 6 | Devolução dos R$ 8,00 | `REFUNDED`, código 359 (síncrona) |
-| 7 | Cancelamento de reserva sem captura | `VOIDED`, nada cobrado |
-| 8 | Recusa do emissor | recusada e mapeada como recusa |
+| #   | Passo                                     | Evidência                                                                   |
+| --- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| 1   | OAuth 2.0                                 | token de 1439 s (24 min, como o manual promete)                             |
+| 2   | Reserva de R$ 200,00 (`capture:false`)    | `tid` real emitido                                                          |
+| 3   | Adapter enxerga a reserva                 | `AUTHORIZED`, autorizado 20000                                              |
+| 4   | **Captura PARCIAL: R$ 8,00 de R$ 200,00** | `CAPTURED`, capturado 800 — **o modelo do ADR-0008, provado no adquirente** |
+| 5   | Consulta confirma                         | capturado 800, devolvido 0                                                  |
+| 6   | Devolução dos R$ 8,00                     | `REFUNDED`, código 359 (síncrona)                                           |
+| 7   | Cancelamento de reserva sem captura       | `VOIDED`, nada cobrado                                                      |
+| 8   | Recusa do emissor                         | recusada e mapeada como recusa                                              |
 
 As rodadas também **encontraram e corrigiram** dois pontos que só o sandbox
 real mostraria:
@@ -300,10 +300,10 @@ real mostraria:
 
 ## 10. O que ainda depende de fora
 
-| # | Pendência | Quem destrava |
-| - | --------- | ------------- |
-| 1 | Credenciais do sandbox (clientId/clientSecret do projeto "Carregador veicular") | você — copiar do card do projeto para o `.env` |
-| 2 | Resposta da Rede Store sobre o SDK (pré-auth/captura no terminal? token?) | e-mail já roteirizado |
-| 3 | Prazo de validade da pré-autorização **no nosso ramo** | perguntar à Rede no credenciamento |
-| 4 | Pix: existe (ou haverá) conta Itaú da operação? | você — decisão comercial |
-| 5 | Endereço de produção confirmado no credenciamento (`https://api.userede.com.br/erede`) | credenciamento |
+| #   | Pendência                                                                              | Quem destrava                                  |
+| --- | -------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1   | Credenciais do sandbox (clientId/clientSecret do projeto "Carregador veicular")        | você — copiar do card do projeto para o `.env` |
+| 2   | Resposta da Rede Store sobre o SDK (pré-auth/captura no terminal? token?)              | e-mail já roteirizado                          |
+| 3   | Prazo de validade da pré-autorização **no nosso ramo**                                 | perguntar à Rede no credenciamento             |
+| 4   | Pix: existe (ou haverá) conta Itaú da operação?                                        | você — decisão comercial                       |
+| 5   | Endereço de produção confirmado no credenciamento (`https://api.userede.com.br/erede`) | credenciamento                                 |

@@ -49,7 +49,9 @@ export default function MaquininhasPage() {
   const [provedores, setProvedores] = useState<ProviderInfo | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
+  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(
+    null,
+  );
 
   const papel = loadSession()?.user.role;
   const podeEditar = papel === 'ORG_ADMIN' || papel === 'SUPER_ADMIN';
@@ -77,7 +79,10 @@ export default function MaquininhasPage() {
       .then((r) => setCarregadores(r.items))
       .catch(() => undefined);
 
-    api.paymentProviders().then(setProvedores).catch(() => undefined);
+    api
+      .paymentProviders()
+      .then(setProvedores)
+      .catch(() => undefined);
   }, []);
 
   async function gerarCodigo(t: TerminalView) {

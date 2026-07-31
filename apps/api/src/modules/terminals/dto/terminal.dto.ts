@@ -209,7 +209,10 @@ export class TerminalHeartbeatDto {
 }
 
 export class TerminalStopSessionDto {
-  @ApiPropertyOptional({ description: 'Motivo mostrado ao operador.', example: 'motorista encerrou' })
+  @ApiPropertyOptional({
+    description: 'Motivo mostrado ao operador.',
+    example: 'motorista encerrou',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)

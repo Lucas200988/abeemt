@@ -182,8 +182,7 @@ describe('assinatura do webhook', () => {
   const corpo = Buffer.from('{"id":"evt_1","status":"CAPTURED"}');
   const assinatura = createHmac('sha256', segredo).update(corpo).digest('hex');
 
-  const comSegredo = () =>
-    criar({ fetchImpl: fetchFalso([]).impl, webhookSecret: segredo });
+  const comSegredo = () => criar({ fetchImpl: fetchFalso([]).impl, webhookSecret: segredo });
 
   it('aceita assinatura correta', () => {
     expect(comSegredo().conferirAssinatura(corpo, assinatura)).toBe(true);
@@ -256,7 +255,9 @@ describe('resposta não-JSON', () => {
       await criar({ fetchImpl: impl, maxRetries: 0 }).chamar('GET', '/charges');
       expect.unreachable('deveria ter lançado');
     } catch (e) {
-      expect((e as PaymentProviderError).raw).toMatchObject({ raw: expect.stringContaining('502') });
+      expect((e as PaymentProviderError).raw).toMatchObject({
+        raw: expect.stringContaining('502'),
+      });
     }
   });
 });

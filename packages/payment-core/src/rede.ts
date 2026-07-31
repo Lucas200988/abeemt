@@ -47,7 +47,7 @@ interface ItemContrato<T> {
   nota?: string;
 }
 
-const item = <T,>(valor: T, procedencia: Procedencia, nota?: string): ItemContrato<T> => ({
+const item = <T>(valor: T, procedencia: Procedencia, nota?: string): ItemContrato<T> => ({
   valor,
   procedencia,
   nota,
@@ -66,18 +66,42 @@ export const CONTRATO_REDE = {
   oauthUrlSandbox: item('https://rl7-sandbox-api.useredecloud.com.br', 'confirmado'),
   oauthUrlProducao: item('https://api.userede.com.br/redelabs', 'confirmado'),
 
-  gerarToken: item('/oauth2/token', 'confirmado', 'Basic base64(pv:chave), grant_type=client_credentials'),
+  gerarToken: item(
+    '/oauth2/token',
+    'confirmado',
+    'Basic base64(pv:chave), grant_type=client_credentials',
+  ),
   autorizar: item('/v2/transactions', 'confirmado', 'capture:false = pré-autoriza'),
-  capturar: item('/v2/transactions/{tid}', 'confirmado', 'PUT com { amount } — pode ser MENOR que o autorizado'),
-  cancelar: item('/v2/transactions/{tid}/refunds', 'confirmado', 'pré-captura: só total; pós: parcial ou total'),
+  capturar: item(
+    '/v2/transactions/{tid}',
+    'confirmado',
+    'PUT com { amount } — pode ser MENOR que o autorizado',
+  ),
+  cancelar: item(
+    '/v2/transactions/{tid}/refunds',
+    'confirmado',
+    'pré-captura: só total; pós: parcial ou total',
+  ),
   consultar: item('/v2/transactions/{tid}', 'confirmado'),
-  consultarPorReferencia: item('/v2/transactions?reference={reference}', 'confirmado', 'janela de 60 dias'),
+  consultarPorReferencia: item(
+    '/v2/transactions?reference={reference}',
+    'confirmado',
+    'janela de 60 dias',
+  ),
 
   campoValor: item('amount', 'confirmado', 'centavos inteiros: R$10,00 = 1000'),
   codigoSucesso: item('00', 'confirmado'),
   codigoDevolucaoSincrona: item('359', 'confirmado', 'Refund successful'),
-  codigoDevolucaoRecebida: item('360', 'confirmado', 'recebido ≠ feito — reconsultar até Done/Denied'),
-  codigoReferenciaDuplicada: item('42', 'confirmado', 'reference já existe — recuperar consultando por ele'),
+  codigoDevolucaoRecebida: item(
+    '360',
+    'confirmado',
+    'recebido ≠ feito — reconsultar até Done/Denied',
+  ),
+  codigoReferenciaDuplicada: item(
+    '42',
+    'confirmado',
+    'reference já existe — recuperar consultando por ele',
+  ),
 
   /** Estados da consulta → estados nossos. */
   mapaDeEstados: item<Record<string, PaymentStatus>>(
@@ -97,7 +121,11 @@ export const CONTRATO_REDE = {
    * diz que "varia conforme o ramo do estabelecimento" — o número do NOSSO
    * ramo é pergunta obrigatória no credenciamento (risco R-23).
    */
-  prazoPreAutorizacaoDias: item(1, 'a confirmar', 'pior caso assumido até a Rede informar o do nosso ramo'),
+  prazoPreAutorizacaoDias: item(
+    1,
+    'a confirmar',
+    'pior caso assumido até a Rede informar o do nosso ramo',
+  ),
 
   /**
    * O webhook da Rede NÃO tem assinatura HMAC sobre o corpo — só um token fixo
@@ -130,8 +158,10 @@ const CAPABILITIES: PaymentCapabilities = {
   authorizationValidityDays: CONTRATO_REDE.prazoPreAutorizacaoDias.valor,
 };
 
-export interface RedeConfig
-  extends Omit<HttpProviderConfig, 'baseUrl' | 'token' | 'webhookSecret'> {
+export interface RedeConfig extends Omit<
+  HttpProviderConfig,
+  'baseUrl' | 'token' | 'webhookSecret'
+> {
   /** Número de afiliação (PV). Zeros à esquerda são removidos (401 invalid_client). */
   pv: string;
   /** Chave de integração gerada no portal Use Rede (o `clientSecret`). */
@@ -358,7 +388,8 @@ export class RedeProvider extends HttpPaymentProvider implements PaymentProvider
       eventId: refundId ?? `${tid}:${eventos[0] ?? statusBruto ?? 'evento'}`,
       providerPaymentId: tid,
       status,
-      amountCents: typeof p?.amount === 'number' && Number.isInteger(p.amount) ? p.amount : undefined,
+      amountCents:
+        typeof p?.amount === 'number' && Number.isInteger(p.amount) ? p.amount : undefined,
       occurredAt: new Date(),
       raw: payload,
     };
@@ -564,9 +595,8 @@ export class RedeProvider extends HttpPaymentProvider implements PaymentProvider
     const codigo = typeof body?.returnCode === 'string' ? body.returnCode : '';
     const aprovado = codigo === CONTRATO_REDE.codigoSucesso.valor;
 
-    const valor = typeof body?.amount === 'number' && Number.isInteger(body.amount)
-      ? body.amount
-      : valorPedido;
+    const valor =
+      typeof body?.amount === 'number' && Number.isInteger(body.amount) ? body.amount : valorPedido;
 
     return {
       ok: aprovado,
@@ -602,9 +632,7 @@ export class RedeProvider extends HttpPaymentProvider implements PaymentProvider
     let status: PaymentStatus = CONTRATO_REDE.mapaDeEstados.valor[bruto] ?? 'FAILED';
 
     const capturado =
-      typeof capture?.amount === 'number' && Number.isInteger(capture.amount)
-        ? capture.amount
-        : 0;
+      typeof capture?.amount === 'number' && Number.isInteger(capture.amount) ? capture.amount : 0;
 
     // Soma apenas as devoluções CONCLUÍDAS — Processing ainda não é dinheiro.
     const devolvidoBruto = (Array.isArray(refunds) ? refunds : refunds ? [refunds] : [])

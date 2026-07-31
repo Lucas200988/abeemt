@@ -616,7 +616,11 @@ export class PaymentsService {
       this.prisma.payment.count({ where }),
     ]);
 
-    return paginated(registros.map((p) => this.toView(p)), total, pagination);
+    return paginated(
+      registros.map((p) => this.toView(p)),
+      total,
+      pagination,
+    );
   }
 
   async get(user: AuthenticatedUser, id: string): Promise<PaymentView> {

@@ -208,10 +208,7 @@ export default function TarifasPage() {
                     {podeEditar && (
                       <td>
                         <div className="acoes">
-                          <button
-                            className="btn btn-sec btn-mini"
-                            onClick={() => setEditando(t)}
-                          >
+                          <button className="btn btn-sec btn-mini" onClick={() => setEditando(t)}>
                             Editar
                           </button>
                           {t.active && (
@@ -266,7 +263,9 @@ function FormularioTarifa({
    * "Toda a organização" ficava impossível de usar para esse perfil: a tela
    * oferecia um caminho que sempre dava erro.
    */
-  const organizacoes = [...new Map(sites.map((s) => [s.organizationId, s.organizationName])).entries()];
+  const organizacoes = [
+    ...new Map(sites.map((s) => [s.organizationId, s.organizationName])).entries(),
+  ];
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -411,7 +410,9 @@ function FormularioTarifa({
               inputMode="decimal"
               defaultValue={editando ? centavosParaReais(editando.connectionFeeCents) : '0,00'}
             />
-            <p className="ajuda">Cobrada uma vez por recarga. Não se aplica se nada for entregue.</p>
+            <p className="ajuda">
+              Cobrada uma vez por recarga. Não se aplica se nada for entregue.
+            </p>
           </div>
 
           <div className="campo">
@@ -559,10 +560,14 @@ function Simulador({ tarifas }: { tarifas: TariffView[] }) {
                   <td className="numero">
                     <strong>{r ? formatCents(r.totalCents) : '—'}</strong>
                     {r?.minimumApplied && (
-                      <div style={{ fontSize: 11, color: 'var(--texto-suave)' }}>mínimo aplicado</div>
+                      <div style={{ fontSize: 11, color: 'var(--texto-suave)' }}>
+                        mínimo aplicado
+                      </div>
                     )}
                     {r?.tariffMaximumApplied && (
-                      <div style={{ fontSize: 11, color: 'var(--texto-suave)' }}>máximo aplicado</div>
+                      <div style={{ fontSize: 11, color: 'var(--texto-suave)' }}>
+                        máximo aplicado
+                      </div>
                     )}
                   </td>
                 </tr>

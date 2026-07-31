@@ -107,7 +107,9 @@ describe('assinatura do webhook', () => {
 
   it('recusa corpo adulterado', async () => {
     const p = criar({ webhookSecret: segredo });
-    const adulterado = Buffer.from('{"id":"evt_1","charges":[{"id":"chg_1","status":"PAID","x":1}]}');
+    const adulterado = Buffer.from(
+      '{"id":"evt_1","charges":[{"id":"chg_1","status":"PAID","x":1}]}',
+    );
 
     expect(
       await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, adulterado),
@@ -122,9 +124,9 @@ describe('assinatura do webhook', () => {
   it('funciona sem depender da trava', async () => {
     const p = criar({ webhookSecret: segredo });
     expect(p.verificado).toBe(false);
-    expect(await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, corpo)).toBe(
-      true,
-    );
+    expect(
+      await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, corpo),
+    ).toBe(true);
   });
 });
 

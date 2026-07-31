@@ -3,13 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatCents, formatDateTime } from '@bora/contracts';
-import {
-  api,
-  ApiRequestError,
-  loadSession,
-  type ChargerView,
-  type ProviderInfo,
-} from '@/lib/api';
+import { api, ApiRequestError, loadSession, type ChargerView, type ProviderInfo } from '@/lib/api';
 import { usePolling } from '@/lib/use-polling';
 import { Alerta, Badge, Cartao, Carregando, Vazio, type Tone } from '@/components/ui';
 
@@ -65,7 +59,10 @@ export default function PagamentosPage() {
   );
 
   useEffect(() => {
-    api.paymentProviders().then(setProvedores).catch(() => undefined);
+    api
+      .paymentProviders()
+      .then(setProvedores)
+      .catch(() => undefined);
     api
       .chargers()
       .then((r) => setCarregadores(r.items))

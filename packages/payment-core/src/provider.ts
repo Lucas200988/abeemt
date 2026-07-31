@@ -230,12 +230,16 @@ export function assertProviderSupportsModel(
     );
   }
   if (!c.voidAuthorization) {
-    problemas.push('não suporta cancelar pré-autorização; falha antes do início cobraria o motorista');
+    problemas.push(
+      'não suporta cancelar pré-autorização; falha antes do início cobraria o motorista',
+    );
   }
 
   if (opts.requirePix && c.methods.includes('PIX') && !c.partialRefund) {
     // ADR-0010 §4: Pix pago sem energia entregue precisa ser devolvido.
-    problemas.push('aceita Pix mas não faz devolução — obrigatório para consumo zero (ADR-0010 §4)');
+    problemas.push(
+      'aceita Pix mas não faz devolução — obrigatório para consumo zero (ADR-0010 §4)',
+    );
   }
 
   if (problemas.length > 0) {

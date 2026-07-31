@@ -291,7 +291,9 @@ describe('ciclo completo: reserva, consumo, captura', () => {
 
     await payments.settleSession(resultado.sessionId);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     // VOIDED, não REFUNDED: nada chegou a ser cobrado.
     expect(pagamento.status).toBe('VOIDED');
     expect(pagamento.amountCapturedCents).toBe(0);
@@ -314,7 +316,9 @@ describe('ciclo completo: reserva, consumo, captura', () => {
     expect(resultado.command?.accepted).toBe(false);
     expect(resultado.message).toMatch(/Nada foi cobrado/);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     expect(pagamento.status).toBe('VOIDED');
     expect(pagamento.amountCapturedCents).toBe(0);
   });
@@ -371,7 +375,9 @@ describe('parada automática ao atingir o teto (risco R-22)', () => {
 
     await payments.settleSession(resultado.sessionId);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
 
     // A garantia que importa: nunca acima do reservado.
     expect(pagamento.amountCapturedCents).toBeLessThanOrEqual(1000);
@@ -424,7 +430,9 @@ describe('Pix (ADR-0010)', () => {
       amountCents: 5000,
     });
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
 
     expect(pagamento.status).toBe('CAPTURED');
     expect(pagamento.amountCapturedCents).toBe(5000);
@@ -454,7 +462,9 @@ describe('Pix (ADR-0010)', () => {
     const fechamento = await payments.settleSession(resultado.sessionId);
     expect(fechamento.reason).toMatch(/devolvido/);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     expect(pagamento.status).toBe('REFUNDED');
     expect(pagamento.amountRefundedCents).toBe(5000);
   });
@@ -486,7 +496,9 @@ describe('Pix (ADR-0010)', () => {
 
     await payments.settleSession(resultado.sessionId);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     // Consumiu R$ 5,50 de tarifa mas pagou R$ 50,00: sem devolução automática,
     // conforme a decisão registrada no ADR-0010.
     expect(pagamento.status).toBe('CAPTURED');
@@ -546,7 +558,9 @@ describe('webhook', () => {
     await simuladorPronto();
 
     const resultado = await payments.startPaidSession({ connectorId, method: 'CREDIT_CARD' });
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
 
     const evento = {
       eventId: 'evt-e2e-1',
@@ -619,7 +633,9 @@ describe('worker de timeouts (regra 11.5)', () => {
     expect(expirada.status).toBe('EXPIRED');
     expect(expirada.failureReason).toMatch(/cabo/);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     // O motorista não pode ficar com valor preso por uma recarga que não houve.
     expect(pagamento.status).toBe('VOIDED');
   });
@@ -648,7 +664,9 @@ describe('worker de timeouts (regra 11.5)', () => {
     const passada = await worker.tick();
     expect(passada.fechadas).toBeGreaterThanOrEqual(1);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     // 4 kWh × R$ 2,50 + R$ 3,00 = R$ 13,00.
     expect(pagamento.amountCapturedCents).toBe(1300);
   });
@@ -707,7 +725,9 @@ describe('autorização vinda da maquininha (FASE 8)', () => {
     expect(resultado.approved).toBe(true);
     expect(resultado.command?.accepted).toBe(true);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     expect(pagamento.status).toBe('AUTHORIZED');
     expect(pagamento.cardLastFour).toBe('4321');
     expect(pagamento.terminalId).toBe('POS-01');
@@ -856,7 +876,9 @@ describe('ociosidade medida pelo OCPP (FASE 6)', () => {
     // R$ 3,00 conexão + R$ 10,00 energia (4 kWh) + R$ 10,00 de ociosidade (10 min).
     expect(sessao.finalAmountCents).toBe(2300);
 
-    const pagamento = await prisma.payment.findUniqueOrThrow({ where: { id: resultado.paymentId } });
+    const pagamento = await prisma.payment.findUniqueOrThrow({
+      where: { id: resultado.paymentId },
+    });
     expect(pagamento.amountCapturedCents).toBe(2300);
   });
 });

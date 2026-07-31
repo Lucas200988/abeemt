@@ -54,7 +54,7 @@ carregado no shell.
   PowerShell. Reescrito como `scripts/bootstrap.mjs`, em Node, com `shell: true`
   no Windows (lá o `pnpm` é um `.cmd` e o Node recusa executá-lo direto).
 
-- **`pnpm dev` subia dez observadores de TypeScript.** Para *usar* o sistema
+- **`pnpm dev` subia dez observadores de TypeScript.** Para _usar_ o sistema
   bastam a API e o painel; os pacotes já estão compilados pelo `bootstrap`. Os
   dez processos simultâneos derrubaram o Node com `SIGABRT` numa máquina
   Windows. Agora `pnpm dev` sobe só os dois, e `pnpm dev:watch` mantém o modo
@@ -71,7 +71,7 @@ carregado no shell.
 - **A ordem documentada era impossível.** O README mandava subir o banco antes
   de preencher o `.env`, mas o `docker compose` lê `POSTGRES_PASSWORD` desse
   mesmo arquivo e falhava com `required variable POSTGRES_PASSWORD is missing a
-  value`. A sequência correta — criar o `.env`, preencher, subir o banco,
+value`. A sequência correta — criar o `.env`, preencher, subir o banco,
   instalar — passou a estar no README e na mensagem do próprio script.
 
 - **CORS bloqueava o painel numa porta diferente da 3000.** `CORS_ORIGINS` tem
@@ -83,7 +83,7 @@ carregado no shell.
   exatamente a lista configurada.
 
 - **O simulador não tinha atalho utilizável.** `bora-sim` só é ligado como
-  comando dentro dos pacotes que *dependem* do simulador, não dentro dele mesmo,
+  comando dentro dos pacotes que _dependem_ do simulador, não dentro dele mesmo,
   então o comando documentado falhava com `Command "bora-sim" not found`. Agora
   há `pnpm sim` na raiz. O endereço padrão também deixou de ser fixo em 3001 e
   passa a acompanhar `API_PORT` do `.env`.

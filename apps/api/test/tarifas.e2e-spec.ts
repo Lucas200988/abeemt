@@ -87,12 +87,16 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.chargingSession.deleteMany({ where: { organizationId } });
-  await prisma.tariff.deleteMany({ where: { organizationId: { in: [organizationId, outraOrganizacaoId] } } });
+  await prisma.tariff.deleteMany({
+    where: { organizationId: { in: [organizationId, outraOrganizacaoId] } },
+  });
 });
 
 afterAll(async () => {
   await prisma.chargingSession.deleteMany({ where: { organizationId } });
-  await prisma.tariff.deleteMany({ where: { organizationId: { in: [organizationId, outraOrganizacaoId] } } });
+  await prisma.tariff.deleteMany({
+    where: { organizationId: { in: [organizationId, outraOrganizacaoId] } },
+  });
   await prisma.connector.deleteMany({ where: { charger: { siteId } } });
   await prisma.charger.deleteMany({ where: { siteId } });
   await prisma.site.deleteMany({ where: { organizationId } });

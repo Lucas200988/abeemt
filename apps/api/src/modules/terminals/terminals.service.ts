@@ -113,7 +113,11 @@ export class TerminalsService {
       this.prisma.terminal.count({ where }),
     ]);
 
-    return paginated(registros.map((t) => this.toView(t)), total, pagination);
+    return paginated(
+      registros.map((t) => this.toView(t)),
+      total,
+      pagination,
+    );
   }
 
   async get(user: AuthenticatedUser, id: string): Promise<TerminalView> {
@@ -185,7 +189,9 @@ export class TerminalsService {
     if (dto.connectorId && dto.connectorId !== anterior.connectorId) {
       const conector = await this.prisma.connector.findUnique({
         where: { id: dto.connectorId },
-        select: { charger: { select: { siteId: true, site: { select: { organizationId: true } } } } },
+        select: {
+          charger: { select: { siteId: true, site: { select: { organizationId: true } } } },
+        },
       });
 
       if (!conector) {
@@ -210,7 +216,11 @@ export class TerminalsService {
       entityType: 'Terminal',
       entityId: id,
       organizationId: anterior.site.organizationId,
-      previousValue: { name: anterior.name, connectorId: anterior.connectorId, status: anterior.status },
+      previousValue: {
+        name: anterior.name,
+        connectorId: anterior.connectorId,
+        status: anterior.status,
+      },
       newValue: { name: dto.name, connectorId: dto.connectorId, status: dto.status },
       ...context,
     });
@@ -439,10 +449,7 @@ export class TerminalsService {
   // Apoio
   // ---------------------------------------------------------------------------
 
-  private async buscarComEscopo(
-    user: AuthenticatedUser,
-    id: string,
-  ): Promise<TerminalComRelacoes> {
+  private async buscarComEscopo(user: AuthenticatedUser, id: string): Promise<TerminalComRelacoes> {
     const terminal = await this.prisma.terminal.findUnique({
       where: { id },
       include: TERMINAL_INCLUDE,

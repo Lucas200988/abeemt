@@ -140,13 +140,13 @@ faturaria um consumo que ainda pode subir.
 
 ## 4. O que a maquininha nunca faz
 
-| Nunca                                             | Por quê                                                            |
-| ------------------------------------------------- | ------------------------------------------------------------------ |
-| Guarda ou transmite número completo, CVV, trilha  | Briefing seção 12. A API recusa o campo                            |
-| Escolhe o conector                                | Um token furtado ligaria o carregador do vizinho (R-32)            |
-| Escolhe o provedor de pagamento                   | Escolheria um simulado e teria recarga de graça (R-32)             |
-| Decide o valor do teto                            | O teto é comercial e mora no servidor (ADR-0008 §9)                |
-| Consulta ou encerra sessão de outro conector      | Encerraria a recarga de outro motorista (R-32)                     |
+| Nunca                                            | Por quê                                                 |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| Guarda ou transmite número completo, CVV, trilha | Briefing seção 12. A API recusa o campo                 |
+| Escolhe o conector                               | Um token furtado ligaria o carregador do vizinho (R-32) |
+| Escolhe o provedor de pagamento                  | Escolheria um simulado e teria recarga de graça (R-32)  |
+| Decide o valor do teto                           | O teto é comercial e mora no servidor (ADR-0008 §9)     |
+| Consulta ou encerra sessão de outro conector     | Encerraria a recarga de outro motorista (R-32)          |
 
 ---
 
@@ -195,22 +195,22 @@ ponta a ponta em `apps/api/test/maquininha.e2e-spec.ts`.
 
 Tudo abaixo tem teste automatizado, e o fluxo foi exercitado contra a API no ar.
 
-| Garantia                                                              | Onde |
-| --------------------------------------------------------------------- | ---- |
-| Código vira token; código não serve duas vezes                        | `maquininha.e2e-spec.ts` |
-| Código expirado é recusado                                            | idem |
-| Token em claro nunca fica no banco                                    | idem |
-| Sem token, ou com token inventado, não passa                          | idem |
-| Revogar corta o acesso na hora                                        | idem |
-| Gerar código novo invalida o token anterior                           | idem |
-| Contexto traz tarifa, teto e estado do conector                       | idem |
-| Autoriza → carrega → encerra → cobra só o consumido (R$ 8,00 de R$ 200,00 reservados) | idem |
-| Reenvio da mesma chave não cria segunda cobrança                      | idem |
-| Valor acima do teto é recusado                                        | idem |
-| Número completo de cartão é recusado                                  | idem |
-| Não inicia recarga em outro conector                                  | idem |
-| Não escolhe provedor simulado                                         | idem |
-| Não consulta nem encerra sessão de outro ponto                        | idem |
+| Garantia                                                                              | Onde                     |
+| ------------------------------------------------------------------------------------- | ------------------------ |
+| Código vira token; código não serve duas vezes                                        | `maquininha.e2e-spec.ts` |
+| Código expirado é recusado                                                            | idem                     |
+| Token em claro nunca fica no banco                                                    | idem                     |
+| Sem token, ou com token inventado, não passa                                          | idem                     |
+| Revogar corta o acesso na hora                                                        | idem                     |
+| Gerar código novo invalida o token anterior                                           | idem                     |
+| Contexto traz tarifa, teto e estado do conector                                       | idem                     |
+| Autoriza → carrega → encerra → cobra só o consumido (R$ 8,00 de R$ 200,00 reservados) | idem                     |
+| Reenvio da mesma chave não cria segunda cobrança                                      | idem                     |
+| Valor acima do teto é recusado                                                        | idem                     |
+| Número completo de cartão é recusado                                                  | idem                     |
+| Não inicia recarga em outro conector                                                  | idem                     |
+| Não escolhe provedor simulado                                                         | idem                     |
+| Não consulta nem encerra sessão de outro ponto                                        | idem                     |
 
 ---
 
@@ -236,14 +236,14 @@ onde eu rodo bloqueia o acesso a esses portais** — a política de saída do
 contêiner recusa a conexão (`connect_rejected`), não os sites. Você consegue
 abri-los normalmente no seu navegador; cole aqui o conteúdo das páginas:
 
-| Preciso saber                                                                 | Por quê |
-| ----------------------------------------------------------------------------- | ------- |
-| Qual é o SDK e em que linguagem (Android nativo? há camada web?)              | Define como o aplicativo é escrito |
-| O SDK expõe **pré-autorização** e **captura parcial** no terminal?            | É o modelo inteiro do ADR-0008. Sem isso, muda o desenho |
-| Se não expõe: a captura é feita pela API do adquirente, com o servidor?       | Muda quem chama o quê |
-| Existe modo quiosque (o aplicativo abre sozinho e não sai)?                   | O poste não tem ninguém para destravar a tela |
-| Qual é o processo de homologação, e quanto tempo leva?                        | Entra no cronograma do piloto |
-| Credenciais de homologação: como obter?                                        | Regra 18.20 — sem sandbox, não há chamada real |
+| Preciso saber                                                           | Por quê                                                  |
+| ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| Qual é o SDK e em que linguagem (Android nativo? há camada web?)        | Define como o aplicativo é escrito                       |
+| O SDK expõe **pré-autorização** e **captura parcial** no terminal?      | É o modelo inteiro do ADR-0008. Sem isso, muda o desenho |
+| Se não expõe: a captura é feita pela API do adquirente, com o servidor? | Muda quem chama o quê                                    |
+| Existe modo quiosque (o aplicativo abre sozinho e não sai)?             | O poste não tem ninguém para destravar a tela            |
+| Qual é o processo de homologação, e quanto tempo leva?                  | Entra no cronograma do piloto                            |
+| Credenciais de homologação: como obter?                                 | Regra 18.20 — sem sandbox, não há chamada real           |
 
 ### 8.2 Confirmar a autorização contra o adquirente
 

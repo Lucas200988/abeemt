@@ -19,17 +19,17 @@ motorista paga  →  reserva no cartão  →  carregador liga  →  consumo medi
 
 Em código:
 
-| Passo                          | Onde                                                       |
-| ------------------------------ | ---------------------------------------------------------- |
-| Reserva o conector             | `PaymentsService.criarPagamentoESessao` (transação)        |
-| Reserva o valor                | `PaymentProvider.authorize`                                |
-| Manda o carregador ligar       | `OcppCommands.remoteStart`                                 |
-| Acompanha o consumo            | `OcppHandlers.meterValues`                                 |
-| Decide a parada automática     | `OcppHandlers.verificarTeto` + `@bora/pricing`             |
-| Mede a ociosidade              | `OcppHandlers.medirOciosidade`                             |
-| Calcula o valor final          | `SessionPricingService.finalAmount`                        |
-| Cobra                          | `PaymentsService.settleSession` → `PaymentProvider.capture` |
-| Reexecuta o que falhou         | `SessionWorker.tick`                                       |
+| Passo                      | Onde                                                        |
+| -------------------------- | ----------------------------------------------------------- |
+| Reserva o conector         | `PaymentsService.criarPagamentoESessao` (transação)         |
+| Reserva o valor            | `PaymentProvider.authorize`                                 |
+| Manda o carregador ligar   | `OcppCommands.remoteStart`                                  |
+| Acompanha o consumo        | `OcppHandlers.meterValues`                                  |
+| Decide a parada automática | `OcppHandlers.verificarTeto` + `@bora/pricing`              |
+| Mede a ociosidade          | `OcppHandlers.medirOciosidade`                              |
+| Calcula o valor final      | `SessionPricingService.finalAmount`                         |
+| Cobra                      | `PaymentsService.settleSession` → `PaymentProvider.capture` |
+| Reexecuta o que falhou     | `SessionWorker.tick`                                        |
 
 ### A ordem importa
 
@@ -41,22 +41,22 @@ sem tocar no cartão de ninguém.
 
 ## 2. Cada caminho de falha, e o que acontece
 
-| Situação                                        | O que o sistema faz                                                     | Motorista é cobrado?              |
-| ----------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| Cartão recusado                                 | Sessão `DECLINED`, conector liberado                                    | Não                               |
-| Adquirente fora do ar                           | Sessão `FAILED`, mensagem pedindo nova tentativa                        | Não                               |
-| Conector já ocupado                             | `CONNECTOR_BUSY` antes de qualquer contato com o cartão                 | Não                               |
-| Carregador recusa o comando                     | Reserva cancelada (`void`) na hora                                      | Não                               |
-| Carregador não responde (120 s)                 | `SessionWorker.expirarSemResposta` → sessão `EXPIRED`, reserva cancelada | Não                               |
-| Veículo não inicia (5 min)                      | `SessionWorker.expirarSemInicio` → sessão `EXPIRED`, reserva cancelada  | Não                               |
-| Pagamento trava no meio                         | `SessionWorker.expirarSemPagamento` → conector liberado                 | Não                               |
-| Recarga entrega 0 Wh                            | Reserva cancelada; no Pix, devolução integral                           | Não                               |
-| Consumo atinge o teto                           | Parada automática, `stopReason = CEILING_REACHED`                       | Sim, até o teto                   |
-| Captura falha (adquirente fora)                 | Worker tenta de novo, com espaçamento exponencial                       | Sim, quando o adquirente voltar   |
-| Carregador não aceita a parada automática       | Log de erro e `failureReason` na sessão — precisa de gente              | Sim, limitado ao valor reservado  |
-| Pré-autorização expira antes da captura         | Registrado na sessão; sem ação automática possível                      | **Não** — cobrança perdida (R-23) |
-| Webhook reenviado                               | Índice único `(provider, eventId)` recusa o segundo                     | Não muda nada                     |
-| Webhook sem assinatura válida                   | 401, nada é processado                                                  | Não muda nada                     |
+| Situação                                  | O que o sistema faz                                                      | Motorista é cobrado?              |
+| ----------------------------------------- | ------------------------------------------------------------------------ | --------------------------------- |
+| Cartão recusado                           | Sessão `DECLINED`, conector liberado                                     | Não                               |
+| Adquirente fora do ar                     | Sessão `FAILED`, mensagem pedindo nova tentativa                         | Não                               |
+| Conector já ocupado                       | `CONNECTOR_BUSY` antes de qualquer contato com o cartão                  | Não                               |
+| Carregador recusa o comando               | Reserva cancelada (`void`) na hora                                       | Não                               |
+| Carregador não responde (120 s)           | `SessionWorker.expirarSemResposta` → sessão `EXPIRED`, reserva cancelada | Não                               |
+| Veículo não inicia (5 min)                | `SessionWorker.expirarSemInicio` → sessão `EXPIRED`, reserva cancelada   | Não                               |
+| Pagamento trava no meio                   | `SessionWorker.expirarSemPagamento` → conector liberado                  | Não                               |
+| Recarga entrega 0 Wh                      | Reserva cancelada; no Pix, devolução integral                            | Não                               |
+| Consumo atinge o teto                     | Parada automática, `stopReason = CEILING_REACHED`                        | Sim, até o teto                   |
+| Captura falha (adquirente fora)           | Worker tenta de novo, com espaçamento exponencial                        | Sim, quando o adquirente voltar   |
+| Carregador não aceita a parada automática | Log de erro e `failureReason` na sessão — precisa de gente               | Sim, limitado ao valor reservado  |
+| Pré-autorização expira antes da captura   | Registrado na sessão; sem ação automática possível                       | **Não** — cobrança perdida (R-23) |
+| Webhook reenviado                         | Índice único `(provider, eventId)` recusa o segundo                      | Não muda nada                     |
+| Webhook sem assinatura válida             | 401, nada é processado                                                   | Não muda nada                     |
 
 ---
 
@@ -116,12 +116,12 @@ provedor `manual`.
 
 Nenhuma das regras abaixo depende de código de aplicação para valer:
 
-| Regra                                | Garantida por                                                    |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| Uma sessão ativa por conector (11.1) | Índice parcial `charging_sessions_one_active_per_connector`      |
-| Um pagamento por sessão (11.2)       | `@unique` em `charging_sessions.paymentId`                       |
-| Sem pagamento duplicado (11.3)       | `@unique` em `payments.idempotencyKey`                           |
-| Sem webhook reprocessado (R-08)      | `@@unique([provider, eventId])` em `payment_events`              |
+| Regra                                | Garantida por                                                      |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Uma sessão ativa por conector (11.1) | Índice parcial `charging_sessions_one_active_per_connector`        |
+| Um pagamento por sessão (11.2)       | `@unique` em `charging_sessions.paymentId`                         |
+| Sem pagamento duplicado (11.3)       | `@unique` em `payments.idempotencyKey`                             |
+| Sem webhook reprocessado (R-08)      | `@@unique([provider, eventId])` em `payment_events`                |
 | Dinheiro sempre em centavos inteiros | `assertCents` em `@bora/contracts` — o Postgres trunca em silêncio |
 
 O último merece nota: `Int` no Postgres aceita `1234.56` e grava `1234`, sem

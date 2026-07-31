@@ -32,12 +32,12 @@ Então a fase foi dividida no que dá para provar hoje e no que depende de você
 
 ## 2. O que ficou pronto e testado
 
-| Entrega | Onde | Testes |
-| ------- | ---- | ------ |
-| Suíte de conformidade da porta | `packages/payment-core/src/conformance.ts` | 30 |
-| Base HTTP (prazo, retentativa, idempotência, HMAC, redação) | `http-provider.ts` | 20 |
-| Adapter PagBank (estrutura, trava, mapeamento, webhook) | `pagbank.ts` | 13 |
-| Corpo cru do webhook, ponta a ponta | `main.ts`, controller, serviço | — |
+| Entrega                                                     | Onde                                       | Testes |
+| ----------------------------------------------------------- | ------------------------------------------ | ------ |
+| Suíte de conformidade da porta                              | `packages/payment-core/src/conformance.ts` | 30     |
+| Base HTTP (prazo, retentativa, idempotência, HMAC, redação) | `http-provider.ts`                         | 20     |
+| Adapter PagBank (estrutura, trava, mapeamento, webhook)     | `pagbank.ts`                               | 13     |
+| Corpo cru do webhook, ponta a ponta                         | `main.ts`, controller, serviço             | —      |
 
 ### A suíte de conformidade
 
@@ -110,17 +110,17 @@ assistida) já foram confirmados como viáveis no Brasil.
 Com a documentação aberta, estes são os itens a confirmar em
 `packages/payment-core/src/pagbank.ts`, no objeto `CONTRATO`:
 
-| Item | Pergunta |
-| ---- | -------- |
-| `baseUrlSandbox` / `baseUrlProducao` | Quais os endereços exatos? |
-| `criarPedido` | Qual caminho cria o pedido com pré-autorização? |
-| `capturar` | Qual caminho captura, e o que identifica a cobrança? |
-| `cancelar` | Cancelar reserva e devolver valor capturado usam o mesmo caminho? |
-| `devolver` | Se forem diferentes, qual é cada um? |
-| `consultar` | Qual caminho consulta uma cobrança? |
-| `campoValor` / `campoMoeda` | Os valores vão em centavos? Em que campo? |
-| `cabecalhoAssinatura` | Qual cabeçalho traz a assinatura do webhook? |
-| `mapaDeEstados` | Quais estados o fornecedor devolve, e o que cada um significa? |
+| Item                                 | Pergunta                                                          |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `baseUrlSandbox` / `baseUrlProducao` | Quais os endereços exatos?                                        |
+| `criarPedido`                        | Qual caminho cria o pedido com pré-autorização?                   |
+| `capturar`                           | Qual caminho captura, e o que identifica a cobrança?              |
+| `cancelar`                           | Cancelar reserva e devolver valor capturado usam o mesmo caminho? |
+| `devolver`                           | Se forem diferentes, qual é cada um?                              |
+| `consultar`                          | Qual caminho consulta uma cobrança?                               |
+| `campoValor` / `campoMoeda`          | Os valores vão em centavos? Em que campo?                         |
+| `cabecalhoAssinatura`                | Qual cabeçalho traz a assinatura do webhook?                      |
+| `mapaDeEstados`                      | Quais estados o fornecedor devolve, e o que cada um significa?    |
 
 **Já confirmado** (de material público do PagBank): pré-autorização é
 `capture: false`; a reserva vale de 6 a 29 dias conforme a bandeira;

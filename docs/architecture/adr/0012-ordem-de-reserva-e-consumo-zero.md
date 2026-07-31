@@ -60,12 +60,12 @@ comercial e fica na camada que decide, não na que calcula.
 
 ## Alternativas consideradas
 
-| Alternativa                                                     | Por que não                                                                                                                              |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Verificar "conector ocupado" na aplicação antes de autorizar     | Duas requisições simultâneas passam as duas pela verificação. Só o índice único do banco resolve                                          |
-| Autorizar primeiro e criar a sessão depois                       | Inverte exatamente o problema: o segundo motorista teria o valor reservado antes de descobrir que o ponto está ocupado                    |
-| Cobrar a taxa de conexão mesmo com zero energia                  | R$ 3,00 de quem plugou, esperou e não recebeu nada é a reclamação mais previsível do produto; atendê-la custa mais do que o próprio valor |
-| Zerar a cobrança em `@bora/pricing`                              | Misturaria política comercial com cálculo de tarifa e tornaria o pacote impossível de reaproveitar para simulação de preços               |
+| Alternativa                                                  | Por que não                                                                                                                               |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Verificar "conector ocupado" na aplicação antes de autorizar | Duas requisições simultâneas passam as duas pela verificação. Só o índice único do banco resolve                                          |
+| Autorizar primeiro e criar a sessão depois                   | Inverte exatamente o problema: o segundo motorista teria o valor reservado antes de descobrir que o ponto está ocupado                    |
+| Cobrar a taxa de conexão mesmo com zero energia              | R$ 3,00 de quem plugou, esperou e não recebeu nada é a reclamação mais previsível do produto; atendê-la custa mais do que o próprio valor |
+| Zerar a cobrança em `@bora/pricing`                          | Misturaria política comercial com cálculo de tarifa e tornaria o pacote impossível de reaproveitar para simulação de preços               |
 
 ## Consequências
 

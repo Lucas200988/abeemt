@@ -36,5 +36,30 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  {
+    /**
+     * Scripts de operação (.mjs) rodam em Node puro, fora do TypeScript.
+     *
+     * O preset recomendado não conhece os globais do Node e acusava `process`
+     * e `console` como indefinidos — mas SÓ no CI, que roda `eslint .` na
+     * raiz; o lint de cada pacote olha apenas `src` e nunca via estes
+     * arquivos. Foi assim que o CI ficou vermelho com o repositório verde
+     * localmente (encontrado pelos e-mails de falha, 2026-07-31).
+     */
+    files: ['**/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        URL: 'readonly',
+        AbortController: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+  },
   prettier,
 );

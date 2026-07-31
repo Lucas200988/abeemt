@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { calculateSessionAmount, type PricingBreakdown, type TariffSnapshot } from '@bora/pricing';
 import { Prisma } from '@bora/database';
 import { PrismaService } from '../../prisma/prisma.service';

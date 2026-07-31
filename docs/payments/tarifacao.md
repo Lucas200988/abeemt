@@ -86,12 +86,12 @@ sessão, mas a origem dele precisa continuar existindo.
 
 ## 4. Validações no cadastro
 
-| Regra                                       | Por quê                                                                       |
-| ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Máximo não pode ser menor que o mínimo      | Nenhuma recarga conseguiria atingir o mínimo; a tarifa é contraditória        |
-| Fim da validade posterior ao início         | Janela invertida nunca se aplica a nada                                       |
-| Nem tudo pode ser zero                      | Tarifa que não cobra nada é quase sempre erro de preenchimento — e sai de graça |
-| Valores em centavos inteiros, com teto      | Barreira contra digitar reais onde se espera centavos                          |
+| Regra                                  | Por quê                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| Máximo não pode ser menor que o mínimo | Nenhuma recarga conseguiria atingir o mínimo; a tarifa é contraditória          |
+| Fim da validade posterior ao início    | Janela invertida nunca se aplica a nada                                         |
+| Nem tudo pode ser zero                 | Tarifa que não cobra nada é quase sempre erro de preenchimento — e sai de graça |
+| Valores em centavos inteiros, com teto | Barreira contra digitar reais onde se espera centavos                           |
 
 A primeira já era verificada no cálculo, mas lá é tarde: a tarifa contraditória
 já teria sido salva e só quebraria no fechamento de uma recarga real, com o

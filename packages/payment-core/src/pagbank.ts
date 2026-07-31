@@ -46,7 +46,7 @@ interface ItemContrato<T> {
   nota?: string;
 }
 
-const item = <T,>(valor: T, procedencia: Procedencia, nota?: string): ItemContrato<T> => ({
+const item = <T>(valor: T, procedencia: Procedencia, nota?: string): ItemContrato<T> => ({
   valor,
   procedencia,
   nota,
@@ -73,7 +73,11 @@ export const CONTRATO = {
   /** Cancelamento da pré-autorização não capturada. */
   cancelar: item('/charges/{chargeId}/cancel', 'a confirmar'),
   /** Devolução de valor já capturado. */
-  devolver: item('/charges/{chargeId}/cancel', 'a confirmar', 'pode ser o mesmo caminho do cancelamento'),
+  devolver: item(
+    '/charges/{chargeId}/cancel',
+    'a confirmar',
+    'pode ser o mesmo caminho do cancelamento',
+  ),
   consultar: item('/charges/{chargeId}', 'a confirmar'),
 
   /**
@@ -155,24 +159,28 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     this.exigirVerificacao();
     assertCents(input.amountCents, 'amountCents');
 
-    const { body } = await this.request<Record<string, unknown>>('POST', CONTRATO.criarPedido.valor, {
-      idempotencyKey: input.idempotencyKey,
-      body: {
-        reference_id: input.idempotencyKey,
-        charges: [
-          {
-            reference_id: input.idempotencyKey,
-            description: input.description ?? 'Recarga de veículo elétrico',
-            amount: { value: input.amountCents, currency: 'BRL' },
-            payment_method: {
-              type: input.method === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'CREDIT_CARD',
-              // O campo que faz a diferença entre reservar e cobrar.
-              [CONTRATO.campoPreAutorizacao.valor]: false,
+    const { body } = await this.request<Record<string, unknown>>(
+      'POST',
+      CONTRATO.criarPedido.valor,
+      {
+        idempotencyKey: input.idempotencyKey,
+        body: {
+          reference_id: input.idempotencyKey,
+          charges: [
+            {
+              reference_id: input.idempotencyKey,
+              description: input.description ?? 'Recarga de veículo elétrico',
+              amount: { value: input.amountCents, currency: 'BRL' },
+              payment_method: {
+                type: input.method === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'CREDIT_CARD',
+                // O campo que faz a diferença entre reservar e cobrar.
+                [CONTRATO.campoPreAutorizacao.valor]: false,
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    });
+    );
 
     return this.toResult(this.primeiraCobranca(body), input.amountCents);
   }
@@ -325,8 +333,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     const devolvido = this.valorDe(cobranca, 'summary.refunded') ?? 0;
 
     const cartao = (cobranca.payment_method as Record<string, unknown>)?.card as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
 
     return {
       ok: status !== 'DECLINED' && status !== 'FAILED',

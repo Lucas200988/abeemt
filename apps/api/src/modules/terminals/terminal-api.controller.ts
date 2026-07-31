@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { runtimeEnv } from '../../config/runtime-env';
@@ -111,10 +121,7 @@ export class TerminalApiController {
 
   @Get('sessions/:id')
   @ApiOperation({ summary: 'Estado da recarga, para a tela atualizar sozinha' })
-  session(
-    @CurrentTerminal() terminal: TerminalIdentity,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  session(@CurrentTerminal() terminal: TerminalIdentity, @Param('id', ParseUUIDPipe) id: string) {
     return this.sessions.session(terminal, id);
   }
 

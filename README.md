@@ -52,15 +52,15 @@ sua autorização explícita.
 
 ### O que já dá para ver funcionando
 
-| Fluxo                                    | Onde                                            |
-| ---------------------------------------- | ----------------------------------------------- |
-| Reserva → consumo → cobrança do consumido | Painel → Pagamentos → "Simular cobrança"        |
-| Parada automática no teto                 | mesma tela, com teto baixo (ex.: R$ 4,00)       |
-| Pix com devolução por consumo zero        | mesma tela, meio de pagamento "Pix"             |
-| Valor corrente durante a recarga          | Painel → Sessões → detalhe da sessão            |
-| Devolução manual, com motivo auditado     | Painel → Pagamentos (perfil de administrador)   |
-| Cadastro de tarifas e simulação de preço  | Painel → Tarifas                                |
-| Cadastro e pareamento de maquininhas      | Painel → Maquininhas                            |
+| Fluxo                                     | Onde                                               |
+| ----------------------------------------- | -------------------------------------------------- |
+| Reserva → consumo → cobrança do consumido | Painel → Pagamentos → "Simular cobrança"           |
+| Parada automática no teto                 | mesma tela, com teto baixo (ex.: R$ 4,00)          |
+| Pix com devolução por consumo zero        | mesma tela, meio de pagamento "Pix"                |
+| Valor corrente durante a recarga          | Painel → Sessões → detalhe da sessão               |
+| Devolução manual, com motivo auditado     | Painel → Pagamentos (perfil de administrador)      |
+| Cadastro de tarifas e simulação de preço  | Painel → Tarifas                                   |
+| Cadastro e pareamento de maquininhas      | Painel → Maquininhas                               |
 | Recarga iniciada pela maquininha          | `POST /api/v1/terminal/authorization` (ver FASE 8) |
 
 ---
@@ -163,22 +163,22 @@ o seed se recusa a rodar com `NODE_ENV=production`.
 
 ### Comandos
 
-| Comando                | O que faz                                     |
-| ---------------------- | --------------------------------------------- |
-| `pnpm bootstrap`       | Prepara o ambiente do zero                    |
+| Comando                | O que faz                                                    |
+| ---------------------- | ------------------------------------------------------------ |
+| `pnpm bootstrap`       | Prepara o ambiente do zero                                   |
 | `pnpm dev:watch`       | Recompila os pacotes ao salvar (desenvolvimento dos pacotes) |
-| `pnpm sim`             | Sobe um carregador OCPP simulado              |
-| `pnpm dev`             | API e painel em modo desenvolvimento          |
-| `pnpm build`           | Constrói todos os pacotes                     |
-| `pnpm test`            | Roda toda a suíte                             |
-| `pnpm typecheck`       | Verificação de tipos                          |
-| `pnpm exec eslint .`   | Lint                                          |
-| `pnpm format`          | Formata o código                              |
-| `pnpm db:migrate`      | Cria uma migration nova a partir do schema    |
-| `pnpm db:deploy`       | Aplica migrations pendentes                   |
-| `pnpm db:seed`         | Popula dados de desenvolvimento (idempotente) |
-| `pnpm db:studio`       | Abre o Prisma Studio                          |
-| `docker compose up -d` | Sobe tudo em containers                       |
+| `pnpm sim`             | Sobe um carregador OCPP simulado                             |
+| `pnpm dev`             | API e painel em modo desenvolvimento                         |
+| `pnpm build`           | Constrói todos os pacotes                                    |
+| `pnpm test`            | Roda toda a suíte                                            |
+| `pnpm typecheck`       | Verificação de tipos                                         |
+| `pnpm exec eslint .`   | Lint                                                         |
+| `pnpm format`          | Formata o código                                             |
+| `pnpm db:migrate`      | Cria uma migration nova a partir do schema                   |
+| `pnpm db:deploy`       | Aplica migrations pendentes                                  |
+| `pnpm db:seed`         | Popula dados de desenvolvimento (idempotente)                |
+| `pnpm db:studio`       | Abre o Prisma Studio                                         |
+| `docker compose up -d` | Sobe tudo em containers                                      |
 
 ### Simulador OCPP
 

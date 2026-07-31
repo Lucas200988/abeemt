@@ -113,8 +113,17 @@ falhar, a API não sobe com o schema errado.
 
 ```
 WEB_PORT=3005    # painel
-API_PORT=3006    # API — lembre de ajustar NEXT_PUBLIC_API_URL junto
+API_PORT=3006    # API
+NEXT_PUBLIC_API_URL=http://localhost:3006/api/v1   # precisa acompanhar a API
 ```
+
+> **Ao mudar `NEXT_PUBLIC_API_URL`, reinicie o painel.** O Next congela as
+> variáveis `NEXT_PUBLIC_*` no momento em que o servidor inicia — editar o
+> `.env` com o painel já rodando não tem efeito. No navegador, recarregue com
+> Ctrl+Shift+R: o JavaScript antigo fica em cache.
+>
+> O sintoma é o painel dizer "Não foi possível conectar ao servidor" enquanto
+> `http://localhost:<API_PORT>/api/health` responde normalmente.
 
 ### Usuários criados pelo seed
 

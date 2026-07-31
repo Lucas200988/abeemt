@@ -93,10 +93,16 @@ if (!existsSync(envPath)) {
       JWT_REFRESH_SECRET   gere outro, diferente do de cima
       SEED_ADMIN_PASSWORD  a senha com que você vai entrar no painel
 
-    No Windows:  notepad .env
+    No Windows:   notepad .env
     No Linux/Mac: nano .env
 
-    Depois rode  pnpm bootstrap  de novo.
+    Depois, com o .env preenchido, suba o banco e rode isto de novo:
+
+      docker compose up -d postgres
+      pnpm bootstrap
+
+    (A ordem importa: o docker compose lê a senha do .env, então ele só
+     funciona depois que o arquivo existe e está preenchido.)
 `);
   process.exit(0);
 }

@@ -27,6 +27,12 @@ carregado no shell.
   PowerShell. Reescrito como `scripts/bootstrap.mjs`, em Node, com `shell: true`
   no Windows (lá o `pnpm` é um `.cmd` e o Node recusa executá-lo direto).
 
+- **A ordem documentada era impossível.** O README mandava subir o banco antes
+  de preencher o `.env`, mas o `docker compose` lê `POSTGRES_PASSWORD` desse
+  mesmo arquivo e falhava com `required variable POSTGRES_PASSWORD is missing a
+  value`. A sequência correta — criar o `.env`, preencher, subir o banco,
+  instalar — passou a estar no README e na mensagem do próprio script.
+
 #### Adicionado
 
 - `scripts/bootstrap.mjs` — verifica Node e pnpm, cria o `.env` na primeira

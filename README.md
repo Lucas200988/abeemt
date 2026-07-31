@@ -61,26 +61,26 @@ sua autorização explícita.
 git clone https://github.com/lucas200988/abeemt.git bora-carregar
 cd bora-carregar
 
-pnpm bootstrap   # cria o .env e para, pedindo que você o preencha
-# edite o .env (veja a lista de valores que ele imprime)
-pnpm bootstrap   # agora instala, migra, popula e constrói
-pnpm dev         # sobe API e painel
+pnpm bootstrap                  # 1. cria o .env e para, pedindo que você o preencha
+# edite o .env — a lista de valores é impressa na tela
+docker compose up -d postgres   # 2. sobe o banco (lê a senha do .env)
+pnpm bootstrap                  # 3. instala, migra, popula e constrói
+pnpm dev                        # 4. sobe API e painel
 ```
 
+**A ordem importa.** O `docker compose` lê `POSTGRES_PASSWORD` do `.env`, então
+ele só funciona depois que o arquivo existe e está preenchido — e o `.env` é
+criado pelo primeiro `pnpm bootstrap`. Subir o banco antes falha com
+`required variable POSTGRES_PASSWORD is missing a value`.
+
 No **Windows**, os mesmos comandos, no PowerShell aberto dentro da pasta do
-projeto. O `bootstrap` é um script Node justamente para funcionar igual nos três
-sistemas.
+projeto (`notepad .env` para editar). O `bootstrap` é um script Node justamente
+para funcionar igual nos três sistemas.
 
 > **É `pnpm bootstrap`, não `pnpm setup`.** `setup` é um comando embutido do
 > pnpm: um script com esse nome nunca chega a ser chamado, e quem digita acaba
 > rodando a configuração do próprio pnpm. Descoberto na primeira instalação em
 > máquina Windows, em 2026-07-30.
-
-O banco precisa estar de pé antes das migrations. Com Docker, só o Postgres:
-
-```bash
-docker compose up -d postgres
-```
 
 Com Docker, tudo em containers (**este caminho ainda não foi testado** — não há
 daemon Docker no ambiente onde o projeto foi desenvolvido):

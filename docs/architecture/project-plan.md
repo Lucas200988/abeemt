@@ -363,7 +363,7 @@ aceite; depois, o que foi feito, testes executados e resultado real.
 | **5**  | Pagamento simulado: `PaymentProvider` com autorizar/capturar/cancelar, Mock, webhook, idempotência, parada no teto | Falha antes do início gera `void`; sessão para sozinha no teto; webhook duplicado não duplica     | 2 (real: 4)                       |
 | **6**  | Tarifação: kWh, taxa fixa, tempo, mínimo, máximo, arredondamento, snapshot na sessão                               | Casos-limite cobertos por testes determinísticos                                                  | 5                                 |
 | **7**  | Matriz comparativa de adquirentes → **você escolhe** → adapter real em sandbox                                     | Sandbox aprovando e iniciando recarga, webhook assinado                                           | 6 + sua escolha                   |
-| **8**  | SmartPOS (caminho A) ou terminal web/quiosque (caminho B)                                                          | Terminal identificado inicia sessão no carregador correto                                         | 7                                 |
+| **8**  | SmartPOS — **caminho A escolhido em 2026-07-31**. Lado do servidor concluído; o aplicativo do equipamento depende do SDK do fabricante | Terminal identificado inicia sessão no carregador correto — **feito** (`maquininha.e2e-spec.ts`) | 7 (parcial: o servidor não dependeu do sandbox) |
 | **9**  | Endurecimento para piloto: backup, alertas, testes de caos, runbooks                                               | Checklist de piloto assinado; nenhuma sessão sem estado definido                                  | 8                                 |
 
 ### Por que a FASE 4 foi dividida (revisão de 2026-07-29)

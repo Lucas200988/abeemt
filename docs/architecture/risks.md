@@ -489,6 +489,52 @@ valor errado, interpretar recusa como aprovação, ou recusar todo webhook.
 **Fecha quando:** houver credenciais de sandbox e a suíte de conformidade passar
 contra elas. Ver `docs/payments/fase-7-o-que-falta.md`.
 
+### R-32 — Token de maquininha furtado 🟠 _(novo — 2026-07-31)_
+
+**P 3 · I 4 · Severidade 12 — ALTO**
+
+A maquininha fica pendurada num poste, ligada o dia inteiro, fisicamente
+acessível a qualquer pessoa. É o componente mais exposto do sistema. Quem
+conseguir extrair a credencial dela — abrindo o equipamento, lendo o
+armazenamento do aplicativo, ou simplesmente levando a maquininha — passa a
+poder falar com a nossa API se passando por ela.
+
+**O que estava em jogo.** Se o terminal fosse um usuário do painel, essa
+credencial abriria o painel inteiro: sessões, receita e cadastro de todos os
+estabelecimentos. Se o terminal escolhesse o conector, iniciaria recarga em
+qualquer ponto da plataforma. Se escolhesse o provedor de pagamento, escolheria
+um simulado e teria recarga de graça — com o sistema registrando "pagamento
+aprovado" em cada uma.
+
+**Mitigação (implementada na FASE 8):**
+
+- **Identidade própria, não usuário.** O token de terminal só abre os endpoints
+  `/terminal/*`. Não existe caminho dele para o painel.
+- **O conector vem do cadastro, nunca do corpo da requisição.** O campo sequer é
+  aceito — `forbidNonWhitelisted` recusa a requisição inteira.
+- **O provedor vem da configuração do servidor** (`BORA_TERMINAL_PAYMENT_PROVIDER`),
+  nunca do terminal.
+- **O valor reservado é limitado ao teto configurado.** Reserva acima do teto do
+  ADR-0008 §9 é recusada.
+- **Consulta e parada de sessão exigem que a sessão seja do conector daquele
+  terminal** — senão um token furtado encerraria a recarga de qualquer motorista.
+- **Revogação imediata.** O token é opaco e conferido no banco a cada
+  requisição, não um JWT que continuaria válido até expirar. O botão "Revogar"
+  no painel corta o acesso na hora.
+- **Pareamento por código curto, de uso único e com prazo.** Ninguém digita
+  segredo na tela do equipamento; o token só existe em claro no instante da
+  troca, e guardamos apenas o hash.
+
+Cada um destes pontos tem teste em `apps/api/test/maquininha.e2e-spec.ts`,
+inclusive as tentativas de burlar.
+
+**Resíduo aceito:** um token furtado ainda consegue **registrar uma
+pré-autorização falsa** naquele conector — declarar que houve cobrança quando
+não houve — e obter uma recarga. Isso não se resolve na nossa borda: só a
+consulta ao adquirente prova que a cobrança existe. **Fecha quando** houver
+sandbox real e a autorização declarada pelo terminal for conferida contra o
+adquirente antes de o carregador ligar (item para a FASE 7/9).
+
 ### R-19 — Simulador que "concorda consigo mesmo" 🟠
 
 **P 3 · I 4 · Severidade 12 → mitigado por design**
@@ -533,7 +579,7 @@ autorização. Nada foi apagado.
 | 5    | **R-08, R-09, R-22, R-27** (bloqueantes) + R-07, R-15, R-16, R-23 |
 | 6    | R-04, R-12, **R-22** + R-29                                       |
 | 7    | R-09, R-10, R-16, **R-23, R-27** + R-24                           |
-| 8    | R-16, R-25, R-28                                                  |
+| 8    | **R-32** (bloqueante) + R-16, R-25, R-28                          |
 | 9    | todos revisados                                                   |
 
 ### Riscos com maior severidade atual (após revisão de 2026-07-29)

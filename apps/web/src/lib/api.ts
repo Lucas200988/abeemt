@@ -186,8 +186,30 @@ export interface PricingBreakdown {
   idleMinutes: number;
 }
 
+export interface TerminalView {
+  id: string;
+  name: string;
+  siteId: string;
+  siteName: string;
+  connectorId: string | null;
+  connectorLabel: string | null;
+  serialNumber: string | null;
+  model: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
+  paired: boolean;
+  pairedAt: string | null;
+  /** Código em aberto. Nulo quando não há nenhum válido — expirado não conta. */
+  pairingCode: string | null;
+  pairingExpiresAt: string | null;
+  lastSeenAt: string | null;
+  appVersion: string | null;
+  createdAt: string;
+}
+
 export interface ProviderInfo {
   default: string;
+  /** Provedor que as maquininhas usam. Elas nunca escolhem (risco R-32). */
+  terminal: string;
   available: {
     name: string;
     initiatedBy: 'backend' | 'terminal';
@@ -497,6 +519,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  terminals: (params: { siteId?: string } = {}) =>
+    request<Paginated<TerminalView>>(`/terminals${query({ pageSize: 50, ...params })}`),
+
+  createTerminal: (body: { name: string; connectorId: string; model?: string }) =>
+    request<TerminalView>('/terminals', { method: 'POST', body: JSON.stringify(body) }),
+
+  generatePairingCode: (id: string) =>
+    request<{ pairingCode: string; expiresAt: string; connectorLabel: string | null }>(
+      `/terminals/${id}/pairing-code`,
+      { method: 'POST' },
+    ),
+
+  revokeTerminal: (id: string) =>
+    request<TerminalView>(`/terminals/${id}/revoke`, { method: 'POST' }),
 
   refundPayment: (id: string, reason: string, amountCents?: number) =>
     request<{ status: string }>(`/payments/${id}/refund`, {

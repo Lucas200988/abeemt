@@ -70,6 +70,27 @@ export const envSchema = z
     /// é recusado no boot (ver PaymentProviderRegistry).
     BORA_PAYMENT_PROVIDER: z.string().min(1).default('mock'),
     /**
+     * Provedor usado pelas maquininhas (FASE 8).
+     *
+     * Separado do anterior porque são coisas diferentes: o painel pode operar
+     * com um gateway `initiatedBy: 'backend'` enquanto o terminal usa o SDK do
+     * fabricante, que é `initiatedBy: 'terminal'`.
+     *
+     * **A maquininha nunca informa o provedor.** Se informasse, um token de
+     * terminal furtado (risco R-32) escolheria um provedor simulado e teria
+     * recarga de graça, com o sistema registrando "pagamento aprovado". Quem
+     * decide é esta variável, no servidor.
+     */
+    BORA_TERMINAL_PAYMENT_PROVIDER: z.string().min(1).default('terminal-mock'),
+    /**
+     * Validade do código de pareamento da maquininha, em minutos.
+     *
+     * Curta de propósito: o código é um portador — quem o tiver vira terminal
+     * daquele conector. O ciclo previsto é gerar no painel e digitar no
+     * equipamento, que leva minutos, não horas.
+     */
+    BORA_TERMINAL_PAIRING_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+    /**
      * Prazo, em segundos, para o carregador aceitar o comando de início
      * (regra 11.5). Estourado, a reserva é cancelada e nada é cobrado.
      */

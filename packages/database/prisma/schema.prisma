@@ -127,9 +127,10 @@ model Site {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  chargers Charger[]
-  tariffs  Tariff[]
-  sessions ChargingSession[]
+  chargers  Charger[]
+  tariffs   Tariff[]
+  sessions  ChargingSession[]
+  terminals Terminal[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -227,6 +228,7 @@ model Connector {
 
   sessions    ChargingSession[]
   meterValues MeterValue[]
+  terminals   Terminal[]
 
   @@unique([chargerId, connectorNumber])
   @@index([chargerId])
@@ -299,6 +301,51 @@ enum PaymentStatus {
   FAILED
 }
 
+/// Terminal de pagamento (maquininha) preso a um carregador.
+///
+/// Identidade própria, e não um usuário: o equipamento fica exposto num poste,
+/// ligado o dia inteiro. Uma credencial de operador nele seria a chave do painel
+/// inteiro à mão de quem passar. O token do terminal só faz o que um terminal
+/// precisa fazer, e só no conector dele.
+model Terminal {
+  id     String @id @default(uuid()) @db.Uuid
+  siteId String @db.Uuid
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  /// Conector em que o terminal está fisicamente montado. Nulo enquanto não
+  /// pareado — um terminal sem conector não consegue iniciar recarga nenhuma.
+  connectorId String?    @db.Uuid
+  connector   Connector? @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+
+  name         String
+  /// Número de série do equipamento, informado no pareamento.
+  serialNumber String?
+  model        String?
+
+  /// Hash do token de acesso. O token em claro só existe no momento do
+  /// pareamento, e nunca é gravado (mesma regra da credencial do carregador).
+  tokenHash String? @unique
+
+  /// Código de pareamento de uso único, gerado pelo painel.
+  pairingCode      String?   @unique
+  pairingExpiresAt DateTime?
+  pairedAt         DateTime?
+
+  status EntityStatus @default(ACTIVE)
+
+  lastSeenAt DateTime?
+  appVersion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([siteId])
+  @@index([connectorId])
+  @@map("terminals")
+}
+
 model Payment {
   id       String        @id @default(uuid()) @db.Uuid
   provider String // "mock", "manual", e futuramente o adquirente real
@@ -308,7 +355,13 @@ model Payment {
   /// Chave de idempotência. O índice único é o que impede webhook duplicado de
   /// criar dois pagamentos (risco R-08) — não a lógica de aplicação.
   idempotencyKey    String  @unique
+  /// Identificador do terminal informado pelo equipamento (texto livre do
+  /// fabricante). Diferente de `terminal`, que é o nosso cadastro.
   terminalId        String?
+
+  /// Terminal cadastrado que originou o pagamento, quando houve um.
+  terminalRefId String?   @db.Uuid
+  terminal      Terminal? @relation(fields: [terminalRefId], references: [id], onDelete: SetNull)
 
   // Centavos inteiros (ADR-0005).
   amountAuthorizedCents Int

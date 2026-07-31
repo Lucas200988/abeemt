@@ -1,6 +1,7 @@
 import { assertCents, type Cents } from '@bora/contracts';
 import {
   PaymentProviderError,
+  type AdoptTerminalAuthorizationInput,
   type AuthorizeInput,
   type PaymentCapabilities,
   type PaymentProvider,
@@ -141,6 +142,42 @@ export class MockPaymentProvider implements PaymentProvider {
     this.byIdempotencyKey.set(input.idempotencyKey, id);
 
     return this.toResult(pagamento, 'Valor reservado no cartão.');
+  }
+
+  /**
+   * Registra uma autorização que aconteceu no terminal.
+   *
+   * Sem isto, o fechamento de uma recarga iniciada na maquininha falharia com
+   * `NOT_FOUND`: o identificador veio do equipamento, e o mapa em memória deste
+   * provedor nunca ouviu falar dele. O sintoma seria o pior possível — energia
+   * entregue e nada cobrado, sem erro visível até a conciliação.
+   *
+   * Repetir a mesma adoção não é erro: a maquininha reenvia quando a resposta se
+   * perde, e recusar transformaria uma retentativa em falha de cobrança.
+   */
+  async adoptTerminalAuthorization(input: AdoptTerminalAuthorizationInput): Promise<void> {
+    assertCents(input.amountAuthorizedCents, 'amountAuthorizedCents');
+
+    if (this.payments.has(input.providerPaymentId)) return;
+
+    const agora = new Date();
+
+    this.payments.set(input.providerPaymentId, {
+      id: input.providerPaymentId,
+      status: 'AUTHORIZED',
+      amountAuthorizedCents: input.amountAuthorizedCents,
+      amountCapturedCents: 0,
+      amountRefundedCents: 0,
+      method: input.method,
+      idempotencyKey: input.idempotencyKey,
+      createdAt: agora,
+      expiresAt:
+        input.expiresAt ??
+        new Date(agora.getTime() + (this.capabilities.authorizationValidityDays ?? 5) * 86_400_000),
+      instrument: input.instrument ?? {},
+    });
+
+    this.byIdempotencyKey.set(input.idempotencyKey, input.providerPaymentId);
   }
 
   async capture(providerPaymentId: string, amountCents: Cents): Promise<PaymentResult> {

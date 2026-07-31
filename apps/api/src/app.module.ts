@@ -17,6 +17,7 @@ import { SessionsModule } from './modules/sessions/sessions.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { TariffsModule } from './modules/tariffs/tariffs.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { TerminalsModule } from './modules/terminals/terminals.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
@@ -85,6 +86,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PricingModule,
     TariffsModule,
     PaymentsModule,
+    TerminalsModule,
     DashboardModule,
   ],
   providers: [

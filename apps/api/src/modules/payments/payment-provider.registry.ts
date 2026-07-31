@@ -3,6 +3,7 @@ import {
   ManualPaymentProvider,
   MockPaymentProvider,
   PagBankProvider,
+  TerminalMockPaymentProvider,
   assertProviderSupportsModel,
   pendenciasDoContrato,
   type PaymentProvider,
@@ -27,6 +28,7 @@ export class PaymentProviderRegistry implements OnModuleInit {
   constructor() {
     this.register(new MockPaymentProvider());
     this.register(new ManualPaymentProvider());
+    this.register(new TerminalMockPaymentProvider());
 
     /**
      * O adquirente real só é registrado quando há credencial configurada.
@@ -67,7 +69,7 @@ export class PaymentProviderRegistry implements OnModuleInit {
       );
     }
 
-    if (runtimeEnv.NODE_ENV === 'production' && (padrao === 'mock' || padrao === 'manual')) {
+    if (runtimeEnv.NODE_ENV === 'production' && this.simulado(padrao)) {
       throw new Error(
         `BORA_PAYMENT_PROVIDER="${padrao}" é um provedor simulado e não pode ser o padrão em ` +
           'produção: toda recarga seria aprovada sem cobrança. Configure o adquirente real.',
@@ -89,10 +91,59 @@ export class PaymentProviderRegistry implements OnModuleInit {
       );
     }
 
+    this.validarProvedorDeTerminal();
+
     this.logger.log(
-      { padrao, disponiveis: [...this.providers.keys()] },
+      {
+        padrao,
+        terminal: runtimeEnv.BORA_TERMINAL_PAYMENT_PROVIDER,
+        disponiveis: [...this.providers.keys()],
+      },
       'provedores de pagamento validados',
     );
+  }
+
+  /**
+   * O provedor das maquininhas precisa ser terminal-iniciado.
+   *
+   * Configurar um provedor `backend` aqui não daria erro no boot sem esta
+   * verificação: a maquininha receberia `PROVIDER_IS_BACKEND_INITIATED` na
+   * primeira recarga, com um motorista parado na frente do carregador.
+   */
+  private validarProvedorDeTerminal(): void {
+    const nome = runtimeEnv.BORA_TERMINAL_PAYMENT_PROVIDER;
+    const provider = this.providers.get(nome);
+
+    if (!provider) {
+      throw new Error(
+        `BORA_TERMINAL_PAYMENT_PROVIDER="${nome}" não corresponde a nenhum provedor registrado. ` +
+          `Disponíveis: ${[...this.providers.keys()].join(', ')}.`,
+      );
+    }
+
+    if (provider.capabilities.initiatedBy !== 'terminal') {
+      throw new Error(
+        `BORA_TERMINAL_PAYMENT_PROVIDER="${nome}" autoriza pelo backend, não pelo terminal. ` +
+          'As maquininhas não conseguiriam registrar pagamento nenhum.',
+      );
+    }
+
+    if (runtimeEnv.NODE_ENV === 'production' && this.simulado(nome)) {
+      throw new Error(
+        `BORA_TERMINAL_PAYMENT_PROVIDER="${nome}" é um provedor simulado e não pode ser usado ` +
+          'em produção: toda recarga por maquininha seria aprovada sem cobrança.',
+      );
+    }
+  }
+
+  /** Provedor usado pelas maquininhas. A maquininha nunca escolhe (risco R-32). */
+  terminalDefault(): PaymentProvider {
+    return this.get(runtimeEnv.BORA_TERMINAL_PAYMENT_PROVIDER);
+  }
+
+  /** O painel precisa dizer, na tela, que aquele pagamento não é real. */
+  simulado(name: string): boolean {
+    return name === 'mock' || name === 'manual' || name === 'terminal-mock';
   }
 
   register(provider: PaymentProvider): void {

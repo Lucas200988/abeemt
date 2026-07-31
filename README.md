@@ -23,7 +23,22 @@ entregue.
 **FASE 6 concluída.** O operador cadastra e edita tarifas pelo painel — preço
 por kWh, taxa de conexão, preço por minuto, **ociosidade**, mínimo e máximo — e
 confere quanto sai cada cenário antes de publicar. Alterar uma tarifa não muda o
-valor de recargas já realizadas. 307 testes automatizados.
+valor de recargas já realizadas.
+
+**FASE 7 parcial.** Toda a base de um adquirente real está pronta e testada —
+prazo, retentativa, idempotência, assinatura de webhook, redação de credencial —
+e trancada até haver sandbox. O que falta são as credenciais e as respostas do
+contrato do fornecedor; ver
+[o que falta](docs/payments/fase-7-o-que-falta.md).
+
+**FASE 8 concluída no lado do servidor.** A maquininha do poste tem identidade
+própria, pareia por código de uso único e inicia a recarga passando o cartão —
+sem aplicativo e sem cadastro para o motorista. O que ainda depende de você é o
+aplicativo que roda **dentro** do equipamento, porque ele exige o SDK do
+fabricante; ver [FASE 8: a maquininha](docs/payments/fase-8-maquininha.md).
+
+**407 testes automatizados**, incluindo o ciclo completo contra o simulador OCPP
+e as tentativas de burlar os limites do terminal.
 
 O provedor de pagamento é **simulado**. Não existe adquirente real ligado, e o
 sistema **recusa subir em produção** com um provedor simulado como padrão — o
@@ -43,6 +58,8 @@ sua autorização explícita.
 | Valor corrente durante a recarga          | Painel → Sessões → detalhe da sessão            |
 | Devolução manual, com motivo auditado     | Painel → Pagamentos (perfil de administrador)   |
 | Cadastro de tarifas e simulação de preço  | Painel → Tarifas                                |
+| Cadastro e pareamento de maquininhas      | Painel → Maquininhas                            |
+| Recarga iniciada pela maquininha          | `POST /api/v1/terminal/authorization` (ver FASE 8) |
 
 ---
 
@@ -230,6 +247,7 @@ Cada fase só começa após validação explícita da anterior.
 - [Fluxo financeiro implementado](docs/payments/fluxo-implementado.md) — o que a FASE 5 entregou, com os caminhos de falha cobertos
 - [Tarifação](docs/payments/tarifacao.md) — como o preço é decidido e por que ele não muda depois
 - [FASE 7: o que falta](docs/payments/fase-7-o-que-falta.md) — o que já está pronto e testado, e o que só as credenciais de sandbox destravam
+- [FASE 8: a maquininha](docs/payments/fase-8-maquininha.md) — identidade do terminal, pareamento, contrato HTTP do aplicativo e o que depende do SDK do fabricante
 
 ### Operações
 

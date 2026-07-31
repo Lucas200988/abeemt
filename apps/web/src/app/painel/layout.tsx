@@ -12,6 +12,7 @@ const ITENS = [
   { href: '/painel/carregadores', label: 'Carregadores' },
   { href: '/painel/sessoes', label: 'Sessões' },
   { href: '/painel/pagamentos', label: 'Pagamentos' },
+  { href: '/painel/maquininhas', label: 'Maquininhas' },
   { href: '/painel/tarifas', label: 'Tarifas' },
   { href: '/painel/estabelecimentos', label: 'Estabelecimentos' },
   { href: '/painel/diagnostico', label: 'Diagnóstico' },

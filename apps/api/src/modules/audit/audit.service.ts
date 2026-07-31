@@ -20,7 +20,13 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async record(input: {
-    user: AuthenticatedUser;
+    /**
+     * Quem agiu. Opcional porque nem toda ação auditável parte de uma pessoa:
+     * o pareamento de uma maquininha (FASE 8) é feito pelo próprio equipamento,
+     * que não é usuário. Deixar esses eventos de fora da auditoria seria pior —
+     * é exatamente a emissão de uma credencial que precisa ficar registrada.
+     */
+    user?: AuthenticatedUser;
     action: string;
     entityType: string;
     entityId?: string;
@@ -33,8 +39,8 @@ export class AuditService {
     try {
       await this.prisma.auditLog.create({
         data: {
-          organizationId: input.organizationId ?? input.user.organizationId,
-          userId: input.user.id,
+          organizationId: input.organizationId ?? input.user?.organizationId,
+          userId: input.user?.id,
           action: input.action,
           entityType: input.entityType,
           entityId: input.entityId,

@@ -88,6 +88,19 @@ export interface AuthorizeInput {
   metadata?: Record<string, unknown>;
 }
 
+/** Autorização já concluída no terminal, entregue ao backend para registro. */
+export interface AdoptTerminalAuthorizationInput {
+  /** Identificador gerado pelo terminal/adquirente. É por ele que se captura. */
+  providerPaymentId: string;
+  /** Valor efetivamente reservado no cartão do motorista. */
+  amountAuthorizedCents: Cents;
+  method: PaymentMethod;
+  idempotencyKey: string;
+  instrument?: PaymentInstrument;
+  /** Quando a reserva expira, se o terminal informar (risco R-23). */
+  expiresAt?: Date;
+}
+
 export interface PaymentResult {
   ok: boolean;
   status: PaymentStatus;
@@ -148,6 +161,21 @@ export interface PaymentProvider {
    * backend já pronta — ver `PaymentsService.recordTerminalAuthorization`.
    */
   authorize?(input: AuthorizeInput): Promise<PaymentResult>;
+
+  /**
+   * Adota uma autorização que nasceu fora do backend.
+   *
+   * Só faz sentido em provedores `initiatedBy: 'terminal'`. A maquininha reserva
+   * o valor pelo SDK do fabricante e nos entrega um identificador que o nosso
+   * processo nunca viu — e é esse identificador que o fechamento vai capturar
+   * horas depois.
+   *
+   * Num adquirente real isto é dispensável: a cobrança já existe no lado dele, e
+   * `capture(id)` funciona. Nos provedores simulados, cujo estado vive em
+   * memória, sem adoção o `capture` do fechamento falharia com `NOT_FOUND` — a
+   * recarga aconteceria e o dinheiro nunca seria cobrado.
+   */
+  adoptTerminalAuthorization?(input: AdoptTerminalAuthorizationInput): Promise<void>;
 
   /** Cobra o valor real. Precisa aceitar valor menor que o autorizado. */
   capture(providerPaymentId: string, amountCents: Cents): Promise<PaymentResult>;

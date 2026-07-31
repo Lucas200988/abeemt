@@ -117,6 +117,8 @@ export interface RecordTerminalAuthorizationInput {
   instrument?: PaymentInstrument;
   terminalId?: string;
   expiresAt?: Date;
+  /** Terminal cadastrado que originou a cobrança, quando veio de um (FASE 8). */
+  terminalRefId?: string;
 }
 
 @Injectable()
@@ -298,6 +300,25 @@ export class PaymentsService {
       method: input.method,
       idempotencyKey: input.idempotencyKey,
       terminalId: input.terminalId,
+      terminalRefId: input.terminalRefId,
+    });
+
+    /**
+     * O provedor precisa reconhecer o identificador que a maquininha criou.
+     *
+     * Sem este passo, o fechamento — que roda minutos ou horas depois — chamaria
+     * `capture` com um identificador que o provedor nunca viu. Nos provedores
+     * simulados isso falhava com `NOT_FOUND`: a recarga acontecia e o valor
+     * nunca era cobrado, sem erro visível até a conciliação. Encontrado ao
+     * ligar o fluxo da maquininha ponta a ponta na FASE 8.
+     */
+    await provider.adoptTerminalAuthorization?.({
+      providerPaymentId: input.providerPaymentId,
+      amountAuthorizedCents: assertCents(input.amountAuthorizedCents, 'amountAuthorizedCents'),
+      method: input.method,
+      idempotencyKey: input.idempotencyKey,
+      instrument: input.instrument,
+      expiresAt: input.expiresAt,
     });
 
     await this.prisma.payment.update({
@@ -626,18 +647,19 @@ export class PaymentsService {
   /** Provedores registrados, para a tela de simulação saber o que oferecer. */
   providerInfo(): {
     default: string;
+    terminal: string;
     available: { name: string; initiatedBy: string; methods: string[]; simulated: boolean }[];
   } {
     return {
       default: this.providers.default().name,
+      terminal: this.providers.terminalDefault().name,
       available: this.providers.names().map((name) => {
         const p = this.providers.get(name);
         return {
           name,
           initiatedBy: p.capabilities.initiatedBy,
           methods: p.capabilities.methods,
-          // O painel precisa dizer, na tela, que aquele pagamento não é real.
-          simulated: name === 'mock' || name === 'manual',
+          simulated: this.providers.simulado(name),
         };
       }),
     };
@@ -707,6 +729,7 @@ export class PaymentsService {
     method: PaymentMethod;
     idempotencyKey: string;
     terminalId?: string;
+    terminalRefId?: string;
     tariffId: string | null;
     snapshot: unknown;
     preAuthCeilingCents: number;
@@ -720,6 +743,7 @@ export class PaymentsService {
             method: input.method,
             idempotencyKey: input.idempotencyKey,
             terminalId: input.terminalId,
+            terminalRefId: input.terminalRefId,
             amountAuthorizedCents: input.preAuthCeilingCents,
             status: 'PENDING',
           },

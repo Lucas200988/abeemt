@@ -190,6 +190,15 @@ export const CONTRATO = {
   ),
 
   /**
+   * O gateway RECUSA `Accept: application/json` — quinta descoberta da
+   * verificação (2026-08-03). As consultas respondiam 406; o diagnóstico
+   * automático provou: `Accept: application/json` → 406, `Accept: *\/*` → 200,
+   * sem Accept → 200. O oposto do que qualquer API JSON faria. Por isso o
+   * adapter envia `*\/*` em todas as chamadas (ver `req`).
+   */
+  cabecalhoAcceptExigido: item('*/*', 'confirmado', 'application/json toma 406 no GET'),
+
+  /**
    * Pré-autorização é `capture: false` na cobrança.
    *
    * Este item veio de material público do PagBank e é o que sustenta o
@@ -461,52 +470,48 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       );
     }
 
-    const { body } = await this.request<Record<string, unknown>>(
-      'POST',
-      CONTRATO.criarPedido.valor,
-      {
-        idempotencyKey: input.idempotencyKey,
-        body: {
-          reference_id: input.idempotencyKey,
-          customer: {
-            name: holderName,
-            email: customerEmail,
-            [CONTRATO.clienteDocumentoObrigatorio.valor.split('.')[1]]: customerTaxId,
+    const { body } = await this.req<Record<string, unknown>>('POST', CONTRATO.criarPedido.valor, {
+      idempotencyKey: input.idempotencyKey,
+      body: {
+        reference_id: input.idempotencyKey,
+        customer: {
+          name: holderName,
+          email: customerEmail,
+          [CONTRATO.clienteDocumentoObrigatorio.valor.split('.')[1]]: customerTaxId,
+        },
+        // Obrigatório na prática (40001). O que vendemos é a recarga; o
+        // valor do item é a reserva — a captura menor vem depois.
+        items: [
+          {
+            reference_id: input.idempotencyKey,
+            name: (input.description ?? 'Recarga de veículo elétrico').slice(0, 200),
+            quantity: 1,
+            unit_amount: input.amountCents,
           },
-          // Obrigatório na prática (40001). O que vendemos é a recarga; o
-          // valor do item é a reserva — a captura menor vem depois.
-          items: [
-            {
-              reference_id: input.idempotencyKey,
-              name: (input.description ?? 'Recarga de veículo elétrico').slice(0, 200),
-              quantity: 1,
-              unit_amount: input.amountCents,
-            },
-          ],
-          charges: [
-            {
-              reference_id: input.idempotencyKey,
-              description: input.description ?? 'Recarga de veículo elétrico',
-              amount: { value: input.amountCents, currency: 'BRL' },
-              payment_method: {
-                type: 'CREDIT_CARD',
-                // Obrigatório no crédito. Recarga não parcela: sempre 1.
-                [CONTRATO.campoParcelas.valor]: 1,
-                // O campo que faz a diferença entre reservar e cobrar.
-                [CONTRATO.campoPreAutorizacao.valor]: false,
-                // Nome na fatura: até 22 caracteres, sem caracteres especiais.
-                [CONTRATO.campoNomeFatura.valor]: (input.description ?? 'Recarga VE').slice(0, 22),
-                card: {
-                  encrypted: encryptedCard,
-                  // Obrigatório com criptografia.
-                  holder: { name: holderName },
-                },
+        ],
+        charges: [
+          {
+            reference_id: input.idempotencyKey,
+            description: input.description ?? 'Recarga de veículo elétrico',
+            amount: { value: input.amountCents, currency: 'BRL' },
+            payment_method: {
+              type: 'CREDIT_CARD',
+              // Obrigatório no crédito. Recarga não parcela: sempre 1.
+              [CONTRATO.campoParcelas.valor]: 1,
+              // O campo que faz a diferença entre reservar e cobrar.
+              [CONTRATO.campoPreAutorizacao.valor]: false,
+              // Nome na fatura: até 22 caracteres, sem caracteres especiais.
+              [CONTRATO.campoNomeFatura.valor]: (input.description ?? 'Recarga VE').slice(0, 22),
+              card: {
+                encrypted: encryptedCard,
+                // Obrigatório com criptografia.
+                holder: { name: holderName },
               },
             },
-          ],
-        },
+          },
+        ],
       },
-    );
+    });
 
     return this.toResult(this.primeiraCobranca(body), input.amountCents);
   }
@@ -522,7 +527,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
    * A chave é pública por definição; não há segredo a proteger aqui.
    */
   async chavePublicaDeCartao(): Promise<string> {
-    const { body } = await this.request<Record<string, unknown>>(
+    const { body } = await this.req<Record<string, unknown>>(
       'GET',
       CONTRATO.consultarChavePublica.valor,
     );
@@ -543,7 +548,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     this.exigirVerificacao();
     assertCents(amountCents, 'amountCents');
 
-    const { body } = await this.request<Record<string, unknown>>(
+    const { body } = await this.req<Record<string, unknown>>(
       'POST',
       CONTRATO.capturar.valor.replace('{chargeId}', providerPaymentId),
       {
@@ -568,7 +573,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
 
     const atual = await this.getPayment(providerPaymentId);
 
-    const { body } = await this.request<Record<string, unknown>>(
+    const { body } = await this.req<Record<string, unknown>>(
       'POST',
       CONTRATO.cancelar.valor.replace('{chargeId}', providerPaymentId),
       {
@@ -605,7 +610,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       valor = assertCents(restante, 'restante');
     }
 
-    const { body } = await this.request<Record<string, unknown>>(
+    const { body } = await this.req<Record<string, unknown>>(
       'POST',
       CONTRATO.devolver.valor.replace('{chargeId}', providerPaymentId),
       {
@@ -620,7 +625,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
   async getPayment(providerPaymentId: string): Promise<PaymentResult> {
     this.exigirVerificacao();
 
-    const { body } = await this.request<Record<string, unknown>>(
+    const { body } = await this.req<Record<string, unknown>>(
       'GET',
       CONTRATO.consultar.valor.replace('{chargeId}', providerPaymentId),
     );
@@ -692,6 +697,24 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
    * O adapter está escrito, mas o contrato não foi conferido. Deixá-lo operar
    * significaria descobrir a divergência com dinheiro de motorista.
    */
+  /**
+   * Toda chamada ao PagBank passa por aqui: o gateway deles responde 406 a
+   * `Accept: application/json` nas consultas (diagnóstico da verificação de
+   * 2026-08-03) e aceita `*\/*`. O cabeçalho vai por último no merge da base,
+   * então esta sobrescrita vale sempre. Escopado ao PagBank de propósito — a
+   * Rede foi verificada 8/8 com o cabeçalho padrão e não deve mudar junto.
+   */
+  private req<T>(
+    metodo: 'GET' | 'POST' | 'PUT',
+    caminho: string,
+    opcoes: { body?: unknown; idempotencyKey?: string; headers?: Record<string, string> } = {},
+  ) {
+    return this.request<T>(metodo, caminho, {
+      ...opcoes,
+      headers: { Accept: '*/*', ...(opcoes.headers ?? {}) },
+    });
+  }
+
   private exigirVerificacao(): void {
     if (this.verificado) return;
 

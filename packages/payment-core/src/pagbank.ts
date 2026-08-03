@@ -53,6 +53,38 @@ const item = <T>(valor: T, procedencia: Procedencia, nota?: string): ItemContrat
 });
 
 /**
+ * Cartões FICTÍCIOS do sandbox do PagBank.
+ *
+ * Lidos em `portaldev.pagbank.com.br/cartoes-teste` em 2026-08-03, trazidos por
+ * Lucas. Não são cartões de ninguém: são números reservados para teste, e o
+ * próprio portal os publica em tela aberta.
+ *
+ * Ficam aqui pelo mesmo motivo que a tabela equivalente da Rede ficou: sem ela
+ * não dá para forçar aprovação e recusa de propósito, e um adapter de pagamento
+ * que só foi exercitado no caminho feliz não foi exercitado.
+ *
+ * ⚠️ Estes números **não funcionam em produção** e não devem ser usados lá.
+ */
+export const CARTOES_DE_TESTE_SANDBOX = {
+  aprovados: [
+    { numero: '4539620659922097', bandeira: 'visa' },
+    { numero: '5240082975622454', bandeira: 'mastercard' },
+    { numero: '345817690311361', bandeira: 'amex' },
+    { numero: '4514161122113757', bandeira: 'elo' },
+    { numero: '6062828598919021', bandeira: 'hiper' },
+  ],
+  cvv: '123',
+  expiracao: '12/2030',
+  /**
+   * A aba "Negada" do portal ainda não foi lida.
+   *
+   * Sem ela não dá para provar que a recusa é tratada — que foi exatamente o
+   * passo 8 da verificação da Rede, e onde apareceu um erro real.
+   */
+  recusados: [] as Array<{ numero: string; bandeira: string }>,
+} as const;
+
+/**
  * O contrato do fornecedor, em um só lugar.
  *
  * Cada campo aqui é uma pergunta a ser respondida com a documentação aberta. É
@@ -94,7 +126,9 @@ export const CONTRATO = {
   criarChavePublica: item(
     '/public-keys',
     'confirmado',
-    'POST com { "type": "card" } → 201 { public_key, created_at }',
+    'POST com { "type": "card" } → 201 { public_key, created_at }. O portal de ' +
+      'sandbox tem um gerador que produz o cartão criptografado a partir dessa ' +
+      'chave — é assim que se obtém o `metadata.encryptedCard` para testar.',
   ),
   consultarChavePublica: item('/public-keys/card', 'confirmado', 'GET'),
   alterarChavePublica: item(

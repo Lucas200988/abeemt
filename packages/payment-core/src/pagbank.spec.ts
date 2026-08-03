@@ -1,7 +1,12 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assertCents } from '@bora/contracts';
-import { CONTRATO, PagBankProvider, pendenciasDoContrato } from './pagbank';
+import {
+  CARTOES_DE_TESTE_SANDBOX,
+  CONTRATO,
+  PagBankProvider,
+  pendenciasDoContrato,
+} from './pagbank';
 import { assertProviderSupportsModel } from './provider';
 
 /**
@@ -177,6 +182,24 @@ describe('chave pública', () => {
     });
 
     await expect(p.chavePublicaDeCartao()).rejects.toMatchObject({ code: 'MALFORMED' });
+  });
+});
+
+describe('cartões de teste do sandbox', () => {
+  it('cobrem as bandeiras que o motorista vai apresentar', () => {
+    const bandeiras = CARTOES_DE_TESTE_SANDBOX.aprovados.map((c) => c.bandeira);
+    expect(bandeiras).toContain('visa');
+    expect(bandeiras).toContain('mastercard');
+    expect(bandeiras).toContain('elo');
+  });
+
+  /**
+   * Lembrete deliberado. Na verificação da Rede, o passo que achou erro real
+   * foi justamente o da recusa. Enquanto esta lista estiver vazia, a
+   * verificação do PagBank não pode ser declarada completa.
+   */
+  it('a lista de recusa ainda está vazia — a verificação não fecha sem ela', () => {
+    expect(CARTOES_DE_TESTE_SANDBOX.recusados).toHaveLength(0);
   });
 });
 

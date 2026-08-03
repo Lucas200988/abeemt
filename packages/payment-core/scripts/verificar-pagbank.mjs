@@ -106,6 +106,16 @@ function chaveIdempotencia() {
 console.log('');
 console.log('Verificação do adapter do PagBank contra o sandbox');
 console.log(`Endereço: ${baseUrl}`);
+// Raio-X do token SEM expor o token: tamanho e pontas. Serve para comparar
+// com o que o portal mostra — token cortado ou com quebra de linha dá 401.
+console.log(
+  `Token do .env: ${token.length} caracteres, começa com "${token.slice(0, 4)}", ` +
+    `termina com "${token.slice(-4)}"`,
+);
+if (/\s/.test(token)) {
+  console.log('⚠️  O token contém espaço ou quebra de linha no meio — isso derruba a');
+  console.log('   autenticação. Refaça a linha no .env deixando tudo colado.');
+}
 console.log('==================================================');
 console.log('');
 

@@ -240,10 +240,36 @@ export const CONTRATO = {
   /**
    * Onde entra o cartão criptografado pela chave pública.
    *
-   * O nome do campo ainda não foi lido; o que já está decidido é que **só**
-   * este caminho existe no adapter — número de cartão não tem entrada.
+   * Confirmado na definição OpenAPI de Criar Pedido: `card.encrypted` —
+   * "Criptograma do cartão criptografado". Continua sendo o **único** caminho
+   * que o adapter aceita; número de cartão não tem entrada.
    */
-  campoCartaoCriptografado: item('payment_method.card.encrypted', 'a confirmar'),
+  campoCartaoCriptografado: item('payment_method.card.encrypted', 'confirmado'),
+
+  /**
+   * A idempotência é do fornecedor, não improviso nosso: `x-idempotency-key`
+   * no POST /orders — exatamente o cabeçalho que a base HTTP já envia.
+   */
+  cabecalhoIdempotencia: item('x-idempotency-key', 'confirmado'),
+
+  /**
+   * O pedido EXIGE o documento do comprador.
+   *
+   * `customer` é obrigatório e, dentro dele, `tax_id` (CPF/CNPJ) é
+   * obrigatório. Consequência de produto real: no caminho online, o motorista
+   * precisa informar CPF — diferente da Rede, que autoriza só com o token do
+   * cartão. Na maquininha isso não existe (o SDK cuida).
+   */
+  clienteDocumentoObrigatorio: item('customer.tax_id', 'confirmado', 'CPF 11 ou CNPJ 14 dígitos'),
+
+  /**
+   * Com cartão criptografado, o nome do portador é obrigatório
+   * ("Obrigatório para cobranças com 3DS e Criptografia").
+   */
+  nomePortadorObrigatorio: item('payment_method.card.holder.name', 'confirmado'),
+
+  /** Erros vêm em `error_messages[]` com error, parameter_name e description. */
+  formatoDeErros: item('error_messages[]', 'confirmado'),
 
   /** Cabeçalho que carrega a assinatura do webhook. */
   cabecalhoAssinatura: item('x-authenticity-token', 'confirmado'),
@@ -355,6 +381,27 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       );
     }
 
+    // Exigências documentadas do Criar Pedido, cobradas aqui na porta — a
+    // alternativa seria um 400 do fornecedor com o motorista esperando na tela.
+    const customerTaxId = input.metadata?.customerTaxId;
+    const holderName = input.metadata?.holderName;
+    if (typeof customerTaxId !== 'string' || !/^\d{11}(\d{3})?$/.test(customerTaxId)) {
+      throw new PaymentProviderError(
+        'o PagBank exige o documento do comprador (metadata.customerTaxId, ' +
+          'CPF 11 ou CNPJ 14 dígitos) — customer.tax_id é obrigatório no pedido.',
+        'MISSING_CUSTOMER_TAX_ID',
+        false,
+      );
+    }
+    if (typeof holderName !== 'string' || !holderName.trim()) {
+      throw new PaymentProviderError(
+        'o PagBank exige o nome do portador (metadata.holderName) em cobranças ' +
+          'com cartão criptografado.',
+        'MISSING_HOLDER_NAME',
+        false,
+      );
+    }
+
     const { body } = await this.request<Record<string, unknown>>(
       'POST',
       CONTRATO.criarPedido.valor,
@@ -362,6 +409,10 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
         idempotencyKey: input.idempotencyKey,
         body: {
           reference_id: input.idempotencyKey,
+          customer: {
+            name: holderName,
+            [CONTRATO.clienteDocumentoObrigatorio.valor.split('.')[1]]: customerTaxId,
+          },
           charges: [
             {
               reference_id: input.idempotencyKey,
@@ -375,7 +426,11 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
                 [CONTRATO.campoPreAutorizacao.valor]: false,
                 // Nome na fatura: até 22 caracteres, sem caracteres especiais.
                 [CONTRATO.campoNomeFatura.valor]: (input.description ?? 'Recarga VE').slice(0, 22),
-                card: { encrypted: encryptedCard },
+                card: {
+                  encrypted: encryptedCard,
+                  // Obrigatório com criptografia.
+                  holder: { name: holderName },
+                },
               },
             },
           ],

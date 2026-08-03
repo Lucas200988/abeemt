@@ -93,6 +93,12 @@ describe('trava de verificação', () => {
     expect(CONTRATO.mapaDeEstados.procedencia).toBe('confirmado');
     expect(CONTRATO.cabecalhoAssinatura.procedencia).toBe('confirmado');
     expect(CONTRATO.preAutorizacaoSoCredito.valor).toBe(true);
+
+    // Lidos na definição OpenAPI de Criar Pedido em 2026-08-03.
+    expect(CONTRATO.campoCartaoCriptografado.procedencia).toBe('confirmado');
+    expect(CONTRATO.campoCartaoCriptografado.valor).toBe('payment_method.card.encrypted');
+    expect(CONTRATO.cabecalhoIdempotencia.valor).toBe('x-idempotency-key');
+    expect(CONTRATO.clienteDocumentoObrigatorio.procedencia).toBe('confirmado');
   });
 
   /**
@@ -180,20 +186,61 @@ describe('o número do cartão não tem entrada', () => {
       amountCents: assertCents(20000),
       method: 'CREDIT_CARD',
       idempotencyKey: 'k',
-      metadata: { encryptedCard: 'blob-cifrado' },
+      metadata: {
+        encryptedCard: 'blob-cifrado',
+        customerTaxId: '12345678909',
+        holderName: 'Jose da Silva',
+      },
     });
 
     expect(r.status).toBe('AUTHORIZED');
     expect(enviado).toContain('blob-cifrado');
     expect(enviado).not.toContain('4111');
 
-    const metodo = JSON.parse(enviado).charges[0].payment_method;
+    const pedido = JSON.parse(enviado);
+    // customer.tax_id é obrigatório no Criar Pedido.
+    expect(pedido.customer.tax_id).toBe('12345678909');
+
+    const metodo = pedido.charges[0].payment_method;
     // Reserva, não cobrança.
     expect(metodo.capture).toBe(false);
     // Obrigatório no crédito; recarga não parcela.
     expect(metodo.installments).toBe(1);
     // Nome na fatura limitado aos 22 caracteres do contrato.
     expect(metodo.soft_descriptor.length).toBeLessThanOrEqual(22);
+    // Obrigatório com cartão criptografado.
+    expect(metodo.card.holder.name).toBe('Jose da Silva');
+  });
+
+  /**
+   * `customer.tax_id` é obrigatório no Criar Pedido — consequência de produto:
+   * no caminho online o motorista informa CPF. Cobrar isso na porta evita o
+   * 400 do fornecedor com o motorista esperando na tela.
+   */
+  it('recusa autorizar sem o CPF do comprador ou sem o nome do portador', async () => {
+    const base = {
+      amountCents: assertCents(20000),
+      method: 'CREDIT_CARD' as const,
+      idempotencyKey: 'k',
+    };
+
+    await expect(
+      verificado().authorize({ ...base, metadata: { encryptedCard: 'blob' } }),
+    ).rejects.toMatchObject({ code: 'MISSING_CUSTOMER_TAX_ID' });
+
+    await expect(
+      verificado().authorize({
+        ...base,
+        metadata: { encryptedCard: 'blob', customerTaxId: 'nao-e-cpf' },
+      }),
+    ).rejects.toMatchObject({ code: 'MISSING_CUSTOMER_TAX_ID' });
+
+    await expect(
+      verificado().authorize({
+        ...base,
+        metadata: { encryptedCard: 'blob', customerTaxId: '12345678909' },
+      }),
+    ).rejects.toMatchObject({ code: 'MISSING_HOLDER_NAME' });
   });
 });
 

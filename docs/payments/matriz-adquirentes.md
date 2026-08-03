@@ -376,19 +376,35 @@ Outras confirmações que valem dinheiro:
   fluxo ser implementado.
 - E4 (webhook assinado): ✅ o PagBank passa no critério eliminatório.
 
-### O que continua "a confirmar"
+### Criar Pedido lido na íntegra (2026-08-03) — o cartão criptografado tem nome
 
-| Pendência                             | Página que fecha                                       |
-| ------------------------------------- | ------------------------------------------------------ |
-| Caminho da **captura** (`capturar`)   | `reference/criar-pedido` (endpoint "Capturar")         |
-| Caminho da **devolução** (`devolver`) | idem (cancel com `{ amount }` parcial?)                |
-| Campo do cartão criptografado         | `reference/casos-de-uso` (caso "cartão criptografado") |
+A definição OpenAPI completa do `POST /orders` confirmou:
 
-O Objeto Charge mostra `payment_method.card.number` em claro como caminho
-documentado — o campo do blob cifrado não aparece ali. O adapter continua
-recusando qualquer caminho que não seja `metadata.encryptedCard`; o que falta é
-confirmar o **nome** do campo na requisição. A trava `BORA_PAGBANK_VERIFIED`
-permanece fechada até a captura e a devolução serem exercitadas no sandbox.
+- **`payment_method.card.encrypted`** — o campo do blob cifrado existe e é
+  documentado ("Criptograma do cartão criptografado"). O último elo da seção 12
+  no caminho online está fechado.
+- **`x-idempotency-key`** — o fornecedor aceita idempotência por cabeçalho, e é
+  exatamente o cabeçalho que a nossa base HTTP já enviava.
+- **`customer` é obrigatório, e `customer.tax_id` dentro dele** — consequência
+  de produto: no caminho online o motorista informa **CPF**. A Rede autoriza só
+  com o token do cartão; o PagBank não. Na maquininha isso não existe (o SDK
+  cuida). O `authorize()` agora exige `metadata.customerTaxId` e valida o
+  formato na porta.
+- **`card.holder.name` é obrigatório com criptografia** — idem, exigido na
+  porta (`metadata.holderName`).
+- **Erros vêm em `error_messages[]`** com `error`, `parameter_name` e
+  `description` — bom para diagnóstico no painel.
+
+### O que continua "a confirmar" — as DUAS últimas páginas
+
+| Pendência                             | Página que fecha (grupo "Gerencie pedidos e pagamentos") |
+| ------------------------------------- | -------------------------------------------------------- |
+| Caminho da **captura** (`capturar`)   | endpoint "Capturar pré-autorização"                      |
+| Caminho da **devolução** (`devolver`) | endpoint "Cancelar/Estornar cobrança"                    |
+
+São os dois únicos caminhos de dinheiro ainda não vistos. A trava
+`BORA_PAGBANK_VERIFIED` permanece fechada até serem lidos e exercitados no
+sandbox.
 
 ### Confirmação por ausência: o SmartPOS não está nesta referência
 

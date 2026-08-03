@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { assertCents, type Cents } from '@bora/contracts';
 import { HttpPaymentProvider, type HttpProviderConfig } from './http-provider';
 import {
@@ -331,6 +331,19 @@ export const CONTRATO = {
   devolucaoPrecisaAssentar: item('40008', 'confirmado', 'erro retryable, não permanente'),
 
   /**
+   * Uma tentativa FALHA queima a chave de idempotência — décima descoberta
+   * (409 · 40005 · `idempotency_key_in_use`, 2026-08-03). Diferente do
+   * habitual (repetir a chave devolve a resposta original), o PagBank recusa
+   * a reutilização mesmo quando a primeira tentativa falhou com 40008.
+   *
+   * Tratamento no `refund()`: ao ver 40005, CONSULTAR a cobrança — se a
+   * devolução aconteceu, é sucesso (a resposta se perdeu, o dinheiro não);
+   * se não aconteceu, tentar UMA vez com chave nova. Nunca disparar chave
+   * nova sem consultar antes: é assim que se devolve em dobro.
+   */
+  chaveIdempotenciaQueimaAoFalhar: item('40005', 'confirmado'),
+
+  /**
    * O cartão da aba "Negada" APROVA em pré-autorização — sétima descoberta
    * (status AUTHORIZED · 20000 na verificação). O simulador de recusa só
    * dispara na cobrança direta (`capture: true`) — o mesmo comportamento que
@@ -629,22 +642,33 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       valor = assertCents(restante, 'restante');
     }
 
+    return this.devolverComChave(providerPaymentId, valor, `refund-${providerPaymentId}-${valor}`);
+  }
+
+  private async devolverComChave(
+    providerPaymentId: string,
+    valor: Cents,
+    chave: string,
+    jaReconciliou = false,
+  ): Promise<PaymentResult> {
     try {
       const { body } = await this.req<Record<string, unknown>>(
         'POST',
         CONTRATO.devolver.valor.replace('{chargeId}', providerPaymentId),
         {
-          idempotencyKey: `refund-${providerPaymentId}-${valor}`,
+          idempotencyKey: chave,
           body: { amount: { value: valor } },
         },
       );
 
       return this.toResult(body);
     } catch (error) {
+      const codigo = this.codigoDoErro(error);
+
       // 40008: a captura ainda não assentou do lado do PagBank. É espera, não
       // falha — marcar retryable faz o settlement tentar de novo mais tarde,
       // em vez de dar a devolução por perdida.
-      if (this.codigoDoErro(error) === CONTRATO.devolucaoPrecisaAssentar.valor) {
+      if (codigo === CONTRATO.devolucaoPrecisaAssentar.valor) {
         throw new PaymentProviderError(
           'o PagBank ainda está assentando a captura — devolução temporariamente ' +
             'indisponível (40008); tentar novamente em instantes',
@@ -653,6 +677,38 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
           (error as PaymentProviderError).raw,
         );
       }
+
+      // 40005: a chave já foi usada — inclusive por uma tentativa que FALHOU
+      // (comportamento visto na verificação). Consultar antes de qualquer
+      // coisa: se a devolução aconteceu, é sucesso; se não, UMA tentativa com
+      // chave nova. Disparar chave nova sem consultar é devolver em dobro.
+      if (codigo === CONTRATO.chaveIdempotenciaQueimaAoFalhar.valor && !jaReconciliou) {
+        let atual: PaymentResult;
+        try {
+          atual = await this.getPayment(providerPaymentId);
+        } catch (consultaErro) {
+          throw new PaymentProviderError(
+            'a chave de devolução já foi usada (40005) e a consulta de conferência ' +
+              'falhou — estado da devolução desconhecido; tentar novamente em instantes',
+            'REFUND_TEMPORARILY_UNAVAILABLE',
+            true,
+            (consultaErro as PaymentProviderError)?.raw,
+          );
+        }
+
+        if (atual.amountRefundedCents >= valor) {
+          // A devolução já tinha acontecido; só a resposta se perdeu.
+          return atual;
+        }
+
+        return this.devolverComChave(
+          providerPaymentId,
+          valor,
+          `${chave}-${randomUUID().slice(0, 8)}`,
+          true,
+        );
+      }
+
       throw error;
     }
   }

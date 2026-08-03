@@ -372,6 +372,100 @@ describe('captura e devolução — os caminhos de dinheiro', () => {
     });
   });
 
+  /**
+   * 40005: a chave de idempotência queima até em tentativa FALHA (visto na
+   * verificação). O tratamento certo consulta antes de re-tentar — os três
+   * desfechos abaixo são a diferença entre reconciliar e devolver em dobro.
+   */
+  describe('40005 — chave de idempotência queimada', () => {
+    const erro40005 = () =>
+      new Response(
+        JSON.stringify({
+          error_messages: [
+            { code: '40005', message: 'Charge already exists', error: 'Charge already exists' },
+          ],
+        }),
+        { status: 409, headers: { 'content-type': 'application/json' } },
+      );
+
+    it('devolução que já aconteceu vira sucesso, sem segunda devolução', async () => {
+      const posts: string[] = [];
+      const p = criar({
+        verificado: true,
+        fetchImpl: (async (url: string, init: RequestInit) => {
+          if ((init.method ?? 'GET') === 'POST') {
+            posts.push(url);
+            return erro40005();
+          }
+          return respostaJson({
+            id: 'CHAR_1',
+            status: 'CANCELED',
+            amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 800 } },
+          });
+        }) as unknown as typeof fetch,
+      });
+
+      const r = await p.refund('CHAR_1', assertCents(800));
+      expect(r.status).toBe('REFUNDED');
+      // UM POST só: a consulta mostrou que o dinheiro já tinha voltado.
+      expect(posts).toHaveLength(1);
+    });
+
+    it('devolução pendente re-tenta UMA vez com chave nova', async () => {
+      const chaves: Array<string | undefined> = [];
+      let postN = 0;
+      const p = criar({
+        verificado: true,
+        fetchImpl: (async (_url: string, init: RequestInit) => {
+          if ((init.method ?? 'GET') === 'POST') {
+            postN += 1;
+            chaves.push((init.headers as Record<string, string>)['x-idempotency-key']);
+            if (postN === 1) return erro40005();
+            return respostaJson({
+              id: 'CHAR_1',
+              status: 'CANCELED',
+              amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 800 } },
+            });
+          }
+          return respostaJson({
+            id: 'CHAR_1',
+            status: 'PAID',
+            amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 0 } },
+          });
+        }) as unknown as typeof fetch,
+      });
+
+      const r = await p.refund('CHAR_1', assertCents(800));
+      expect(r.status).toBe('REFUNDED');
+      expect(chaves).toHaveLength(2);
+      expect(chaves[0]).not.toBe(chaves[1]);
+    });
+
+    it('consulta indisponível vira erro re-tentável, nunca chave nova às cegas', async () => {
+      let posts = 0;
+      const p = criar({
+        verificado: true,
+        fetchImpl: (async (_url: string, init: RequestInit) => {
+          if ((init.method ?? 'GET') === 'POST') {
+            posts += 1;
+            return erro40005();
+          }
+          return new Response('{"error_messages":[{"code":"resource_not_found"}]}', {
+            status: 404,
+            headers: { 'content-type': 'application/json' },
+          });
+        }) as unknown as typeof fetch,
+      });
+
+      await expect(p.refund('CHAR_1', assertCents(800))).rejects.toMatchObject({
+        code: 'REFUND_TEMPORARILY_UNAVAILABLE',
+        retryable: true,
+      });
+      // Sem confirmação do estado, NÃO houve segunda tentativa de POST.
+      expect(posts).toBe(1);
+    });
+  });
+
   it('devolução de cobrança já zerada é erro claro, não 400 do fornecedor', async () => {
     const p = criar({
       verificado: true,

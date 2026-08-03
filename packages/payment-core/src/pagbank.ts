@@ -301,6 +301,17 @@ export const CONTRATO = {
   ),
 
   /**
+   * O cartão criptografado é de USO ÚNICO — terceira descoberta da
+   * verificação (400 · 40002 · "ENCRYPTED CARD ALREADY USED", 2026-08-03).
+   *
+   * Cada blob vale para UMA autorização. Consequência de produto: quem
+   * criptografa (o navegador ou o SDK) precisa gerar um criptograma novo por
+   * pagamento — nunca guardar e reaproveitar. Guardar o blob no banco seria
+   * inútil E perigoso; não guardamos.
+   */
+  criptogramaUsoUnico: item(true, 'confirmado', 'erro 40002 ao reusar'),
+
+  /**
    * Com cartão criptografado, o nome do portador é obrigatório
    * ("Obrigatório para cobranças com 3DS e Criptografia").
    */

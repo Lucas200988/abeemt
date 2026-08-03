@@ -66,7 +66,11 @@ if (!token) {
 }
 
 const baseUrl = env.BORA_PAGBANK_BASE_URL || CONTRATO.baseUrlSandbox.valor;
+// O criptograma é de USO ÚNICO (erro 40002 ao reusar): cada autorização gasta
+// um blob. O roteiro faz DUAS autorizações aprovadas (passos 2 e 7), então
+// precisa de dois blobs do cartão aprovado, mais um do recusado.
 const blobAprovado = env.BORA_PAGBANK_CARTAO_APROVADO_CRIPTO;
+const blobAprovado2 = env.BORA_PAGBANK_CARTAO_APROVADO_CRIPTO_2;
 const blobRecusado = env.BORA_PAGBANK_CARTAO_RECUSADO_CRIPTO;
 
 // CPF de exemplo da própria documentação do PagBank. Não é de ninguém.
@@ -187,7 +191,7 @@ try {
 }
 
 // Sem os blobs, o roteiro para aqui — com as instruções de como gerá-los.
-if (!blobAprovado || !blobRecusado) {
+if (!blobAprovado || !blobAprovado2 || !blobRecusado) {
   const aprovado = CARTOES_DE_TESTE_SANDBOX.aprovados[0];
   const recusado = CARTOES_DE_TESTE_SANDBOX.recusados[0];
   console.log('');
@@ -207,11 +211,14 @@ if (!blobAprovado || !blobRecusado) {
   console.log(`   4. Preencha com o cartão APROVADO: número ${aprovado.numero} (${aprovado.bandeira}),`);
   console.log(`      nome ${PORTADOR}, CVV ${CARTOES_DE_TESTE_SANDBOX.cvv}, expiração 12/2030.`);
   console.log('      Copie o "Resultado".');
-  console.log('   5. Repita com o cartão RECUSADO: número ' + recusado.numero + '.');
-  console.log('   6. Abra o .env no Bloco de Notas e acrescente as duas linhas:');
+  console.log('   5. Gere DE NOVO com o MESMO cartão aprovado e copie o segundo resultado.');
+  console.log('      (cada criptograma só vale para UMA autorização — o roteiro faz duas)');
+  console.log('   6. Repita com o cartão RECUSADO: número ' + recusado.numero + '.');
+  console.log('   7. Abra o .env no Bloco de Notas e acrescente as três linhas:');
   console.log('');
   console.log('   BORA_PAGBANK_CARTAO_APROVADO_CRIPTO=<resultado do passo 4>');
-  console.log('   BORA_PAGBANK_CARTAO_RECUSADO_CRIPTO=<resultado do passo 5>');
+  console.log('   BORA_PAGBANK_CARTAO_APROVADO_CRIPTO_2=<resultado do passo 5>');
+  console.log('   BORA_PAGBANK_CARTAO_RECUSADO_CRIPTO=<resultado do passo 6>');
   console.log('');
   console.log('   Depois rode de novo:  pnpm verificar:pagbank');
   console.log('');
@@ -259,6 +266,26 @@ try {
     );
   } catch (e) {
     registrar(false, '3. Consulta pelo adapter mostra a reserva em pé', detalheDoErro(e));
+    // Diagnóstico: a mesma consulta com variações de cabeçalho, para apontar
+    // qual combinação o gateway aceita — cada rodada sua custa minutos, então
+    // o script investiga sozinho em vez de esperar a próxima.
+    const variantes = [
+      ['só Accept', { Accept: 'application/json' }],
+      ['Accept: */*', { Accept: '*/*' }],
+      ['sem cabeçalho além do token', {}],
+    ];
+    for (const [nome, extra] of variantes) {
+      try {
+        const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}/charges/${chargeId}`, {
+          headers: { Authorization: `Bearer ${token}`, ...extra },
+        });
+        console.log(
+          `   · variante "${nome}": HTTP ${resposta.status} ${resposta.status === 200 ? '← ESTA funciona' : ''}`,
+        );
+      } catch (e2) {
+        console.log(`   · variante "${nome}": ${limpo(e2.message)}`);
+      }
+    }
   }
 
   // 4. Captura de R$ 8,00 — MENOS que o reservado. É o produto inteiro.
@@ -305,7 +332,8 @@ try {
       method: 'CREDIT_CARD',
       idempotencyKey: chaveIdempotencia(),
       description: 'Bora Carregar cancelamento',
-      metadata: metadataAprovado,
+      // Segundo blob: o do passo 2 já foi gasto (criptograma é de uso único).
+      metadata: { ...metadataAprovado, encryptedCard: blobAprovado2 },
     });
     if (r2.status === 'AUTHORIZED' && r2.providerPaymentId) {
       const r = await adapter.voidPayment(r2.providerPaymentId);

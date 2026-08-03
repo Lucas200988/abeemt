@@ -137,7 +137,10 @@ export abstract class HttpPaymentProvider {
         method: metodo,
         signal: controller.signal,
         headers: {
-          'Content-Type': 'application/json',
+          // Content-Type só quando HÁ corpo: anunciar JSON num GET sem corpo é
+          // mentira inofensiva para a maioria dos servidores, mas o gateway do
+          // PagBank respondeu 406 às consultas na verificação de 2026-08-03.
+          ...(opcoes.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
           Accept: 'application/json',
           Authorization: `Bearer ${this.config.token}`,
           // Repetir a mesma chave não pode gerar dois pagamentos — a proteção

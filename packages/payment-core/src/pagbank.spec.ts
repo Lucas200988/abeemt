@@ -192,6 +192,7 @@ describe('o número do cartão não tem entrada', () => {
         encryptedCard: 'blob-cifrado',
         customerTaxId: '12345678909',
         holderName: 'Jose da Silva',
+        customerEmail: 'teste@sonare.com.br',
       },
     });
 
@@ -243,6 +244,14 @@ describe('o número do cartão não tem entrada', () => {
         metadata: { encryptedCard: 'blob', customerTaxId: '12345678909' },
       }),
     ).rejects.toMatchObject({ code: 'MISSING_HOLDER_NAME' });
+
+    // O sandbox exige e-mail apesar de a documentação dizer opcional (40001).
+    await expect(
+      verificado().authorize({
+        ...base,
+        metadata: { encryptedCard: 'blob', customerTaxId: '12345678909', holderName: 'Jose' },
+      }),
+    ).rejects.toMatchObject({ code: 'MISSING_CUSTOMER_EMAIL' });
   });
 });
 

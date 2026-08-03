@@ -275,6 +275,20 @@ export const CONTRATO = {
   clienteDocumentoObrigatorio: item('customer.tax_id', 'confirmado', 'CPF 11 ou CNPJ 14 dígitos'),
 
   /**
+   * O e-mail do comprador TAMBÉM é obrigatório — descoberto na verificação.
+   *
+   * A definição OpenAPI marca `customer.email` como opcional; o sandbox
+   * respondeu 400 `40001 · must not be null · customer.email`
+   * (2026-08-03, rodada de Lucas). Mais um caso de papel ≠ realidade — é
+   * exatamente para isso que a verificação existe.
+   */
+  clienteEmailObrigatorio: item(
+    'customer.email',
+    'confirmado',
+    'a documentação diz opcional; o sandbox exige (erro 40001)',
+  ),
+
+  /**
    * Com cartão criptografado, o nome do portador é obrigatório
    * ("Obrigatório para cobranças com 3DS e Criptografia").
    */
@@ -413,6 +427,16 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
         false,
       );
     }
+    // A documentação marca o e-mail como opcional; o sandbox exige (40001).
+    const customerEmail = input.metadata?.customerEmail;
+    if (typeof customerEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      throw new PaymentProviderError(
+        'o PagBank exige o e-mail do comprador (metadata.customerEmail) — a ' +
+          'documentação diz opcional, mas o sandbox recusa sem ele (erro 40001).',
+        'MISSING_CUSTOMER_EMAIL',
+        false,
+      );
+    }
 
     const { body } = await this.request<Record<string, unknown>>(
       'POST',
@@ -423,6 +447,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
           reference_id: input.idempotencyKey,
           customer: {
             name: holderName,
+            email: customerEmail,
             [CONTRATO.clienteDocumentoObrigatorio.valor.split('.')[1]]: customerTaxId,
           },
           charges: [

@@ -222,6 +222,8 @@ const metadataAprovado = {
   encryptedCard: blobAprovado,
   customerTaxId: CPF_TESTE,
   holderName: PORTADOR,
+  // Obrigatório na prática (erro 40001) apesar de "opcional" na documentação.
+  customerEmail: 'teste@sonare.com.br',
 };
 
 try {

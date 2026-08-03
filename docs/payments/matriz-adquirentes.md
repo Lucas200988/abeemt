@@ -252,11 +252,11 @@ aplicativo da maquininha.
 
 ## Situação da consulta
 
-| Fornecedor            | Contatado em                                                      | Respondeu                         | Atende                                                                                                                                           |
-| --------------------- | ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PagBank               |                                                                   |                                   | ⏳ pendente — ver [arquitetura-de-cobranca.md §5](arquitetura-de-cobranca.md)                                                                    |
-| Rede (portal e.Rede)  | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)             |
-| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                        | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo |
+| Fornecedor            | Contatado em                                                      | Respondeu                         | Atende                                                                                                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PagBank               | 2026-08-01 (portal lido por Lucas)                                | página inicial lida               | ⏳ **SmartPOS é produto oficial documentado** (junto de PlugPag, TEF e APIs online) — o caminho A sem depender de e-mail. Falta ler a seção SmartPOS: SDK, pré-autorização no equipamento, publicação do app |
+| Rede (portal e.Rede)  | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)                                                                         |
+| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                        | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo                                                             |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
 PagBank vem de documentação pública e **não substitui a resposta deles** — o

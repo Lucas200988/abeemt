@@ -438,13 +438,64 @@ aqui não destrava a maquininha.
 
 ---
 
+## PagBank — verificação APROVADA: 8 de 8 (2026-08-03)
+
+Rodada final executada por Lucas contra `sandbox.api.pagseguro.com`:
+
+```
+✅ 1. Chave pública de cartão da conta
+✅ 2. Reserva de R$ 200,00 (capture:false) — CHAR_A5E1C10D-E077-4FEA-A93A-E8AAEA40135E
+✅ 3. Consulta pelo adapter mostra a reserva em pé — AUTHORIZED, autorizado 20000
+✅ 4. Captura PARCIAL de R$ 8,00 sobre R$ 200,00 — CAPTURED, capturado 800
+✅ 5. Consulta confirma R$ 8,00 cobrados — capturado 800, devolvido 0
+✅ 6. Devolução dos R$ 8,00 — REFUNDED, devolvido 800 (após 3 esperas de assentamento)
+✅ 7. Reserva de R$ 50,00 cancelada sem cobrar nada — VOIDED, capturado 0
+✅ 8. Recusa do emissor tratada como recusa (cobrança direta) — DECLINED, código 10002
+```
+
+O modelo do produto inteiro — reservar, cobrar só o consumido, devolver,
+cancelar, recusar — está provado nos DOIS adquirentes.
+
+### Os 10 achados da verificação (papel ≠ realidade)
+
+A documentação estava toda lida antes da primeira rodada. Ainda assim:
+
+| #   | Achado                                                          | Consequência no código                                        |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1   | Token de 100 caracteres, fácil de colar truncado                | raio-X do token no roteiro                                    |
+| 2   | `customer.email` obrigatório (doc diz opcional) — 40001         | `authorize()` exige `metadata.customerEmail`                  |
+| 3   | `items[]` obrigatório (doc diz opcional) — 40001                | pedido leva o item "recarga"                                  |
+| 4   | Criptograma de USO ÚNICO — 40002                                | nunca guardar blob; cada pagamento criptografa de novo        |
+| 5   | GET recusa `Accept: application/json` (406); aceita `*/*`       | wrapper `req` escopado ao PagBank                             |
+| 6   | Devolução logo após captura falha — 40008 "assentando"          | erro re-tentável; settlement insiste                          |
+| 7   | Cartão "Negada" APROVA em pré-autorização                       | recusa exercitada em cobrança direta                          |
+| 8   | Consulta com consistência eventual (404 em cobrança que existe) | conciliação trata 404 como possível atraso                    |
+| 9   | Simulador de recusa só reage ao número em claro                 | teste de recusa fora do adapter                               |
+| 10  | Chave de idempotência queima até em tentativa FALHA — 409/40005 | `refund()` consulta antes de re-tentar; jamais chave às cegas |
+
+Nenhum desses dez está em página alguma da documentação. É por isso que a
+trava só abre com o sandbox aprovado — e por que a MESMA verificação terá de
+rodar contra produção antes do piloto (checklist B).
+
+### O que a evidência autoriza
+
+- `BORA_PAGBANK_VERIFIED=true` no `.env` de desenvolvimento — autorizado.
+- O adapter fica no MESMO nível do da Rede: dois fornecedores verificados, e a
+  troca entre eles é configuração (`BORA_PAYMENT_PROVIDER`), não código.
+
+O que ela NÃO autoriza: produção (credenciais reais + a mesma verificação
+contra o endpoint de produção com valor simbólico) e o caminho da maquininha
+(continua no processo comercial).
+
+---
+
 ## Situação da consulta
 
-| Fornecedor            | Contatado em                                                      | Respondeu                                | Atende                                                                                                                                                                                                                                                                                             |
-| --------------------- | ----------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PagBank               | 2026-08-01                                                        | **SDK PlugPag lido na íntegra (GitHub)** | ✅ SmartPOS com pré-autorização NO EQUIPAMENTO: `doPreAutoCreate` / `doEffectuatePreAuto(amount)` / `doPreAutoCancel`, valores em centavos, Android Java/Kotlin, Loja de Aplicativos própria. Processo: formulário de parceria → equipamento de dev → homologação. Ver fase-8-maquininha.md §8.1-B |
-| Rede (portal e.Rede)  | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8**        | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)                                                                                                                                                               |
-| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                               | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo                                                                                                                                                   |
+| Fornecedor            | Contatado em                                                      | Respondeu                         | Atende                                                                                                                                                                                                                                                                                                          |
+| --------------------- | ----------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PagBank (API online)  | 2026-08-01                                                        | **✅ VERIFICADO no sandbox: 8/8** | Pré-autorização + captura parcial de R$ 8 sobre R$ 200 + devolução + cancelamento + recusa provados no adquirente real em 2026-08-03 — ver a seção "Verificação aprovada" abaixo. SmartPOS (PlugPag) segue pelo processo comercial: formulário → equipamento de dev → homologação (fase-8-maquininha.md §8.1-B) |
+| Rede (portal e.Rede)  | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8** | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)                                                                                                                                                                            |
+| Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                        | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo                                                                                                                                                                |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
 PagBank vem de documentação pública lida por Lucas no portal logado e do SDK

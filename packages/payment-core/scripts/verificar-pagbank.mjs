@@ -20,7 +20,8 @@
  * Uso:  pnpm verificar:pagbank   (na raiz do projeto)
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CARTOES_DE_TESTE_SANDBOX, CONTRATO, PagBankProvider } from '../dist/index.js';
@@ -248,6 +249,32 @@ if (!blobAprovado || !blobAprovado2 || !blobRecusado) {
       console.log('   só a primeira linha do Resultado foi parar no .env.');
     }
   }
+  // O sandbox marca cada criptograma como usado PARA SEMPRE (40002). O script
+  // guarda a impressão digital dos blobs já gastos e recusa repetição ANTES de
+  // queimar mais uma rodada. Se um blob "novo" repetir, o gerador do portal é
+  // determinístico: mude o NOME do portador para forçar um resultado diferente.
+  const arquivoUsados = resolve(raiz, '.verificar-pagbank-usados.json');
+  let usados = [];
+  try {
+    usados = JSON.parse(readFileSync(arquivoUsados, 'utf8'));
+  } catch {
+    /* primeira rodada: sem histórico */
+  }
+  const hash = (blob) => createHash('sha256').update(blob).digest('hex');
+  for (const [nome, blob] of blobs) {
+    if (usados.includes(hash(blob))) {
+      algumRuim = true;
+      console.log(`❌ ${nome} é um criptograma JÁ GASTO numa rodada anterior.`);
+    }
+  }
+  if (algumRuim) {
+    console.log('');
+    console.log('   Cada criptograma vale UMA autorização, para sempre. Se você gerou um');
+    console.log('   "novo" e ele repetiu, o gerador devolve o mesmo resultado para os mesmos');
+    console.log('   dados — mude o NOME do portador a cada geração (ex.: Teste Bora A,');
+    console.log('   Teste Bora B, Teste Bora C) para forçar resultados diferentes.');
+  }
+
   if (algumRuim) {
     console.log('');
     console.log('   Como corrigir: no gerador do portal, copie o Resultado INTEIRO (se houver');
@@ -263,6 +290,13 @@ if (!blobAprovado || !blobAprovado2 || !blobRecusado) {
     console.log('   variáveis antes de rodar de novo.');
     process.exit(1);
   }
+
+  // Blobs válidos e inéditos: registra as impressões digitais AGORA, porque a
+  // partir do passo 2 eles estarão gastos, dê o roteiro certo ou errado.
+  writeFileSync(
+    arquivoUsados,
+    JSON.stringify([...usados, ...blobs.map(([, blob]) => hash(blob))], null, 2),
+  );
 }
 
 const metadataAprovado = {

@@ -335,6 +335,43 @@ describe('captura e devolução — os caminhos de dinheiro', () => {
     expect(r.status).toBe('REFUNDED');
   });
 
+  /**
+   * 40008 logo após a captura = a captura ainda está assentando no PagBank
+   * (visto na verificação de 2026-08-03). É espera, não falha: o erro sai
+   * RETRYABLE para o settlement tentar de novo — jamais devolução perdida.
+   */
+  it('40008 vira erro re-tentável, não devolução perdida', async () => {
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async (_url: string, init: RequestInit) => {
+        if ((init.method ?? 'GET') === 'GET') {
+          return respostaJson({
+            id: 'CHAR_1',
+            status: 'PAID',
+            amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 0 } },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            error_messages: [
+              {
+                code: '40008',
+                message: 'refund_temporarily_unavailable',
+                description: 'Transaction is not found.',
+              },
+            ],
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        );
+      }) as unknown as typeof fetch,
+    });
+
+    await expect(p.refund('CHAR_1')).rejects.toMatchObject({
+      code: 'REFUND_TEMPORARILY_UNAVAILABLE',
+      retryable: true,
+    });
+  });
+
   it('devolução de cobrança já zerada é erro claro, não 400 do fornecedor', async () => {
     const p = criar({
       verificado: true,

@@ -321,6 +321,25 @@ export const CONTRATO = {
   criptogramaUsoUnico: item(true, 'confirmado', 'erro 40002 ao reusar'),
 
   /**
+   * Devolução logo após a captura falha com 40008
+   * (`refund_temporarily_unavailable` · "Transaction is not found") — sexta
+   * descoberta da verificação (2026-08-03). A captura precisa assentar do
+   * lado deles antes de aceitar devolução. O adapter traduz para um erro
+   * RETRYABLE, e quem cobra (o settlement) tenta de novo mais tarde — nunca
+   * tratar como devolução perdida.
+   */
+  devolucaoPrecisaAssentar: item('40008', 'confirmado', 'erro retryable, não permanente'),
+
+  /**
+   * O cartão da aba "Negada" APROVA em pré-autorização — sétima descoberta
+   * (status AUTHORIZED · 20000 na verificação). O simulador de recusa só
+   * dispara na cobrança direta (`capture: true`) — o mesmo comportamento que
+   * o sandbox da Rede teve com o simulador por valor. O roteiro de
+   * verificação exercita a recusa com cobrança direta por isso.
+   */
+  recusaSoNaCobrancaDireta: item(true, 'confirmado'),
+
+  /**
    * Com cartão criptografado, o nome do portador é obrigatório
    * ("Obrigatório para cobranças com 3DS e Criptografia").
    */
@@ -610,16 +629,41 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       valor = assertCents(restante, 'restante');
     }
 
-    const { body } = await this.req<Record<string, unknown>>(
-      'POST',
-      CONTRATO.devolver.valor.replace('{chargeId}', providerPaymentId),
-      {
-        idempotencyKey: `refund-${providerPaymentId}-${valor}`,
-        body: { amount: { value: valor } },
-      },
-    );
+    try {
+      const { body } = await this.req<Record<string, unknown>>(
+        'POST',
+        CONTRATO.devolver.valor.replace('{chargeId}', providerPaymentId),
+        {
+          idempotencyKey: `refund-${providerPaymentId}-${valor}`,
+          body: { amount: { value: valor } },
+        },
+      );
 
-    return this.toResult(body);
+      return this.toResult(body);
+    } catch (error) {
+      // 40008: a captura ainda não assentou do lado do PagBank. É espera, não
+      // falha — marcar retryable faz o settlement tentar de novo mais tarde,
+      // em vez de dar a devolução por perdida.
+      if (this.codigoDoErro(error) === CONTRATO.devolucaoPrecisaAssentar.valor) {
+        throw new PaymentProviderError(
+          'o PagBank ainda está assentando a captura — devolução temporariamente ' +
+            'indisponível (40008); tentar novamente em instantes',
+          'REFUND_TEMPORARILY_UNAVAILABLE',
+          true,
+          (error as PaymentProviderError).raw,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /** Extrai o código do primeiro `error_messages[]` de uma resposta de erro. */
+  private codigoDoErro(error: unknown): string | undefined {
+    const raw = (error as PaymentProviderError)?.raw as Record<string, unknown> | undefined;
+    const mensagens = raw?.error_messages;
+    if (!Array.isArray(mensagens) || mensagens.length === 0) return undefined;
+    const codigo = (mensagens[0] as Record<string, unknown>)?.code;
+    return typeof codigo === 'string' || typeof codigo === 'number' ? String(codigo) : undefined;
   }
 
   async getPayment(providerPaymentId: string): Promise<PaymentResult> {

@@ -388,15 +388,41 @@ try {
 
   // 6. Devolução do valor cobrado — sem informar o valor, para exercitar a
   // descoberta pela consulta (a lição da rodada 1 da Rede).
-  try {
-    const r = await adapter.refund(chargeId);
-    registrar(
-      r.status === 'REFUNDED' && r.amountRefundedCents === 800,
-      '6. Devolução dos R$ 8,00 (valor descoberto na consulta)',
-      `status ${r.status}, devolvido ${r.amountRefundedCents}`,
-    );
-  } catch (e) {
-    registrar(false, '6. Devolução dos R$ 8,00 (valor descoberto na consulta)', detalheDoErro(e));
+  //
+  // Logo após a captura o PagBank responde 40008 (captura assentando). O
+  // adapter marca esse erro como retryable; aqui esperamos e insistimos, como
+  // o settlement faria em produção.
+  {
+    const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+    const TENTATIVAS = 5;
+    let resultado = null;
+    let ultimoErro = null;
+    for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa += 1) {
+      try {
+        resultado = await adapter.refund(chargeId);
+        break;
+      } catch (e) {
+        ultimoErro = e;
+        if (e?.code !== 'REFUND_TEMPORARILY_UNAVAILABLE') break;
+        if (tentativa < TENTATIVAS) {
+          console.log(`   · captura ainda assentando (40008) — aguardando 15 s (${tentativa}/${TENTATIVAS - 1})`);
+          await dormir(15000);
+        }
+      }
+    }
+    if (resultado) {
+      registrar(
+        resultado.status === 'REFUNDED' && resultado.amountRefundedCents === 800,
+        '6. Devolução dos R$ 8,00 (valor descoberto na consulta)',
+        `status ${resultado.status}, devolvido ${resultado.amountRefundedCents}`,
+      );
+    } else {
+      registrar(
+        false,
+        '6. Devolução dos R$ 8,00 (valor descoberto na consulta)',
+        detalheDoErro(ultimoErro),
+      );
+    }
   }
 
   // 7. Nova reserva e cancelamento SEM captura (o caso "recarga não aconteceu")
@@ -428,29 +454,65 @@ try {
   }
 
   // 8. Recusa do emissor — com o cartão da aba "Negada".
+  //
+  // Em pré-autorização o sandbox APROVA esse cartão (visto na rodada
+  // anterior: AUTHORIZED · 20000). O simulador de recusa só dispara na
+  // cobrança direta (capture:true) — mesmo fenômeno do sandbox da Rede. Por
+  // isso este passo cria a cobrança direta com fetch, fora do adapter, que
+  // por decisão de produto só faz pré-autorização.
   try {
-    const r = await adapter.authorize({
-      amountCents: 1000,
-      method: 'CREDIT_CARD',
-      idempotencyKey: chaveIdempotencia(),
-      description: 'Bora Carregar recusa',
-      metadata: { ...metadataAprovado, encryptedCard: blobRecusado },
+    const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: '*/*',
+      },
+      body: JSON.stringify({
+        reference_id: chaveIdempotencia(),
+        customer: { name: PORTADOR, email: 'teste@sonare.com.br', tax_id: CPF_TESTE },
+        items: [{ name: 'Bora Carregar teste de recusa', quantity: 1, unit_amount: 1000 }],
+        charges: [
+          {
+            reference_id: chaveIdempotencia(),
+            description: 'Bora Carregar recusa',
+            amount: { value: 1000, currency: 'BRL' },
+            payment_method: {
+              type: 'CREDIT_CARD',
+              installments: 1,
+              capture: true,
+              card: { encrypted: blobRecusado, holder: { name: PORTADOR } },
+            },
+          },
+        ],
+      }),
     });
-    const recusada = r.status === 'DECLINED' || !r.ok;
+    const corpo = await resposta.json().catch(() => ({}));
+    const cobranca = Array.isArray(corpo.charges) ? corpo.charges[0] : undefined;
+    const status = cobranca?.status ?? '(sem cobrança)';
+    const codigo = cobranca?.payment_response?.code ?? '—';
+    const recusada = status === 'DECLINED';
     registrar(
       recusada,
-      '8. Recusa do emissor é tratada como recusa',
-      `status ${r.status}, código ${r.providerCode ?? '—'}`,
+      '8. Recusa do emissor é tratada como recusa (cobrança direta)',
+      recusada
+        ? `status ${status}, código ${codigo}`
+        : limpo(`HTTP ${resposta.status} · status ${status} · ${JSON.stringify(corpo).slice(0, 200)}`),
     );
+    // Se o sandbox aprovar até a cobrança direta, desfaz para não deixar lixo.
+    if (!recusada && cobranca?.id && (status === 'PAID' || status === 'AUTHORIZED')) {
+      await fetch(`${baseUrl.replace(/\/+$/, '')}/charges/${cobranca.id}/cancel`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: '*/*',
+        },
+        body: JSON.stringify({ amount: { value: 1000 } }),
+      }).catch(() => {});
+    }
   } catch (e) {
-    // Recusa também pode vir como HTTP 4xx com o motivo no corpo — vale igual.
-    const raw = JSON.stringify(e?.raw ?? {});
-    const recusada = /DECLINED|error_messages/i.test(raw);
-    registrar(
-      recusada,
-      '8. Recusa do emissor é tratada como recusa',
-      recusada ? limpo(raw.slice(0, 200)) : detalheDoErro(e),
-    );
+    registrar(false, '8. Recusa do emissor é tratada como recusa (cobrança direta)', detalheDoErro(e));
   }
 } catch (e) {
   console.log('');

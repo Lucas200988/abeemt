@@ -245,6 +245,42 @@ abri-los normalmente no seu navegador; cole aqui o conteúdo das páginas:
 | Qual é o processo de homologação, e quanto tempo leva?                  | Entra no cronograma do piloto                            |
 | Credenciais de homologação: como obter?                                 | Regra 18.20 — sem sandbox, não há chamada real           |
 
+### 8.1-B PagBank: as respostas que a Rede Store ainda não deu — LIDAS NO SDK (2026-08-01)
+
+Sem esperar e-mail de ninguém: o SDK oficial da Moderninha Smart
+(**PlugPagServiceWrapper**) é público no GitHub, e a documentação gerada dele
+responde as perguntas com nome de método:
+
+| Pergunta                          | Resposta no SDK                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservar no cartão?               | `doPreAutoCreate(PlugPagPreAutoData)` — **valor em CENTAVOS** ("R$ 10,00 → 1000", literal na doc — a MESMA convenção do ADR-0005)                              |
+| Cobrar depois, com valor próprio? | `doEffectuatePreAuto(PlugPagEffectuatePreAutoData)` — a efetivação recebe **um `amount` próprio**, separado do valor reservado. É o formato da captura parcial |
+| Cancelar a reserva?               | `doPreAutoCancel(transactionId, transactionCode)`                                                                                                              |
+| Consultar?                        | `getPreAutoData` / `getPreAutoList` / `PlugPagPreAutoQueryResult`                                                                                              |
+| Linguagem do aplicativo           | **Android nativo, Java/Kotlin** — WebView/Ionic/Cordova NÃO são permitidos                                                                                     |
+| Publicação                        | "Loja de Aplicativos" própria do PagBank (gestão de terminais e apps)                                                                                          |
+| Processo                          | 1º contato comercial (formulário de parceria) → **equipamento de desenvolvimento** enviado → testes → homologação                                              |
+| Extras úteis                      | impressão (`doPrintAction`), NFC, beep, deeplink de launcher, app demo oficial                                                                                 |
+
+Fontes: repositório `pagseguro/pagseguro-sdk-plugpagservicewrapper` (GitHub,
+lido na íntegra em 2026-08-01) e páginas SmartPOS do portal
+`developer.pagbank.com.br` (via busca).
+
+**Ressalvas honestas:**
+
+1. O `amount` próprio na efetivação é o formato da captura parcial, mas a doc
+   não escreve a frase "pode ser menor que o reservado" — a prova final é o
+   equipamento de desenvolvimento (mesma disciplina do R-31: formato lido ≠
+   comportamento exercitado).
+2. Modo quiosque não aparece nomeado no SDK (há integração com launcher via
+   deeplink); pergunta para o contato comercial.
+3. O caminho começa num **formulário de parceria comercial** — não é
+   autosserviço completo; o equipamento de dev vem deles.
+
+**Consequência:** o caminho A tem agora DOIS fornecedores viáveis — Rede
+(aguardando e-mail da Rede Store) e PagBank (SDK público, processo documentado).
+O servidor construído na FASE 8 atende os dois sem mudança.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

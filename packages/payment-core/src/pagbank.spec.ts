@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assertCents } from '@bora/contracts';
 import {
@@ -60,7 +60,7 @@ describe('trava de verificação', () => {
       expect(msg).toContain('não foi verificado');
       expect(msg).toContain('fase-7-o-que-falta.md');
       // Lista os itens pendentes, para não obrigar ninguém a caçar.
-      expect(msg).toContain('criarPedido');
+      expect(msg).toContain('capturar');
     }
   });
 
@@ -70,7 +70,8 @@ describe('trava de verificação', () => {
     // Se algum dia isto ficar vazio sem alguém ter lido a documentação, o
     // problema é maior do que um teste quebrado.
     expect(pendentes.length).toBeGreaterThan(0);
-    expect(pendentes).toContain('cabecalhoAssinatura');
+    // O único caminho de dinheiro ainda não visto em material oficial.
+    expect(pendentes).toContain('capturar');
   });
 
   it('o que já é sabido está marcado como confirmado', () => {
@@ -84,6 +85,30 @@ describe('trava de verificação', () => {
     expect(CONTRATO.criarChavePublica.procedencia).toBe('confirmado');
     expect(CONTRATO.consultarChavePublica.valor).toBe('/public-keys/card');
     expect(CONTRATO.cabecalhoAutorizacao.valor).toContain('Bearer');
+
+    // Lidos no Objeto Charge, Objeto Order e Webhooks em 2026-08-03.
+    expect(CONTRATO.criarPedido.procedencia).toBe('confirmado');
+    expect(CONTRATO.cancelar.procedencia).toBe('confirmado');
+    expect(CONTRATO.campoValor.procedencia).toBe('confirmado');
+    expect(CONTRATO.mapaDeEstados.procedencia).toBe('confirmado');
+    expect(CONTRATO.cabecalhoAssinatura.procedencia).toBe('confirmado');
+    expect(CONTRATO.preAutorizacaoSoCredito.valor).toBe(true);
+  });
+
+  /**
+   * O mapa cobre exatamente os seis estados documentados. Estado inventado no
+   * mapa é tão perigoso quanto estado faltando: os dois escondem o dia em que
+   * o fornecedor muda o contrato.
+   */
+  it('o mapa de estados tem exatamente os seis estados documentados', () => {
+    expect(Object.keys(CONTRATO.mapaDeEstados.valor).sort()).toEqual([
+      'AUTHORIZED',
+      'CANCELED',
+      'DECLINED',
+      'IN_ANALYSIS',
+      'PAID',
+      'WAITING',
+    ]);
   });
 });
 
@@ -96,6 +121,22 @@ describe('trava de verificação', () => {
  */
 describe('o número do cartão não tem entrada', () => {
   const verificado = () => criar({ verificado: true });
+
+  /**
+   * Não é escolha nossa: o Objeto Charge documenta `capture: false` como
+   * indisponível para débito. Aceitar débito aqui produziria cobrança direta
+   * onde o sistema espera reserva — dinheiro cobrado sem energia entregue.
+   */
+  it('recusa débito — pré-autorização só existe no crédito', async () => {
+    await expect(
+      verificado().authorize({
+        amountCents: assertCents(20000),
+        method: 'DEBIT_CARD',
+        idempotencyKey: 'k',
+        metadata: { encryptedCard: 'blob' },
+      }),
+    ).rejects.toMatchObject({ code: 'METHOD_NOT_SUPPORTED' });
+  });
 
   it('recusa autorizar sem o cartão criptografado', async () => {
     await expect(
@@ -145,8 +186,14 @@ describe('o número do cartão não tem entrada', () => {
     expect(r.status).toBe('AUTHORIZED');
     expect(enviado).toContain('blob-cifrado');
     expect(enviado).not.toContain('4111');
-    // E continua sendo reserva, não cobrança.
-    expect(JSON.parse(enviado).charges[0].payment_method.capture).toBe(false);
+
+    const metodo = JSON.parse(enviado).charges[0].payment_method;
+    // Reserva, não cobrança.
+    expect(metodo.capture).toBe(false);
+    // Obrigatório no crédito; recarga não parcela.
+    expect(metodo.installments).toBe(1);
+    // Nome na fatura limitado aos 22 caracteres do contrato.
+    expect(metodo.soft_descriptor.length).toBeLessThanOrEqual(22);
   });
 });
 
@@ -228,16 +275,34 @@ describe('capacidades', () => {
   });
 });
 
-describe('assinatura do webhook', () => {
+describe('assinatura do webhook — a fórmula do PagBank, não HMAC', () => {
   const segredo = 'segredo';
   const corpo = Buffer.from('{"id":"evt_1","charges":[{"id":"chg_1","status":"PAID"}]}');
-  const assinatura = createHmac('sha256', segredo).update(corpo).digest('hex');
+  // A fórmula oficial: sha256("{token}-{payload}") em hex.
+  const assinar = (token: string, body: Buffer) =>
+    createHash('sha256')
+      .update(Buffer.concat([Buffer.from(`${token}-`), body]))
+      .digest('hex');
 
-  it('aceita assinatura correta no cabeçalho do fornecedor', async () => {
+  it('aceita a assinatura oficial no cabeçalho do fornecedor', async () => {
     const p = criar({ webhookSecret: segredo });
-    const headers = { [CONTRATO.cabecalhoAssinatura.valor]: assinatura };
+    const headers = { [CONTRATO.cabecalhoAssinatura.valor]: assinar(segredo, corpo) };
 
     expect(await p.verifyWebhook({}, headers, corpo)).toBe(true);
+  });
+
+  /**
+   * A regressão que a documentação oficial expôs: a versão anterior deste
+   * adapter validava HMAC-SHA256, que NÃO é a fórmula do PagBank. Todo webhook
+   * legítimo seria recusado em silêncio.
+   */
+  it('recusa a assinatura HMAC — a fórmula antiga estava errada', async () => {
+    const p = criar({ webhookSecret: segredo });
+    const hmac = createHmac('sha256', segredo).update(corpo).digest('hex');
+
+    expect(await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: hmac }, corpo)).toBe(
+      false,
+    );
   });
 
   it('recusa corpo adulterado', async () => {
@@ -247,35 +312,85 @@ describe('assinatura do webhook', () => {
     );
 
     expect(
-      await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, adulterado),
+      await p.verifyWebhook(
+        {},
+        { [CONTRATO.cabecalhoAssinatura.valor]: assinar(segredo, corpo) },
+        adulterado,
+      ),
     ).toBe(false);
   });
 
   /**
+   * O segredo da assinatura é o token da conta. Sem `webhookSecret` explícito,
+   * o adapter usa o próprio token de API — que é o comportamento documentado.
+   */
+  it('sem webhookSecret, o token da conta assina', async () => {
+    const p = criar(); // token: 'tok_de_teste'
+    const headers = { [CONTRATO.cabecalhoAssinatura.valor]: assinar('tok_de_teste', corpo) };
+
+    expect(await p.verifyWebhook({}, headers, corpo)).toBe(true);
+  });
+
+  /**
    * A verificação de assinatura funciona mesmo sem o adapter estar verificado:
-   * é criptografia, não depende do contrato. Bloqueá-la só atrapalharia o dia
+   * é criptografia, não depende da trava. Bloqueá-la só atrapalharia o dia
    * de ligar o sandbox.
    */
   it('funciona sem depender da trava', async () => {
     const p = criar({ webhookSecret: segredo });
     expect(p.verificado).toBe(false);
     expect(
-      await p.verifyWebhook({}, { [CONTRATO.cabecalhoAssinatura.valor]: assinatura }, corpo),
+      await p.verifyWebhook(
+        {},
+        { [CONTRATO.cabecalhoAssinatura.valor]: assinar(segredo, corpo) },
+        corpo,
+      ),
     ).toBe(true);
   });
 });
 
 describe('leitura do evento', () => {
-  it('extrai identificadores e estado', async () => {
+  it('extrai identificadores e estado do formato do webhook oficial', async () => {
+    // Estrutura do exemplo publicado: o webhook é o pedido inteiro, com o
+    // summary DENTRO de amount.
     const evento = await criar().parseWebhook({
-      id: 'evt_1',
-      charges: [{ id: 'chg_1', status: 'PAID', summary: { paid: 2800 } }],
+      id: 'ORDE_F87334AC',
+      charges: [
+        {
+          id: 'CHAR_F1F10115',
+          status: 'PAID',
+          amount: { value: 2800, currency: 'BRL', summary: { total: 2800, paid: 2800 } },
+        },
+      ],
     });
 
-    expect(evento.eventId).toBe('evt_1');
-    expect(evento.providerPaymentId).toBe('chg_1');
+    expect(evento.eventId).toBe('ORDE_F87334AC');
+    expect(evento.providerPaymentId).toBe('CHAR_F1F10115');
     expect(evento.status).toBe('CAPTURED');
     expect(evento.amountCents).toBe(2800);
+  });
+
+  /**
+   * Devolução não é estado no PagBank: a cobrança devolvida continua PAID, com
+   * o valor em amount.summary.refunded. Sem esta derivação, o painel mostraria
+   * "cobrado" para um motorista já ressarcido.
+   */
+  it('PAID com summary.refunded vira devolução, não cobrança', async () => {
+    const base = { id: 'ORDE_1' };
+    const cobranca = (paid: number, refunded: number) => ({
+      ...base,
+      charges: [
+        {
+          id: 'CHAR_1',
+          status: 'PAID',
+          amount: { value: paid, summary: { total: paid, paid, refunded } },
+        },
+      ],
+    });
+
+    expect((await criar().parseWebhook(cobranca(2800, 2800))).status).toBe('REFUNDED');
+    expect((await criar().parseWebhook(cobranca(2800, 1000))).status).toBe('PARTIALLY_REFUNDED');
+    expect((await criar().parseWebhook(cobranca(2800, 0))).status).toBe('CAPTURED');
   });
 
   it('recusa evento sem identificador', async () => {

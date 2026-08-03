@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { assertCents, type Cents } from '@bora/contracts';
 import { HttpPaymentProvider, type HttpProviderConfig } from './http-provider';
 import {
@@ -146,21 +147,35 @@ export const CONTRATO = {
   /** Criação do pedido com pré-autorização. */
   criarPedido: item(
     '/orders',
-    'a confirmar',
-    'o portal documenta a "API de Pedido" (página criar-pedido), mas o caminho ' +
-      'exato só vale como confirmado depois de exercitado contra o sandbox',
+    'confirmado',
+    'os links SELF/PAY do exemplo oficial de webhook apontam para ' +
+      'sandbox.api.pagseguro.com/orders/{id} (lido em 2026-08-03)',
   ),
   /** Captura de uma cobrança pré-autorizada. `{chargeId}` é substituído. */
-  capturar: item('/charges/{chargeId}/capture', 'a confirmar'),
+  capturar: item(
+    '/charges/{chargeId}/capture',
+    'a confirmar',
+    'único caminho de dinheiro ainda não visto em material oficial — o exemplo ' +
+      'de webhook traz CHARGE.CANCEL, mas não CHARGE.CAPTURE',
+  ),
   /** Cancelamento da pré-autorização não capturada. */
-  cancelar: item('/charges/{chargeId}/cancel', 'a confirmar'),
+  cancelar: item(
+    '/charges/{chargeId}/cancel',
+    'confirmado',
+    'link CHARGE.CANCEL (POST) no exemplo oficial de webhook',
+  ),
   /** Devolução de valor já capturado. */
   devolver: item(
     '/charges/{chargeId}/cancel',
     'a confirmar',
-    'pode ser o mesmo caminho do cancelamento',
+    'provavelmente o mesmo caminho do cancelamento com { amount }, mas a página ' +
+      'de devolução não foi lida — e devolução é dinheiro saindo',
   ),
-  consultar: item('/charges/{chargeId}', 'a confirmar'),
+  consultar: item(
+    '/charges/{chargeId}',
+    'confirmado',
+    'link SELF (GET) no exemplo oficial de webhook',
+  ),
 
   /**
    * Pré-autorização é `capture: false` na cobrança.
@@ -170,11 +185,57 @@ export const CONTRATO = {
    * definindo o prazo, e captura parcial suportada.
    */
   campoPreAutorizacao: item('capture', 'confirmado', 'false = pré-autoriza; true = cobra direto'),
-  campoPrazoCaptura: item('capture_before', 'confirmado'),
+  campoPrazoCaptura: item(
+    'capture_before',
+    'confirmado',
+    'Visa/Mastercard/Elo: até 29 dias para MCCs permitidos; demais bandeiras: 6 dias',
+  ),
+
+  /**
+   * Pré-autorização SÓ existe no crédito.
+   *
+   * O Objeto Charge diz, literalmente: "Função indisponível para o método de
+   * pagamento Cartão de Débito e Token de Bandeira (débito)". A mesma
+   * limitação da Rede, pelo mesmo motivo de mercado. O modelo do ADR-0008 é,
+   * portanto, crédito — em qualquer adquirente.
+   */
+  preAutorizacaoSoCredito: item(true, 'confirmado'),
+
+  /**
+   * `installments` é OBRIGATÓRIO no crédito. Não parcelamos recarga: sempre 1.
+   */
+  campoParcelas: item('installments', 'confirmado', 'obrigatório; nosso valor é sempre 1'),
+
+  /** Nome na fatura do motorista. Só crédito, até 22 caracteres, sem acento. */
+  campoNomeFatura: item('soft_descriptor', 'confirmado'),
 
   /** Valores em centavos, no campo `amount.value`. */
-  campoValor: item('amount.value', 'a confirmar'),
-  campoMoeda: item('amount.currency', 'a confirmar'),
+  campoValor: item('amount.value', 'confirmado', 'centavos inteiros: R$ 1.500,99 = 150099'),
+  campoMoeda: item('amount.currency', 'confirmado', 'só BRL'),
+
+  /**
+   * A devolução NÃO tem estado próprio na cobrança.
+   *
+   * Os estados documentados são só seis; devolução aparece em
+   * `amount.summary.refunded`. Quem olhar apenas o `status` verá `PAID` numa
+   * cobrança já devolvida — o mesmo tipo de armadilha que a verificação da
+   * Rede pegou na rodada 2.
+   */
+  devolucaoViaSummary: item('amount.summary.refunded', 'confirmado'),
+
+  /**
+   * Onde o webhook avisa a devolução: NÃO no webhook JSON.
+   *
+   * Eventos pós-transacionais (saldo disponível, devolvida, chargeback) chegam
+   * na MESMA URL mas em outro formato — `notificationCode=...` estilo legado,
+   * que exige um GET em ws.pagseguro.uol.com.br/v3 e responde XML. O
+   * `parseWebhook` atual não entende esse formato; a conciliação de devolução
+   * fica pela consulta ativa (`getPayment`) até esse fluxo ser implementado.
+   */
+  eventosPosTransacionaisLegados: item(true, 'confirmado', 'formato notificationCode + XML'),
+
+  /** Como cadastrar a URL do webhook: por pedido, campo `notification_urls` (aceita UMA URL). */
+  campoUrlNotificacao: item('notification_urls', 'confirmado'),
 
   /**
    * Onde entra o cartão criptografado pela chave pública.
@@ -185,21 +246,34 @@ export const CONTRATO = {
   campoCartaoCriptografado: item('payment_method.card.encrypted', 'a confirmar'),
 
   /** Cabeçalho que carrega a assinatura do webhook. */
-  cabecalhoAssinatura: item('x-authenticity-token', 'a confirmar'),
+  cabecalhoAssinatura: item('x-authenticity-token', 'confirmado'),
 
-  /** Estados do fornecedor → estados nossos. */
+  /**
+   * A fórmula da assinatura — e ela NÃO é HMAC.
+   *
+   * A página oficial define: `sha256("{token}-{payload}")`, em hexadecimal,
+   * onde `token` é o token da conta e `payload` são os bytes crus do corpo
+   * (qualquer formatação quebra o hash). Um HMAC aqui recusaria todo webhook
+   * legítimo — silenciosamente.
+   */
+  formulaAssinatura: item('sha256(token + "-" + corpoCru) em hex', 'confirmado'),
+
+  /**
+   * Estados do fornecedor → estados nossos.
+   *
+   * Os seis estados documentados no Objeto Charge — e SÓ eles. Devolução não é
+   * estado: é `summary.refunded` (ver `devolucaoViaSummary`).
+   */
   mapaDeEstados: item<Record<string, PaymentStatus>>(
     {
       AUTHORIZED: 'AUTHORIZED',
       PAID: 'CAPTURED',
-      AVAILABLE: 'CAPTURED',
       IN_ANALYSIS: 'PENDING',
       WAITING: 'PENDING',
       DECLINED: 'DECLINED',
       CANCELED: 'VOIDED',
-      REFUNDED: 'REFUNDED',
     },
-    'a confirmar',
+    'confirmado',
   ),
 } as const;
 
@@ -216,9 +290,11 @@ const CAPABILITIES: PaymentCapabilities = {
   voidAuthorization: true,
   refund: true,
   partialRefund: true,
-  // Pix entra quando o fluxo dele for confirmado; declarar antes faria o
-  // sistema oferecer ao motorista algo que o adapter não sabe fazer.
-  methods: ['CREDIT_CARD', 'DEBIT_CARD'],
+  // Só crédito: o Objeto Charge diz que `capture: false` é indisponível para
+  // débito — sem pré-autorização não existe o nosso modelo. Pix entra quando o
+  // fluxo de devolução dele for confirmado; declarar antes faria o sistema
+  // oferecer ao motorista algo que o adapter não sabe fazer.
+  methods: ['CREDIT_CARD'],
   initiatedBy: 'backend',
   // 6 a 29 dias conforme a bandeira; assumimos o pior caso para o alerta do
   // risco R-23 disparar cedo o bastante.
@@ -258,6 +334,16 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     this.exigirVerificacao();
     assertCents(input.amountCents, 'amountCents');
 
+    if (input.method !== 'CREDIT_CARD') {
+      // Não é escolha nossa: o Objeto Charge documenta `capture: false` como
+      // indisponível para débito. Mesma limitação da Rede.
+      throw new PaymentProviderError(
+        `o PagBank não faz pré-autorização em ${input.method} — só crédito`,
+        'METHOD_NOT_SUPPORTED',
+        false,
+      );
+    }
+
     const encryptedCard = input.metadata?.encryptedCard;
     if (typeof encryptedCard !== 'string' || !encryptedCard) {
       throw new PaymentProviderError(
@@ -282,9 +368,13 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
               description: input.description ?? 'Recarga de veículo elétrico',
               amount: { value: input.amountCents, currency: 'BRL' },
               payment_method: {
-                type: input.method === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'CREDIT_CARD',
+                type: 'CREDIT_CARD',
+                // Obrigatório no crédito. Recarga não parcela: sempre 1.
+                [CONTRATO.campoParcelas.valor]: 1,
                 // O campo que faz a diferença entre reservar e cobrar.
                 [CONTRATO.campoPreAutorizacao.valor]: false,
+                // Nome na fatura: até 22 caracteres, sem caracteres especiais.
+                [CONTRATO.campoNomeFatura.valor]: (input.description ?? 'Recarga VE').slice(0, 22),
                 card: { encrypted: encryptedCard },
               },
             },
@@ -384,15 +474,31 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
   /**
    * A verificação de assinatura **não** exige `verificado`.
    *
-   * Ela é criptografia pura, não depende do contrato do fornecedor, e já está
-   * coberta por teste. Bloqueá-la só atrapalharia o dia de ligar o sandbox.
+   * A fórmula do PagBank não é HMAC: é `sha256("{token}-{payload}")` em hex,
+   * sobre os bytes crus do corpo, com o token da conta como prefixo
+   * (`CONTRATO.formulaAssinatura`). O HMAC que este método usava antes
+   * recusaria todo webhook legítimo — silenciosamente, que é o pior jeito.
+   *
+   * O segredo é o token da conta. `webhookSecret` permite separá-lo do token
+   * de API se um dia forem diferentes; sem ele, usa-se o próprio token.
    */
   async verifyWebhook(
     _payload: unknown,
     headers: Record<string, string>,
     rawBody?: Buffer,
   ): Promise<boolean> {
-    return this.verificarAssinaturaHmac(rawBody, headers[CONTRATO.cabecalhoAssinatura.valor]);
+    const assinaturaRecebida = headers[CONTRATO.cabecalhoAssinatura.valor];
+    if (!rawBody || !assinaturaRecebida) return false;
+
+    const segredo = this.config.webhookSecret ?? this.config.token;
+    const esperada = createHash('sha256')
+      .update(Buffer.concat([Buffer.from(`${segredo}-`), rawBody]))
+      .digest('hex');
+
+    const a = Buffer.from(esperada);
+    const b = Buffer.from(assinaturaRecebida);
+    // Comparação em tempo constante — mesma razão do resto do sistema.
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 
   async parseWebhook(payload: unknown): Promise<PaymentWebhookEvent> {
@@ -414,7 +520,8 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       eventId,
       providerPaymentId: chargeId,
       status: this.mapearEstado(cobranca),
-      amountCents: this.valorDe(cobranca, 'summary.paid') ?? this.valorDe(cobranca, 'amount.value'),
+      amountCents:
+        this.valorDe(cobranca, 'amount.summary.paid') ?? this.valorDe(cobranca, 'amount.value'),
       occurredAt: new Date(),
       raw: payload,
     };
@@ -449,11 +556,27 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     return body;
   }
 
+  /**
+   * Estado real da cobrança — status + summary.
+   *
+   * A devolução não tem estado próprio no PagBank: uma cobrança devolvida
+   * continua `PAID`, com o valor em `summary.refunded`. Quem mapear só o
+   * `status` mostraria "cobrado" para um motorista já ressarcido — a mesma
+   * armadilha que a verificação da Rede pegou na rodada 2, no sentido oposto.
+   */
   private mapearEstado(cobranca: Record<string, unknown>): PaymentStatus {
     const bruto = typeof cobranca.status === 'string' ? cobranca.status.toUpperCase() : '';
     // Estado desconhecido vira FAILED, e não algo otimista: tratar o que não se
     // entende como sucesso é como se confirma recarga sem pagamento.
-    return CONTRATO.mapaDeEstados.valor[bruto] ?? 'FAILED';
+    const base = CONTRATO.mapaDeEstados.valor[bruto] ?? 'FAILED';
+
+    const capturado = this.valorDe(cobranca, 'amount.summary.paid') ?? 0;
+    const devolvido = this.valorDe(cobranca, 'amount.summary.refunded') ?? 0;
+    if (base === 'CAPTURED' && devolvido > 0) {
+      return devolvido >= capturado ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
+    }
+
+    return base;
   }
 
   /** Lê um valor em centavos por caminho pontilhado, sem confiar no formato. */
@@ -468,8 +591,10 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
   private toResult(cobranca: Record<string, unknown>, autorizadoFallback = 0): PaymentResult {
     const status = this.mapearEstado(cobranca);
     const autorizado = this.valorDe(cobranca, 'amount.value') ?? autorizadoFallback;
-    const capturado = this.valorDe(cobranca, 'summary.paid') ?? 0;
-    const devolvido = this.valorDe(cobranca, 'summary.refunded') ?? 0;
+    // O summary mora DENTRO de amount (Objeto Charge, lido em 2026-08-03). Os
+    // caminhos antigos ('summary.paid') liam sempre zero — capturas sumiriam.
+    const capturado = this.valorDe(cobranca, 'amount.summary.paid') ?? 0;
+    const devolvido = this.valorDe(cobranca, 'amount.summary.refunded') ?? 0;
 
     const cartao = (cobranca.payment_method as Record<string, unknown>)?.card as
       Record<string, unknown> | undefined;
@@ -487,7 +612,13 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
         cardLastFour: typeof cartao?.last_digits === 'string' ? cartao.last_digits : undefined,
       },
       message: this.mensagemDe(status),
-      providerCode: typeof cobranca.status === 'string' ? cobranca.status : undefined,
+      // O código do motivo (padrão ABECS) — mais útil para diagnóstico do que o
+      // status, que já vai mapeado acima. 20000 = sucesso.
+      providerCode: (() => {
+        const codigo = (cobranca.payment_response as Record<string, unknown>)?.code;
+        if (typeof codigo === 'string' || typeof codigo === 'number') return String(codigo);
+        return typeof cobranca.status === 'string' ? cobranca.status : undefined;
+      })(),
       raw: cobranca,
     };
   }

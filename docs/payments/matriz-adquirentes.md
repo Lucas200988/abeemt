@@ -336,24 +336,59 @@ O portal também tem um **gerador de criptografia**: você cola a chave pública
 sandbox e os dados do cartão de teste, e ele devolve o blob cifrado. É de lá que
 sai o `metadata.encryptedCard` para exercitar o adapter.
 
-### O que continua "a confirmar", e qual página fecha cada item
+### Objeto Charge, Objeto Order e Webhooks — lidos na íntegra (2026-08-03)
 
-O índice da referência (`developer.pagbank.com.br/reference/introducao`) mostra a
-estrutura, mas as páginas de cada endpoint não foram abertas. Caminho de
-pagamento suposto é exatamente o tipo de coisa que só se descobre errada com
-dinheiro de motorista, então a trava `BORA_PAGBANK_VERIFIED` permanece fechada.
+As três páginas fecharam quase todo o contrato e derrubaram duas suposições que
+o adapter carregava. As correções aplicadas, cada uma com teste:
 
-| Pendência                                                            | Página da referência que responde                                        |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Caminhos de pedido, captura, cancelamento                            | `reference/criar-pedido` ("Gerencie pedidos e pagamentos", 12 endpoints) |
-| Mapa de estados, `summary.paid`, `summary.refunded`, dados do cartão | `reference/objeto-charge`                                                |
-| Nome do campo do cartão criptografado                                | `reference/objeto-charge` ou `reference/casos-de-uso`                    |
-| Cabeçalho de assinatura do webhook                                   | `reference/webhooks`                                                     |
-| Tratamento de recusa                                                 | `reference/motivos-de-compra-negada`                                     |
-| Erros e retentativa                                                  | `reference/codigos-de-erro-order`                                        |
+1. **A assinatura do webhook NÃO é HMAC.** A fórmula oficial é
+   `sha256("{token}-{payload}")` em hexadecimal, sobre os bytes crus, com o
+   token da conta como prefixo, no cabeçalho `x-authenticity-token`. O HMAC que
+   o adapter validava recusaria todo webhook legítimo — em silêncio. Corrigido,
+   com um teste que garante que a fórmula HMAC antiga é recusada.
+2. **Pré-autorização só existe no crédito.** O Objeto Charge documenta
+   `capture: false` como "indisponível para Cartão de Débito e Token de
+   Bandeira (débito)". Mesma limitação da Rede. O `authorize()` recusa débito e
+   `capabilities.methods` declara só `CREDIT_CARD`.
+3. **O `summary` mora dentro de `amount`.** Os caminhos antigos
+   (`summary.paid`) leriam sempre zero — capturas sumiriam da conciliação.
+4. **Devolução não é estado.** Os estados documentados são só seis
+   (AUTHORIZED, PAID, IN_ANALYSIS, DECLINED, CANCELED, WAITING); a cobrança
+   devolvida continua `PAID` com o valor em `amount.summary.refunded`. O
+   adapter agora deriva REFUNDED/PARTIALLY_REFUNDED do summary — a mesma
+   classe de armadilha que a verificação da Rede pegou na rodada 2.
+5. **`installments` é obrigatório no crédito.** O corpo não enviava; agora
+   envia sempre `1`. E `soft_descriptor` (nome na fatura, 22 caracteres)
+   passou a ir junto.
 
-`reference/casos-de-uso` tem 33 casos e quase certamente inclui o de
-pré-autorização — é o atalho mais provável para fechar vários itens de uma vez.
+Outras confirmações que valem dinheiro:
+
+- `POST /orders` (criar), `GET /charges/{id}` (consultar) e
+  `POST /charges/{id}/cancel` (cancelar) aparecem nos links do exemplo oficial
+  de webhook — **confirmados**.
+- `capture_before`: Visa/Mastercard/Elo até **29 dias** para MCCs permitidos;
+  demais bandeiras **6 dias**. O pior caso de 6 dias já era a nossa premissa.
+- Webhook por pedido via `notification_urls` (aceita **uma** URL, POST, HTTPS).
+- ⚠️ **Eventos pós-transacionais** (saldo disponível, **devolvida**,
+  chargeback) chegam na MESMA URL em **outro formato** — `notificationCode`
+  estilo legado, que exige GET em `ws.pagseguro.uol.com.br/v3` e responde XML.
+  A confirmação de devolução fica pela consulta ativa (`getPayment`) até esse
+  fluxo ser implementado.
+- E4 (webhook assinado): ✅ o PagBank passa no critério eliminatório.
+
+### O que continua "a confirmar"
+
+| Pendência                             | Página que fecha                                       |
+| ------------------------------------- | ------------------------------------------------------ |
+| Caminho da **captura** (`capturar`)   | `reference/criar-pedido` (endpoint "Capturar")         |
+| Caminho da **devolução** (`devolver`) | idem (cancel com `{ amount }` parcial?)                |
+| Campo do cartão criptografado         | `reference/casos-de-uso` (caso "cartão criptografado") |
+
+O Objeto Charge mostra `payment_method.card.number` em claro como caminho
+documentado — o campo do blob cifrado não aparece ali. O adapter continua
+recusando qualquer caminho que não seja `metadata.encryptedCard`; o que falta é
+confirmar o **nome** do campo na requisição. A trava `BORA_PAGBANK_VERIFIED`
+permanece fechada até a captura e a devolução serem exercitadas no sandbox.
 
 ### Confirmação por ausência: o SmartPOS não está nesta referência
 

@@ -70,8 +70,46 @@ export const CONTRATO = {
     'idem; Transferências/Pix Bacen usam secure.api.pagseguro.com — fora do nosso escopo atual',
   ),
 
+  /**
+   * Como a credencial viaja.
+   *
+   * O portal mostra o cabeçalho em todas as definições OpenAPI publicadas
+   * (`Authorization: Bearer <token>`), então este item não é suposição.
+   */
+  cabecalhoAutorizacao: item(
+    'Authorization: Bearer <token>',
+    'confirmado',
+    'lido nas definições OpenAPI do portal em 2026-08-03, trazidas por Lucas',
+  ),
+
+  /**
+   * Chave pública de cartão — o que mantém o número fora do nosso servidor.
+   *
+   * O PagBank criptografa o cartão no cliente com esta chave; o que chega ao
+   * backend é um blob cifrado, não o PAN. É o equivalente ao `cardToken` da
+   * Rede e é o que sustenta a seção 12 do briefing no caminho online.
+   *
+   * Também é o que habilita 3DS, exigido para débito.
+   */
+  criarChavePublica: item(
+    '/public-keys',
+    'confirmado',
+    'POST com { "type": "card" } → 201 { public_key, created_at }',
+  ),
+  consultarChavePublica: item('/public-keys/card', 'confirmado', 'GET'),
+  alterarChavePublica: item(
+    '/public-keys/card',
+    'confirmado',
+    'PUT; a chave antiga continua válida por 7 dias após a troca',
+  ),
+
   /** Criação do pedido com pré-autorização. */
-  criarPedido: item('/orders', 'a confirmar'),
+  criarPedido: item(
+    '/orders',
+    'a confirmar',
+    'o portal documenta a "API de Pedido" (página criar-pedido), mas o caminho ' +
+      'exato só vale como confirmado depois de exercitado contra o sandbox',
+  ),
   /** Captura de uma cobrança pré-autorizada. `{chargeId}` é substituído. */
   capturar: item('/charges/{chargeId}/capture', 'a confirmar'),
   /** Cancelamento da pré-autorização não capturada. */
@@ -97,6 +135,14 @@ export const CONTRATO = {
   /** Valores em centavos, no campo `amount.value`. */
   campoValor: item('amount.value', 'a confirmar'),
   campoMoeda: item('amount.currency', 'a confirmar'),
+
+  /**
+   * Onde entra o cartão criptografado pela chave pública.
+   *
+   * O nome do campo ainda não foi lido; o que já está decidido é que **só**
+   * este caminho existe no adapter — número de cartão não tem entrada.
+   */
+  campoCartaoCriptografado: item('payment_method.card.encrypted', 'a confirmar'),
 
   /** Cabeçalho que carrega a assinatura do webhook. */
   cabecalhoAssinatura: item('x-authenticity-token', 'a confirmar'),
@@ -159,9 +205,29 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     this.verificado = config.verificado ?? false;
   }
 
+  /**
+   * Pré-autoriza usando um cartão CRIPTOGRAFADO — nunca o número.
+   *
+   * O PagBank aceita o cartão em claro, e nós não. O caminho aceito é o blob
+   * cifrado no cliente com a chave pública (`CONTRATO.criarChavePublica`),
+   * entregue em `metadata.encryptedCard`. Mesma regra do adapter da Rede, pelo
+   * mesmo motivo: número completo passando pelo nosso servidor é o que a seção
+   * 12 do briefing proíbe.
+   */
   async authorize(input: AuthorizeInput): Promise<PaymentResult> {
     this.exigirVerificacao();
     assertCents(input.amountCents, 'amountCents');
+
+    const encryptedCard = input.metadata?.encryptedCard;
+    if (typeof encryptedCard !== 'string' || !encryptedCard) {
+      throw new PaymentProviderError(
+        'a autorização pelo PagBank exige um cartão criptografado ' +
+          '(metadata.encryptedCard, gerado no cliente com a chave pública). ' +
+          'Número de cartão nunca passa pelo nosso servidor (briefing seção 12).',
+        'MISSING_CARD_TOKEN',
+        false,
+      );
+    }
 
     const { body } = await this.request<Record<string, unknown>>(
       'POST',
@@ -179,6 +245,7 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
                 type: input.method === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'CREDIT_CARD',
                 // O campo que faz a diferença entre reservar e cobrar.
                 [CONTRATO.campoPreAutorizacao.valor]: false,
+                card: { encrypted: encryptedCard },
               },
             },
           ],
@@ -187,6 +254,34 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     );
 
     return this.toResult(this.primeiraCobranca(body), input.amountCents);
+  }
+
+  /**
+   * Busca a chave pública de cartão da conta.
+   *
+   * Não exige `verificado`: o caminho está confirmado no portal e esta é
+   * justamente a primeira chamada a fazer quando as credenciais chegarem —
+   * bloqueá-la só atrapalharia o dia de ligar o sandbox. Mesmo raciocínio da
+   * verificação de assinatura.
+   *
+   * A chave é pública por definição; não há segredo a proteger aqui.
+   */
+  async chavePublicaDeCartao(): Promise<string> {
+    const { body } = await this.request<Record<string, unknown>>(
+      'GET',
+      CONTRATO.consultarChavePublica.valor,
+    );
+
+    const chave = body?.public_key;
+    if (typeof chave !== 'string' || !chave) {
+      throw new PaymentProviderError(
+        'o PagBank não devolveu uma chave pública de cartão',
+        'MALFORMED',
+        false,
+      );
+    }
+
+    return chave;
   }
 
   async capture(providerPaymentId: string, amountCents: Cents): Promise<PaymentResult> {

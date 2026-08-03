@@ -250,6 +250,87 @@ aplicativo da maquininha.
 
 ---
 
+## PagBank — o que o Portal do Desenvolvedor confirmou (2026-08-03)
+
+Lucas navegou o portal logado e trouxe o conteúdo. O que passou de suposição a
+fato está agora em `CONTRATO`, em `packages/payment-core/src/pagbank.ts`.
+
+**Antes de tudo, uma distinção que evita trabalho errado:** nada nesta seção é
+o caminho da maquininha. O portal documenta as APIs **online** (servidor →
+PagBank). No caminho A — aplicativo dentro do SmartPOS — quem fala com o
+PagBank é o SDK PlugPag no próprio equipamento (§8.1-B de
+[fase-8-maquininha.md](fase-8-maquininha.md)), e o nosso servidor não faz a
+autorização. As duas coisas coexistem: o portal continua valendo para
+conciliação, consulta e para o caminho B (pagamento online por QR Code).
+
+### Ambientes e credencial
+
+| Item                 | Valor                               |
+| -------------------- | ----------------------------------- |
+| Produção             | `https://api.pagseguro.com`         |
+| Teste (sandbox)      | `https://sandbox.api.pagseguro.com` |
+| Credencial           | `Authorization: Bearer <token>`     |
+| Versão da plataforma | "Nova Plataforma", OpenAPI 4.1      |
+
+Os dados do sandbox são fictícios e não afetam contabilidade real. O portal
+fornece **tokens de teste** e uma tabela de **cartões de teste** com regras que
+provocam respostas específicas — o equivalente à tabela que usamos para forçar
+a recusa no sandbox da Rede.
+
+### Chave pública — o que mantém o cartão fora do nosso servidor
+
+Esta é a descoberta que importa para a seção 12 do briefing. O PagBank publica
+uma chave pública por conta; o cartão é criptografado **no cliente** com ela, e
+o que chega ao nosso backend é um blob cifrado, nunca o número.
+
+| Operação  | Método | Caminho             | Nota                                                      |
+| --------- | ------ | ------------------- | --------------------------------------------------------- |
+| Criar     | POST   | `/public-keys`      | corpo `{ "type": "card" }` → `{ public_key, created_at }` |
+| Consultar | GET    | `/public-keys/card` |                                                           |
+| Alterar   | PUT    | `/public-keys/card` | a chave antiga vale mais **7 dias** após a troca          |
+
+É o análogo exato do `cardToken` da Rede, e é o que também habilita **3DS** —
+exigido para débito. Por isso o `authorize()` do adapter passou a **recusar**
+autorização sem `metadata.encryptedCard`: no PagBank, como na Rede, o número
+completo não tem porta de entrada no nosso código.
+
+A janela de 7 dias na troca de chave é operacionalmente relevante: dá para
+girar a chave sem derrubar pagamentos em andamento, desde que a troca e a
+atualização do cliente aconteçam dentro dela.
+
+### Serviços que existem, e quais nos interessam
+
+| Serviço                | Serve para nós?                                                         |
+| ---------------------- | ----------------------------------------------------------------------- |
+| API de Pedido          | ✅ é o caminho da pré-autorização online (`capture: false`)             |
+| Chaves públicas        | ✅ obrigatório — criptografia do cartão e 3DS                           |
+| Certificado digital    | ⚠️ mTLS como fator adicional; avaliar na homologação                    |
+| EDI                    | ⚠️ extrato eletrônico para conciliação — útil quando houver volume      |
+| Connect                | ❌ é para agir em nome de contas de terceiros (marketplace)             |
+| API de Cadastro        | ❌ criar contas em nome de terceiros                                    |
+| Pagamentos Recorrentes | ❌ assinatura, não é o nosso modelo                                     |
+| Checkout PagBank       | ❌ redireciona para página do PagBank; não cabe numa tela de carregador |
+| API de Transferência   | ❌ movimentação de saldo                                                |
+
+### Homologação — o portão que ninguém pula
+
+O processo declarado pelo próprio portal é: documentação → testes no Portal do
+Desenvolvedor → **contato com o time de integração para validar o ambiente**.
+Ou seja, mesmo com tudo funcionando no sandbox, produção só abre depois de uma
+validação humana. Isso entra no checklist do piloto pelo mesmo motivo que o
+credenciamento da Rede entrou: é prazo de terceiro, não de código.
+
+### O que continua "a confirmar"
+
+Os caminhos de pedido, captura, cancelamento e devolução, o nome do campo do
+cartão criptografado, o cabeçalho de assinatura do webhook e o mapa de estados.
+O portal os lista como serviços, mas não abrimos as páginas de cada endpoint —
+e caminho de pagamento suposto é exatamente o tipo de coisa que só se descobre
+errada com dinheiro de motorista. A trava `BORA_PAGBANK_VERIFIED` permanece
+fechada.
+
+---
+
 ## Situação da consulta
 
 | Fornecedor            | Contatado em                                                      | Respondeu                                | Atende                                                                                                                                                                                                                                                                                             |
@@ -259,8 +340,10 @@ aplicativo da maquininha.
 | Rede Store (SmartPOS) | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | aguardando                               | ⏳ 5 perguntas enviadas: publicação na Rede Store, pré-autorização + captura parcial no SDK, modo quiosque, homologação, modelo para uso externo                                                                                                                                                   |
 
 **Nenhum fornecedor foi contatado até 2026-07-29.** A pesquisa registrada sobre o
-PagBank vem de documentação pública e **não substitui a resposta deles** — o
-portal de desenvolvedores bloqueia acesso automatizado.
+PagBank vem de documentação pública lida por Lucas no portal logado e do SDK
+PlugPag no GitHub — **não substitui a resposta comercial deles**, que é o que
+libera equipamento de desenvolvimento e homologação. O portal continua
+bloqueando acesso automatizado a partir daqui (HTTP 403).
 
 Os pontos que estavam sem confirmação (captura parcial e operação não assistida)
 ganharam **prova de mercado** — ver a seção no início deste documento. Isso muda o

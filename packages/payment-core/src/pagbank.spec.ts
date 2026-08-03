@@ -74,6 +74,109 @@ describe('trava de verificação', () => {
     expect(CONTRATO.campoPreAutorizacao.procedencia).toBe('confirmado');
     expect(CONTRATO.campoPreAutorizacao.valor).toBe('capture');
     expect(CONTRATO.campoPrazoCaptura.valor).toBe('capture_before');
+
+    // Lidos nas definições OpenAPI do portal oficial em 2026-08-03.
+    expect(CONTRATO.criarChavePublica.procedencia).toBe('confirmado');
+    expect(CONTRATO.consultarChavePublica.valor).toBe('/public-keys/card');
+    expect(CONTRATO.cabecalhoAutorizacao.valor).toContain('Bearer');
+  });
+});
+
+/**
+ * A garantia da seção 12 neste fornecedor.
+ *
+ * O PagBank aceita o cartão em claro; o adapter não. A única entrada é o blob
+ * criptografado no cliente com a chave pública. Se algum dia alguém abrir uma
+ * porta para o número completo, este teste cai antes de o código subir.
+ */
+describe('o número do cartão não tem entrada', () => {
+  const verificado = () => criar({ verificado: true });
+
+  it('recusa autorizar sem o cartão criptografado', async () => {
+    await expect(
+      verificado().authorize({
+        amountCents: assertCents(20000),
+        method: 'CREDIT_CARD',
+        idempotencyKey: 'k',
+      }),
+    ).rejects.toMatchObject({ code: 'MISSING_CARD_TOKEN' });
+  });
+
+  it('a recusa explica o caminho certo', async () => {
+    try {
+      await verificado().authorize({
+        amountCents: assertCents(20000),
+        method: 'CREDIT_CARD',
+        idempotencyKey: 'k',
+        metadata: { cardNumber: '4111111111111111' },
+      });
+      expect.unreachable('deveria ter lançado');
+    } catch (e) {
+      expect((e as Error).message).toContain('metadata.encryptedCard');
+      expect((e as Error).message).toContain('seção 12');
+    }
+  });
+
+  it('o cartão criptografado vai no corpo, e o número nunca aparece', async () => {
+    let enviado = '';
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async (_url: string, init: RequestInit) => {
+        enviado = String(init.body ?? '');
+        return new Response(JSON.stringify({ charges: [{ id: 'chg_1', status: 'AUTHORIZED' }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as unknown as typeof fetch,
+    });
+
+    const r = await p.authorize({
+      amountCents: assertCents(20000),
+      method: 'CREDIT_CARD',
+      idempotencyKey: 'k',
+      metadata: { encryptedCard: 'blob-cifrado' },
+    });
+
+    expect(r.status).toBe('AUTHORIZED');
+    expect(enviado).toContain('blob-cifrado');
+    expect(enviado).not.toContain('4111');
+    // E continua sendo reserva, não cobrança.
+    expect(JSON.parse(enviado).charges[0].payment_method.capture).toBe(false);
+  });
+});
+
+describe('chave pública', () => {
+  /**
+   * Vale sem a trava: o caminho está confirmado no portal e é a primeira
+   * chamada a fazer quando as credenciais chegarem.
+   */
+  it('é buscada mesmo com o adapter ainda não verificado', async () => {
+    let caminho = '';
+    const p = criar({
+      fetchImpl: (async (url: string) => {
+        caminho = url;
+        return new Response(JSON.stringify({ public_key: 'MIIBIjANB...', created_at: 1 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as unknown as typeof fetch,
+    });
+
+    expect(p.verificado).toBe(false);
+    expect(await p.chavePublicaDeCartao()).toBe('MIIBIjANB...');
+    expect(caminho).toContain('/public-keys/card');
+  });
+
+  it('resposta sem chave é erro, não string vazia', async () => {
+    const p = criar({
+      fetchImpl: (async () =>
+        new Response('{}', {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })) as unknown as typeof fetch,
+    });
+
+    await expect(p.chavePublicaDeCartao()).rejects.toMatchObject({ code: 'MALFORMED' });
   });
 });
 

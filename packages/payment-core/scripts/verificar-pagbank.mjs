@@ -225,6 +225,46 @@ if (!blobAprovado || !blobAprovado2 || !blobRecusado) {
   process.exit(resultados.every((r) => r.ok) ? 0 : 1);
 }
 
+// Valida cada blob ANTES de gastar uma tentativa no PagBank: base64 cortado
+// ou com espaço no meio vira "INVALID BASE64" do lado deles (visto na rodada
+// de 2026-08-03). O sintoma clássico é colar o Resultado com quebra de linha —
+// o .env só lê a primeira linha e o resto do código fica de fora.
+{
+  const blobs = [
+    ['BORA_PAGBANK_CARTAO_APROVADO_CRIPTO', blobAprovado],
+    ['BORA_PAGBANK_CARTAO_APROVADO_CRIPTO_2', blobAprovado2],
+    ['BORA_PAGBANK_CARTAO_RECUSADO_CRIPTO', blobRecusado],
+  ];
+  let algumRuim = false;
+  for (const [nome, blob] of blobs) {
+    const semAspas = blob.replace(/^["']|["']$/g, '');
+    const pareceBase64 = /^[A-Za-z0-9+/]+=*$/.test(semAspas) && semAspas.length % 4 === 0;
+    if (!pareceBase64) {
+      algumRuim = true;
+      console.log(`❌ ${nome} não parece um base64 completo (${semAspas.length} caracteres).`);
+    } else if (semAspas.length < 200) {
+      algumRuim = true;
+      console.log(`❌ ${nome} está curto demais (${semAspas.length} caracteres) — provavelmente`);
+      console.log('   só a primeira linha do Resultado foi parar no .env.');
+    }
+  }
+  if (algumRuim) {
+    console.log('');
+    console.log('   Como corrigir: no gerador do portal, copie o Resultado INTEIRO (se houver');
+    console.log('   botão de copiar, use-o). No Bloco de Notas, o valor precisa ficar TODO na');
+    console.log('   mesma linha do nome, sem espaços nem Enter no meio:');
+    console.log('');
+    console.log('   BORA_PAGBANK_CARTAO_APROVADO_CRIPTO=abc...tudo...xyz');
+    console.log('');
+    console.log('   Dica: desligue a "Quebra automática de linha" no Bloco de Notas (menu');
+    console.log('   Exibir) para enxergar se o valor está mesmo numa linha só.');
+    console.log('');
+    console.log('   Lembre: cada criptograma vale UMA vez. Gere resultados NOVOS para as três');
+    console.log('   variáveis antes de rodar de novo.');
+    process.exit(1);
+  }
+}
+
 const metadataAprovado = {
   encryptedCard: blobAprovado,
   customerTaxId: CPF_TESTE,

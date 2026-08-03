@@ -289,6 +289,18 @@ export const CONTRATO = {
   ),
 
   /**
+   * `items` TAMBÉM é obrigatório na prática — segunda descoberta da
+   * verificação (400 · 40001 · items, 2026-08-03). Todo pedido precisa dizer
+   * o que vende; o nosso item é a recarga, quantidade 1, valor igual à
+   * reserva.
+   */
+  itensObrigatorios: item(
+    'items[]',
+    'confirmado',
+    'a documentação diz opcional; o sandbox exige (erro 40001)',
+  ),
+
+  /**
    * Com cartão criptografado, o nome do portador é obrigatório
    * ("Obrigatório para cobranças com 3DS e Criptografia").
    */
@@ -450,6 +462,16 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
             email: customerEmail,
             [CONTRATO.clienteDocumentoObrigatorio.valor.split('.')[1]]: customerTaxId,
           },
+          // Obrigatório na prática (40001). O que vendemos é a recarga; o
+          // valor do item é a reserva — a captura menor vem depois.
+          items: [
+            {
+              reference_id: input.idempotencyKey,
+              name: (input.description ?? 'Recarga de veículo elétrico').slice(0, 200),
+              quantity: 1,
+              unit_amount: input.amountCents,
+            },
+          ],
           charges: [
             {
               reference_id: input.idempotencyKey,

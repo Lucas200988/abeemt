@@ -203,6 +203,12 @@ describe('o número do cartão não tem entrada', () => {
     const pedido = JSON.parse(enviado);
     // customer.tax_id é obrigatório no Criar Pedido.
     expect(pedido.customer.tax_id).toBe('12345678909');
+    // customer.email e items: "opcionais" na documentação, exigidos pelo
+    // sandbox (40001) — as duas descobertas da verificação de 2026-08-03.
+    expect(pedido.customer.email).toBe('teste@sonare.com.br');
+    expect(pedido.items).toEqual([
+      { reference_id: 'k', name: 'Recarga de veículo elétrico', quantity: 1, unit_amount: 20000 },
+    ]);
 
     const metodo = pedido.charges[0].payment_method;
     // Reserva, não cobrança.

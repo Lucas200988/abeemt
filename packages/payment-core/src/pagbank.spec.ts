@@ -59,19 +59,21 @@ describe('trava de verificação', () => {
       const msg = (e as Error).message;
       expect(msg).toContain('não foi verificado');
       expect(msg).toContain('fase-7-o-que-falta.md');
-      // Lista os itens pendentes, para não obrigar ninguém a caçar.
-      expect(msg).toContain('capturar');
+      // Contrato lido inteiro: a mensagem aponta o passo que falta.
+      expect(msg).toContain('verificar:pagbank');
     }
   });
 
-  it('o contrato admite o que ainda não foi confirmado', () => {
-    const pendentes = pendenciasDoContrato();
-
-    // Se algum dia isto ficar vazio sem alguém ter lido a documentação, o
-    // problema é maior do que um teste quebrado.
-    expect(pendentes.length).toBeGreaterThan(0);
-    // O único caminho de dinheiro ainda não visto em material oficial.
-    expect(pendentes).toContain('capturar');
+  /**
+   * O contrato inteiro foi lido na documentação oficial (2026-08-03, trazida
+   * por Lucas): endpoints, campos, estados, assinatura e cartões de teste.
+   *
+   * Isso NÃO abre a trava. Na Rede o contrato também estava "fechado" no papel
+   * e a verificação no sandbox achou três erros reais. `verificado` só vira
+   * verdade depois do `pnpm verificar:pagbank` aprovar.
+   */
+  it('não resta pendência de leitura no contrato', () => {
+    expect(pendenciasDoContrato()).toEqual([]);
   });
 
   it('o que já é sabido está marcado como confirmado', () => {
@@ -241,6 +243,123 @@ describe('o número do cartão não tem entrada', () => {
         metadata: { encryptedCard: 'blob', customerTaxId: '12345678909' },
       }),
     ).rejects.toMatchObject({ code: 'MISSING_HOLDER_NAME' });
+  });
+});
+
+describe('captura e devolução — os caminhos de dinheiro', () => {
+  const respostaJson = (corpo: unknown) =>
+    new Response(JSON.stringify(corpo), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+
+  /** A resposta oficial da captura parcial: reservou 1000, capturou 500. */
+  const capturaParcial = {
+    id: 'CHAR_1',
+    status: 'PAID',
+    amount: { value: 1000, currency: 'BRL', summary: { total: 1000, paid: 500, refunded: 0 } },
+    payment_response: { code: '20000', message: 'SUCESSO' },
+  };
+
+  it('captura parcial: cobra 500 de uma reserva de 1000 — o E2 em código', async () => {
+    let caminho = '';
+    let enviado = '';
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        caminho = url;
+        enviado = String(init.body ?? '');
+        return respostaJson(capturaParcial);
+      }) as unknown as typeof fetch,
+    });
+
+    const r = await p.capture('CHAR_1', assertCents(500));
+
+    expect(caminho).toContain('/charges/CHAR_1/capture');
+    expect(JSON.parse(enviado)).toEqual({ amount: { value: 500 } });
+    expect(r.status).toBe('CAPTURED');
+    expect(r.amountAuthorizedCents).toBe(1000);
+    expect(r.amountCapturedCents).toBe(500);
+    expect(r.providerCode).toBe('20000');
+  });
+
+  /**
+   * Devolução sem valor descobre o quanto devolver na consulta — a mesma
+   * solução que a verificação da Rede exigiu na rodada 1 (cancelamento sem
+   * amount tomava 400).
+   */
+  it('devolução sem valor consulta antes e devolve o restante', async () => {
+    const chamadas: Array<{ metodo: string; url: string; corpo: string }> = [];
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        chamadas.push({ metodo: init.method ?? 'GET', url, corpo: String(init.body ?? '') });
+        if ((init.method ?? 'GET') === 'GET') {
+          return respostaJson({
+            id: 'CHAR_1',
+            status: 'PAID',
+            amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 300 } },
+          });
+        }
+        return respostaJson({
+          id: 'CHAR_1',
+          status: 'CANCELED',
+          amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 800 } },
+        });
+      }) as unknown as typeof fetch,
+    });
+
+    const r = await p.refund('CHAR_1');
+
+    expect(chamadas[0].metodo).toBe('GET');
+    expect(chamadas[1].metodo).toBe('POST');
+    expect(chamadas[1].url).toContain('/charges/CHAR_1/cancel');
+    // Devolve o que sobrou: 800 capturados − 300 já devolvidos.
+    expect(JSON.parse(chamadas[1].corpo)).toEqual({ amount: { value: 500 } });
+    // E o resultado é devolução, não "reserva cancelada".
+    expect(r.status).toBe('REFUNDED');
+  });
+
+  it('devolução de cobrança já zerada é erro claro, não 400 do fornecedor', async () => {
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async () =>
+        respostaJson({
+          id: 'CHAR_1',
+          status: 'CANCELED',
+          amount: { value: 1000, summary: { total: 1000, paid: 800, refunded: 800 } },
+        })) as unknown as typeof fetch,
+    });
+
+    await expect(p.refund('CHAR_1')).rejects.toMatchObject({ code: 'NOTHING_TO_REFUND' });
+  });
+
+  it('cancelar reserva envia o valor autorizado no corpo', async () => {
+    const chamadas: Array<{ metodo: string; corpo: string }> = [];
+    const p = criar({
+      verificado: true,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        chamadas.push({ metodo: init.method ?? 'GET', corpo: String(init.body ?? '') });
+        if ((init.method ?? 'GET') === 'GET') {
+          return respostaJson({
+            id: 'CHAR_1',
+            status: 'AUTHORIZED',
+            amount: { value: 20000, summary: { total: 20000, paid: 0, refunded: 0 } },
+          });
+        }
+        return respostaJson({
+          id: 'CHAR_1',
+          status: 'CANCELED',
+          amount: { value: 20000, summary: { total: 20000, paid: 0, refunded: 0 } },
+        });
+      }) as unknown as typeof fetch,
+    });
+
+    const r = await p.voidPayment('CHAR_1');
+
+    expect(JSON.parse(chamadas[1].corpo)).toEqual({ amount: { value: 20000 } });
+    // Sem captura, CANCELED é cancelamento de reserva mesmo.
+    expect(r.status).toBe('VOIDED');
   });
 });
 
@@ -438,6 +557,41 @@ describe('leitura do evento', () => {
     expect((await criar().parseWebhook(cobranca(2800, 2800))).status).toBe('REFUNDED');
     expect((await criar().parseWebhook(cobranca(2800, 1000))).status).toBe('PARTIALLY_REFUNDED');
     expect((await criar().parseWebhook(cobranca(2800, 0))).status).toBe('CAPTURED');
+  });
+
+  /**
+   * O outro lado da armadilha, direto do exemplo oficial de cancelamento:
+   * devolução TOTAL deixa a cobrança CANCELED com paid=1000, refunded=1000.
+   * Sem olhar o summary, isso viraria "reserva cancelada, nada foi cobrado".
+   */
+  it('CANCELED com dinheiro capturado e devolvido é devolução, não cancelamento', async () => {
+    const evento = await criar().parseWebhook({
+      id: 'ORDE_1',
+      charges: [
+        {
+          id: 'CHAR_1',
+          status: 'CANCELED',
+          amount: { value: 1000, summary: { total: 1000, paid: 1000, refunded: 1000 } },
+        },
+      ],
+    });
+
+    expect(evento.status).toBe('REFUNDED');
+  });
+
+  it('CANCELED sem captura é cancelamento de reserva mesmo', async () => {
+    const evento = await criar().parseWebhook({
+      id: 'ORDE_1',
+      charges: [
+        {
+          id: 'CHAR_1',
+          status: 'CANCELED',
+          amount: { value: 20000, summary: { total: 20000, paid: 0, refunded: 0 } },
+        },
+      ],
+    });
+
+    expect(evento.status).toBe('VOIDED');
   });
 
   it('recusa evento sem identificador', async () => {

@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "verificar": "node scripts/verificar-rede.mjs"
+    "verificar": "node scripts/verificar-rede.mjs",
+    "verificar:pagbank": "node scripts/verificar-pagbank.mjs"
   },
   "dependencies": {
     "@bora/contracts": "workspace:*"

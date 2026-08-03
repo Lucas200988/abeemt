@@ -395,16 +395,38 @@ A definição OpenAPI completa do `POST /orders` confirmou:
 - **Erros vêm em `error_messages[]`** com `error`, `parameter_name` e
   `description` — bom para diagnóstico no painel.
 
-### O que continua "a confirmar" — as DUAS últimas páginas
+### Capturar e Cancelar lidos (2026-08-03) — o contrato está 100% lido
 
-| Pendência                             | Página que fecha (grupo "Gerencie pedidos e pagamentos") |
-| ------------------------------------- | -------------------------------------------------------- |
-| Caminho da **captura** (`capturar`)   | endpoint "Capturar pré-autorização"                      |
-| Caminho da **devolução** (`devolver`) | endpoint "Cancelar/Estornar cobrança"                    |
+As duas últimas páginas fecharam os caminhos de dinheiro:
 
-São os dois únicos caminhos de dinheiro ainda não vistos. A trava
-`BORA_PAGBANK_VERIFIED` permanece fechada até serem lidos e exercitados no
-sandbox.
+- **Capturar**: `POST /charges/{id}/capture` com `{ amount: { value } }` — e o
+  exemplo oficial é justamente uma **captura parcial** (reservou 1000, capturou
+  500, resposta `PAID` com `summary.paid=500`). O critério E2 — "reservo
+  R$ 200 e cobro R$ 62,40" — está documentado preto no branco no PagBank.
+- **Cancelar/Devolver**: um só endpoint, `POST /charges/{id}/cancel` com
+  `{ amount: { value } }`, desfaz pré-autorização E reembolsa captura, parcial
+  ou total. Duas armadilhas mapeadas e tratadas no adapter, com teste:
+  devolução **parcial** deixa a cobrança `PAID` (refunded>0) e devolução
+  **total** deixa `CANCELED` (paid=1000, refunded=1000) — sem olhar o summary,
+  uma devolução total viraria "reserva cancelada, nada foi cobrado".
+- Todos os exemplos oficiais de cancelamento enviam `amount` — a mesma lição
+  da Rede (corpo sem valor tomava 400). `voidPayment` e `refund` agora
+  consultam a cobrança e enviam o valor certo quando o chamador não informa.
+
+**`pendenciasDoContrato()` está vazio.** Isso NÃO abre a trava: na Rede o
+contrato também estava "fechado" no papel e a verificação no sandbox achou
+três erros reais. O passo que falta é executável:
+
+```
+pnpm verificar:pagbank
+```
+
+O roteiro espelha o da Rede (8 passos: chave pública → reserva R$ 200 →
+captura parcial R$ 8 → consulta → devolução → cancelamento → recusa). Como o
+PagBank exige cartão criptografado, o script imprime a chave pública da conta
+e instrui a gerar os dois blobs (cartão aprovado e recusado) no gerador do
+portal de sandbox, guardando-os no `.env`
+(`BORA_PAGBANK_CARTAO_APROVADO_CRIPTO` / `_RECUSADO_CRIPTO`).
 
 ### Confirmação por ausência: o SmartPOS não está nesta referência
 

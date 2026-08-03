@@ -28,6 +28,7 @@
     "dev:watch": "turbo run dev",
     "sim": "node apps/ocpp-simulator/dist/cli.js",
     "verificar:rede": "turbo run build --filter=@bora/payment-core && pnpm --filter @bora/payment-core verificar",
+    "verificar:pagbank": "turbo run build --filter=@bora/payment-core && pnpm --filter @bora/payment-core verificar:pagbank",
     "backup": "node scripts/backup.mjs"
   },
   "devDependencies": {

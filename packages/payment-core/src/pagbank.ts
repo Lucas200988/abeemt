@@ -151,12 +151,17 @@ export const CONTRATO = {
     'os links SELF/PAY do exemplo oficial de webhook apontam para ' +
       'sandbox.api.pagseguro.com/orders/{id} (lido em 2026-08-03)',
   ),
-  /** Captura de uma cobrança pré-autorizada. `{chargeId}` é substituído. */
+  /**
+   * Captura de uma cobrança pré-autorizada — com PARCIAL documentado.
+   *
+   * A página "Capturar pagamento" traz o exemplo oficial: reservou 1000,
+   * capturou 500, resposta PAID com summary.paid=500 e amount.value=1000. É o
+   * critério E2 — "pague só o que consumiu" — confirmado em documento.
+   */
   capturar: item(
     '/charges/{chargeId}/capture',
-    'a confirmar',
-    'único caminho de dinheiro ainda não visto em material oficial — o exemplo ' +
-      'de webhook traz CHARGE.CANCEL, mas não CHARGE.CAPTURE',
+    'confirmado',
+    'POST com { amount: { value } }; captura parcial no exemplo oficial',
   ),
   /** Cancelamento da pré-autorização não capturada. */
   cancelar: item(
@@ -164,12 +169,19 @@ export const CONTRATO = {
     'confirmado',
     'link CHARGE.CANCEL (POST) no exemplo oficial de webhook',
   ),
-  /** Devolução de valor já capturado. */
+  /**
+   * Devolução de valor já capturado — MESMO caminho do cancelamento.
+   *
+   * A página "Cancelar pagamento" confirma: um só endpoint desfaz
+   * pré-autorização E reembolsa captura, com `{ amount: { value } }` parcial ou
+   * total. Detalhe que importa: devolução PARCIAL deixa a cobrança `PAID`
+   * (summary.refunded > 0); devolução TOTAL deixa `CANCELED` — ver
+   * `mapearEstado`.
+   */
   devolver: item(
     '/charges/{chargeId}/cancel',
-    'a confirmar',
-    'provavelmente o mesmo caminho do cancelamento com { amount }, mas a página ' +
-      'de devolução não foi lida — e devolução é dinheiro saindo',
+    'confirmado',
+    'POST com { amount: { value } }; parcial e total nos exemplos oficiais',
   ),
   consultar: item(
     '/charges/{chargeId}',
@@ -478,37 +490,69 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
       CONTRATO.capturar.valor.replace('{chargeId}', providerPaymentId),
       {
         idempotencyKey: `capture-${providerPaymentId}-${amountCents}`,
-        body: { amount: { value: amountCents, currency: 'BRL' } },
+        // O corpo documentado é só { amount: { value } } — sem currency.
+        body: { amount: { value: amountCents } },
       },
     );
 
     return this.toResult(body);
   }
 
+  /**
+   * Desfaz a pré-autorização.
+   *
+   * Todos os exemplos oficiais do cancelamento enviam `amount` — e na Rede a
+   * verificação provou que corpo sem valor toma 400. Aqui não sabemos o valor
+   * reservado sem perguntar, então: consulta, e cancela pelo valor cheio.
+   */
   async voidPayment(providerPaymentId: string): Promise<PaymentResult> {
     this.exigirVerificacao();
+
+    const atual = await this.getPayment(providerPaymentId);
 
     const { body } = await this.request<Record<string, unknown>>(
       'POST',
       CONTRATO.cancelar.valor.replace('{chargeId}', providerPaymentId),
-      { idempotencyKey: `void-${providerPaymentId}` },
+      {
+        idempotencyKey: `void-${providerPaymentId}`,
+        body: { amount: { value: atual.amountAuthorizedCents } },
+      },
     );
 
     return this.toResult(body);
   }
 
+  /**
+   * Devolve valor capturado — mesmo caminho do cancelamento, com `amount`.
+   *
+   * Sem `amountCents`, o valor é descoberto na consulta: o que foi capturado
+   * menos o que já foi devolvido. Mesma solução que a verificação da Rede
+   * exigiu na rodada 1.
+   */
   async refund(providerPaymentId: string, amountCents?: Cents): Promise<PaymentResult> {
     this.exigirVerificacao();
+
+    let valor = amountCents === undefined ? undefined : assertCents(amountCents, 'amountCents');
+    if (valor === undefined) {
+      const atual = await this.getPayment(providerPaymentId);
+      const restante = atual.amountCapturedCents - atual.amountRefundedCents;
+      if (restante <= 0) {
+        throw new PaymentProviderError(
+          `não há valor a devolver na cobrança ${providerPaymentId} ` +
+            `(capturado ${atual.amountCapturedCents}, devolvido ${atual.amountRefundedCents})`,
+          'NOTHING_TO_REFUND',
+          false,
+        );
+      }
+      valor = assertCents(restante, 'restante');
+    }
 
     const { body } = await this.request<Record<string, unknown>>(
       'POST',
       CONTRATO.devolver.valor.replace('{chargeId}', providerPaymentId),
       {
-        idempotencyKey: `refund-${providerPaymentId}-${amountCents ?? 'total'}`,
-        body:
-          amountCents === undefined
-            ? undefined
-            : { amount: { value: assertCents(amountCents), currency: 'BRL' } },
+        idempotencyKey: `refund-${providerPaymentId}-${valor}`,
+        body: { amount: { value: valor } },
       },
     );
 
@@ -593,9 +637,18 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
   private exigirVerificacao(): void {
     if (this.verificado) return;
 
+    const pendentes = pendenciasDoContrato();
+    // Contrato todo lido ≠ contrato exercitado. A Rede tinha o contrato
+    // "fechado" no papel e a verificação achou três erros reais. A trava só
+    // abre depois de o sandbox aprovar (pnpm verificar:pagbank).
+    const situacao =
+      pendentes.length > 0
+        ? `Itens pendentes no contrato: ${pendentes.join(', ')}.`
+        : 'O contrato está todo confirmado na documentação, mas ainda não foi ' +
+          'exercitado contra o sandbox (pnpm verificar:pagbank).';
+
     throw new PaymentProviderError(
-      'O adapter do PagBank ainda não foi verificado contra o sandbox. ' +
-        `Itens pendentes no contrato: ${pendenciasDoContrato().join(', ')}. ` +
+      `O adapter do PagBank ainda não foi verificado contra o sandbox. ${situacao} ` +
         'Ver docs/payments/fase-7-o-que-falta.md.',
       'ADAPTER_NOT_VERIFIED',
       false,
@@ -625,9 +678,15 @@ export class PagBankProvider extends HttpPaymentProvider implements PaymentProvi
     // entende como sucesso é como se confirma recarga sem pagamento.
     const base = CONTRATO.mapaDeEstados.valor[bruto] ?? 'FAILED';
 
+    // A página oficial de cancelamento mostra os dois lados da armadilha:
+    // devolução parcial deixa a cobrança PAID (refunded=500), e devolução
+    // TOTAL deixa CANCELED (paid=1000, refunded=1000). Sem olhar o summary,
+    // uma devolução total viraria "reserva cancelada, nada foi cobrado" — e
+    // um cancelamento de pré-autorização nunca tem `paid`, então o guarda
+    // `capturado > 0` separa os dois casos. Mesma lição da Rede, rodada 2.
     const capturado = this.valorDe(cobranca, 'amount.summary.paid') ?? 0;
     const devolvido = this.valorDe(cobranca, 'amount.summary.refunded') ?? 0;
-    if (base === 'CAPTURED' && devolvido > 0) {
+    if ((base === 'CAPTURED' || base === 'VOIDED') && capturado > 0 && devolvido > 0) {
       return devolvido >= capturado ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
     }
 

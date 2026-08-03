@@ -61,10 +61,14 @@ const item = <T>(valor: T, procedencia: Procedencia, nota?: string): ItemContrat
 export const CONTRATO = {
   baseUrlSandbox: item(
     'https://sandbox.api.pagseguro.com',
-    'a confirmar',
-    'endereço amplamente citado, não lido na documentação oficial',
+    'confirmado',
+    'lido no portal oficial (Ambientes disponíveis) em 2026-08-01, trazido por Lucas',
   ),
-  baseUrlProducao: item('https://api.pagseguro.com', 'a confirmar'),
+  baseUrlProducao: item(
+    'https://api.pagseguro.com',
+    'confirmado',
+    'idem; Transferências/Pix Bacen usam secure.api.pagseguro.com — fora do nosso escopo atual',
+  ),
 
   /** Criação do pedido com pré-autorização. */
   criarPedido: item('/orders', 'a confirmar'),

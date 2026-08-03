@@ -76,12 +76,18 @@ export const CARTOES_DE_TESTE_SANDBOX = {
   cvv: '123',
   expiracao: '12/2030',
   /**
-   * A aba "Negada" do portal ainda não foi lida.
+   * Cartões que o sandbox SEMPRE recusa — lidos na aba "Negada" em 2026-08-03.
    *
-   * Sem ela não dá para provar que a recusa é tratada — que foi exatamente o
-   * passo 8 da verificação da Rede, e onde apareceu um erro real.
+   * São o que permite provar que a recusa é tratada. Na verificação da Rede
+   * foi exatamente esse passo que achou um erro real.
    */
-  recusados: [] as Array<{ numero: string; bandeira: string }>,
+  recusados: [
+    { numero: '4929291898380766', bandeira: 'visa' },
+    { numero: '5530062640663264', bandeira: 'mastercard' },
+    { numero: '372938001199778', bandeira: 'amex' },
+    { numero: '4389350446134811', bandeira: 'elo' },
+    { numero: '6062822916014409', bandeira: 'hiper' },
+  ],
 } as const;
 
 /**

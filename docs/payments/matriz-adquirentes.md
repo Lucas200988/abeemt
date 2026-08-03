@@ -326,10 +326,11 @@ Conta de teste ativa em `portaldev.pagbank.com.br` (Lucas, 2026-08-03). O portal
 tem: **Tokens**, **Transações**, **Logs** e **Cartões teste**.
 
 Os cartões fictícios estão registrados em `CARTOES_DE_TESTE_SANDBOX`
-(`packages/payment-core/src/pagbank.ts`) — Visa, Mastercard, Amex, Elo e Hiper,
-CVV `123`, validade `12/2030`. **A aba "Negada" ainda não foi lida**, e um teste
-guarda essa lacuna: sem cartão de recusa não dá para provar que a recusa é
-tratada, que foi exatamente onde a verificação da Rede achou erro real.
+(`packages/payment-core/src/pagbank.ts`): **aprovação e recusa**, uma dupla por
+bandeira — Visa, Mastercard, Amex, Elo e Hiper —, CVV `123`, validade
+`12/2030`. Ter cartão de recusa por bandeira é melhor do que tivemos na Rede,
+onde o cartão de recusa teve que ser descoberto na tentativa e erro; um teste
+garante que as duas listas cobrem as mesmas bandeiras.
 
 O portal também tem um **gerador de criptografia**: você cola a chave pública de
 sandbox e os dados do cartão de teste, e ele devolve o blob cifrado. É de lá que

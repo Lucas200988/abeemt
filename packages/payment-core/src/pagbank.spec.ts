@@ -194,12 +194,21 @@ describe('cartões de teste do sandbox', () => {
   });
 
   /**
-   * Lembrete deliberado. Na verificação da Rede, o passo que achou erro real
-   * foi justamente o da recusa. Enquanto esta lista estiver vazia, a
-   * verificação do PagBank não pode ser declarada completa.
+   * A recusa tem que ser provocável. Na verificação da Rede, o passo que
+   * achou erro real foi justamente o da recusa — e lá o cartão de recusa teve
+   * que ser descoberto na tentativa e erro. Aqui já temos a tabela.
    */
-  it('a lista de recusa ainda está vazia — a verificação não fecha sem ela', () => {
-    expect(CARTOES_DE_TESTE_SANDBOX.recusados).toHaveLength(0);
+  it('há um cartão de recusa para cada bandeira aprovada', () => {
+    const aprovadas = CARTOES_DE_TESTE_SANDBOX.aprovados.map((c) => c.bandeira).sort();
+    const recusadas = CARTOES_DE_TESTE_SANDBOX.recusados.map((c) => c.bandeira).sort();
+    expect(recusadas).toEqual(aprovadas);
+  });
+
+  it('nenhum número aparece nas duas listas', () => {
+    const aprovados = new Set(CARTOES_DE_TESTE_SANDBOX.aprovados.map((c) => c.numero));
+    for (const c of CARTOES_DE_TESTE_SANDBOX.recusados) {
+      expect(aprovados.has(c.numero)).toBe(false);
+    }
   });
 });
 

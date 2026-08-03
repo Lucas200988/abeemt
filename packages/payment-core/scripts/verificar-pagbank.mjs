@@ -118,28 +118,62 @@ const adapter = new PagBankProvider({
 });
 
 // 1. Chave pública — sem ela o gerador do portal não produz o blob.
+//
+// Feita com fetch direto (não pelo adapter) para poder mostrar o código HTTP
+// e o corpo cru de cada tentativa: quando o PagBank recusa, o MOTIVO está aí.
+async function chamarChavePublica(metodo) {
+  const caminho = metodo === 'GET' ? '/public-keys/card' : '/public-keys';
+  const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}${caminho}`, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: metodo === 'GET' ? undefined : JSON.stringify({ type: 'card' }),
+  });
+  const texto = await resposta.text().catch(() => '');
+  let corpo = {};
+  try {
+    corpo = JSON.parse(texto);
+  } catch {
+    /* resposta não-JSON: fica no texto cru */
+  }
+  return { http: resposta.status, corpo, texto };
+}
+
 let chavePublica = null;
 try {
-  chavePublica = await adapter.chavePublicaDeCartao();
-  registrar(true, '1. Chave pública de cartão da conta', `${chavePublica.slice(0, 24)}…`);
-} catch (e) {
-  // Conta nova pode não ter chave ainda: cria e tenta de novo.
-  try {
-    const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}/public-keys`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'card' }),
-    });
-    const corpo = await resposta.json().catch(() => ({}));
-    if (resposta.ok && corpo.public_key) {
-      chavePublica = corpo.public_key;
+  const busca = await chamarChavePublica('GET');
+  if (busca.corpo.public_key) {
+    chavePublica = busca.corpo.public_key;
+    registrar(true, '1. Chave pública de cartão da conta', `${chavePublica.slice(0, 24)}…`);
+  } else {
+    // Conta nova pode não ter chave ainda: cria e tenta de novo.
+    const criacao = await chamarChavePublica('POST');
+    if (criacao.corpo.public_key) {
+      chavePublica = criacao.corpo.public_key;
       registrar(true, '1. Chave pública de cartão (criada agora)', `${chavePublica.slice(0, 24)}…`);
     } else {
-      registrar(false, '1. Chave pública de cartão', limpo(JSON.stringify(corpo).slice(0, 300)));
+      registrar(
+        false,
+        '1. Chave pública de cartão',
+        limpo(
+          `GET HTTP ${busca.http} · ${busca.texto.slice(0, 200) || '(corpo vazio)'} | ` +
+            `POST HTTP ${criacao.http} · ${criacao.texto.slice(0, 200) || '(corpo vazio)'}`,
+        ),
+      );
+      if (busca.http === 401 || criacao.http === 401) {
+        console.log('');
+        console.log('   HTTP 401 = o PagBank não reconheceu o token. Confira no .env:');
+        console.log('   - o token é o da página "Tokens" do portaldev.pagbank.com.br;');
+        console.log('   - foi colado inteiro, numa linha só, sem espaços nem quebras;');
+        console.log('   - se você gerou um token novo no portal, o antigo deixa de valer.');
+      } else if (busca.http === 403 || criacao.http === 403) {
+        console.log('');
+        console.log('   HTTP 403 = o token existe mas não tem permissão para chaves públicas.');
+        console.log('   Me mande esta saída, que eu investigo o caminho certo.');
+      }
     }
-  } catch (e2) {
-    registrar(false, '1. Chave pública de cartão', detalheDoErro(e2) || detalheDoErro(e));
   }
+} catch (e) {
+  registrar(false, '1. Chave pública de cartão', detalheDoErro(e));
 }
 
 // Sem os blobs, o roteiro para aqui — com as instruções de como gerá-los.

@@ -320,14 +320,47 @@ Ou seja, mesmo com tudo funcionando no sandbox, produção só abre depois de um
 validação humana. Isso entra no checklist do piloto pelo mesmo motivo que o
 credenciamento da Rede entrou: é prazo de terceiro, não de código.
 
-### O que continua "a confirmar"
+### Sandbox — já existe conta, e já dá para gerar cartão criptografado
 
-Os caminhos de pedido, captura, cancelamento e devolução, o nome do campo do
-cartão criptografado, o cabeçalho de assinatura do webhook e o mapa de estados.
-O portal os lista como serviços, mas não abrimos as páginas de cada endpoint —
-e caminho de pagamento suposto é exatamente o tipo de coisa que só se descobre
-errada com dinheiro de motorista. A trava `BORA_PAGBANK_VERIFIED` permanece
-fechada.
+Conta de teste ativa em `portaldev.pagbank.com.br` (Lucas, 2026-08-03). O portal
+tem: **Tokens**, **Transações**, **Logs** e **Cartões teste**.
+
+Os cartões fictícios estão registrados em `CARTOES_DE_TESTE_SANDBOX`
+(`packages/payment-core/src/pagbank.ts`) — Visa, Mastercard, Amex, Elo e Hiper,
+CVV `123`, validade `12/2030`. **A aba "Negada" ainda não foi lida**, e um teste
+guarda essa lacuna: sem cartão de recusa não dá para provar que a recusa é
+tratada, que foi exatamente onde a verificação da Rede achou erro real.
+
+O portal também tem um **gerador de criptografia**: você cola a chave pública de
+sandbox e os dados do cartão de teste, e ele devolve o blob cifrado. É de lá que
+sai o `metadata.encryptedCard` para exercitar o adapter.
+
+### O que continua "a confirmar", e qual página fecha cada item
+
+O índice da referência (`developer.pagbank.com.br/reference/introducao`) mostra a
+estrutura, mas as páginas de cada endpoint não foram abertas. Caminho de
+pagamento suposto é exatamente o tipo de coisa que só se descobre errada com
+dinheiro de motorista, então a trava `BORA_PAGBANK_VERIFIED` permanece fechada.
+
+| Pendência                                                            | Página da referência que responde                                        |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Caminhos de pedido, captura, cancelamento                            | `reference/criar-pedido` ("Gerencie pedidos e pagamentos", 12 endpoints) |
+| Mapa de estados, `summary.paid`, `summary.refunded`, dados do cartão | `reference/objeto-charge`                                                |
+| Nome do campo do cartão criptografado                                | `reference/objeto-charge` ou `reference/casos-de-uso`                    |
+| Cabeçalho de assinatura do webhook                                   | `reference/webhooks`                                                     |
+| Tratamento de recusa                                                 | `reference/motivos-de-compra-negada`                                     |
+| Erros e retentativa                                                  | `reference/codigos-de-erro-order`                                        |
+
+`reference/casos-de-uso` tem 33 casos e quase certamente inclui o de
+pré-autorização — é o atalho mais provável para fechar vários itens de uma vez.
+
+### Confirmação por ausência: o SmartPOS não está nesta referência
+
+A árvore inteira da referência — Chaves Públicas, Connect, Certificado digital,
+Cadastro, Pedidos & Pagamentos, Checkout, Recorrente, ClubPag — **não tem seção
+de maquininha**. Isso reforça o que o SDK PlugPag já indicava: o caminho A vive
+fora deste portal, no SDK Android, e depende do processo comercial. Ler tudo
+aqui não destrava a maquininha.
 
 ---
 

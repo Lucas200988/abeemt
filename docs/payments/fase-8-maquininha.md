@@ -367,6 +367,15 @@ integração (TEF ou SDK Rede/RFAL) e modelo de terminal. Mas com este aviso:
 E o portal direciona para `certificacaosmart@userede.com.br` para "acompanhar
 o status do processo".
 
+**Resposta do certificacaosmart (2026-08-04):** não respondeu nenhuma das
+três perguntas técnicas — redirecionou para "o fluxo de onboarding com o time
+Conectados Itaú" (copiado no próprio e-mail), dizendo que o SDK e as operações
+podem ser consultados "posteriormente" no portal. Funil comercial padrão. A
+tréplica pede o início do onboarding E repete a pergunta qualificadora
+(pré-autorização com captura parcial — roadmap do SDK ou modo TEF), porque
+sem ela o onboarding inteiro pode ser esforço num fornecedor que não atende o
+modelo.
+
 **Leitura do quadro Rede, completa:** sem pré-autorização no SDK **e** com o
 canal de publicação fechado por prazo indeterminado. Duas barreiras
 independentes. O caminho A da maquininha se concentra no **PagBank**; a Rede

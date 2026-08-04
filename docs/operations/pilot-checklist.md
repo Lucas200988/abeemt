@@ -17,13 +17,14 @@ começa.
 
 ## B. Pagamento
 
-| ✔   | Item                                                                                                       | Data / rubrica |
-| --- | ---------------------------------------------------------------------------------------------------------- | -------------- |
-| ☐   | 🔒 Credenciamento e.Rede de PRODUÇÃO concluído (PV real, chave real)                                       |                |
-| ☐   | 🔒 Verificação `pnpm verificar:rede` contra PRODUÇÃO com valor simbólico real, seguido de devolução        |                |
-| ☐   | 🔒 Prazo de captura da pré-autorização do nosso ramo confirmado com a Rede e registrado no `CONTRATO_REDE` |                |
-| ☐   | URL de notificação (webhook) cadastrada na Rede com token, e token no `.env`                               |                |
-| ☐   | Decisão sobre Pix registrada (conta Itaú sim/não)                                                          |                |
+| ✔   | Item                                                                                                                                       | Data / rubrica              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| ☑   | 🔒 **PagBank PRODUÇÃO verificado 8/8** (homologação aprovada, chamado 1424039934; teste real R$ 1,00 capturado e devolvido; logs enviados) | 2026-08-04 / Lucas + Claude |
+| ☐   | 🔒 Credenciamento e.Rede de PRODUÇÃO concluído (PV real, chave real) — OPCIONAL enquanto o PagBank for o provedor ativo                    |                             |
+| ☐   | 🔒 Verificação `pnpm verificar:rede` contra PRODUÇÃO com valor simbólico real, seguido de devolução                                        |                             |
+| ☐   | 🔒 Prazo de captura da pré-autorização do nosso ramo confirmado com a Rede e registrado no `CONTRATO_REDE`                                 |                             |
+| ☐   | URL de notificação (webhook) cadastrada na Rede com token, e token no `.env`                                                               |                             |
+| ☐   | Decisão sobre Pix registrada (conta Itaú sim/não)                                                                                          |                             |
 
 ## C. Equipamento (FASE 4 — pré-requisito do piloto)
 

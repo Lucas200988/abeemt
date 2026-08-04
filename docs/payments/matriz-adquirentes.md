@@ -487,6 +487,37 @@ O que ela NÃO autoriza: produção (credenciais reais + a mesma verificação
 contra o endpoint de produção com valor simbólico) e o caminho da maquininha
 (continua no processo comercial).
 
+### PRODUÇÃO verificada: 8 de 8 com dinheiro real (2026-08-04)
+
+A homologação formal foi **aprovada no mesmo dia** do envio (chamado
+1424039934): conta liberada para produção, com a exigência de um teste real
+com envio dos logs. O teste foi executado por Lucas contra
+`api.pagseguro.com`, com cartão real e valores simbólicos:
+
+```
+✅ 1. Chave pública de PRODUÇÃO criada/consultada
+✅ 2. Reserva de R$ 5,00 — CHAR_939D097E-12C5-4096-991B-E9A0EE6CE8E9
+✅ 3. Consulta — AUTHORIZED, 500
+✅ 4. Captura PARCIAL de R$ 1,00 sobre R$ 5,00 — CAPTURED, 100
+✅ 5. Consulta confirma — capturado 100, devolvido 0
+✅ 6. Devolução do R$ 1,00 — REFUNDED, 100 (após 3 esperas de assentamento,
+      provando o tratamento do 40008 em produção)
+✅ 7. Reserva de R$ 2,00 cancelada — VOIDED, capturado 0
+✅ 8. Recusa — provada no sandbox (pulada em produção, de propósito)
+```
+
+Custo líquido do teste: R$ 0,00. Logs sanitizados gravados em
+`pagbank-logs-producao-1785874891116.json` e enviados ao time de integração
+do PagBank em resposta ao chamado.
+
+**Isso fecha o item B do checklist do piloto para o PagBank** (verificação
+contra produção com valor simbólico + devolução) e autoriza
+`BORA_PAGBANK_VERIFIED=true` também em produção. Notas operacionais do
+processo: o gerador de criptograma do portal só aceita a chave de sandbox — o
+criptograma de produção sai do SDK JS oficial
+(`scripts/criptografar-cartao.html`); e a chave Pix da conta PagBank fica
+pendente de cadastro para quando o Pix entrar.
+
 ---
 
 ## Situação da consulta

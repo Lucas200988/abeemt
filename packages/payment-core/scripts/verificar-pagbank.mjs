@@ -314,7 +314,15 @@ if (!blobAprovado || !blobAprovado2) {
     console.log('   1. Entre em portaldev.pagbank.com.br → "Cartões teste".');
     console.log('   2. Desça até "Criptografe seu cartão" (o gerador roda no navegador; os');
     console.log('      dados do cartão não saem da página).');
-    console.log('   3. No campo da chave pública, cole a chave de PRODUÇÃO (linha acima).');
+    if (chavePublica) {
+      console.log('   3. No campo da chave pública, cole ESTA chave de PRODUÇÃO (copie a');
+      console.log('      linha inteira abaixo):');
+      console.log('');
+      console.log(`   ${chavePublica}`);
+      console.log('');
+    } else {
+      console.log('   3. O passo 1 falhou e a chave de produção não veio — me mande a saída.');
+    }
     console.log('   4. Preencha com o SEU cartão real (número, nome como está no cartão,');
     console.log('      CVV e validade) e copie o "Resultado".');
     console.log('   5. Gere DE NOVO com os mesmos dados, mudando só o nome (ex.: acrescente');

@@ -436,6 +436,22 @@ dos `classes*.dex` confirmam e refinam o quadro:
   que resta — para a Referência de API da integração remota ou para o
   suporte técnico da Cielo.
 
+**Referência da API remota lida (2026-08-04):** é um Order Manager — criar/
+consultar/alterar/excluir pedidos e itens, adicionar/consultar transações,
+notificações. **Nenhum endpoint de captura de pré-autorização.** Sandbox
+autosserviço (conta no portal + Client-ID, sem EC e sem terminal):
+`api.cielo.com.br/sandbox-lio/order-management/v1`; token de produção via
+formulário "Token Integração Remota" exigindo EC + Cielo Smart ativa.
+
+**Estado final da investigação Cielo por documentação:** a pré-autorização
+EXISTE no terminal (`paymentCode` oficial), mas **nenhuma das duas superfícies
+de integração documentadas (deep link e API remota) expõe a captura**. As
+hipóteses restantes — captura pelo menu do app Pagamentos (inviável para
+autoatendimento) ou por caminho não documentado — só o suporte técnico da
+Cielo responde. Pergunta enviada é o próximo passo; até lá, o E2 da Cielo
+fica **aberto**, e o PagBank segue como única candidata com o modelo completo
+documentado de ponta a ponta.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

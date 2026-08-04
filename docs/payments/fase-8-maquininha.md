@@ -328,6 +328,30 @@ Pergunta que resta à Rede (via certificacaosmart@userede.com.br): como obter o
 terminal de desenvolvimento L400/N960k, e se há pré-autorização no roadmap do
 SDK.
 
+### 8.1-D GPOS700 (Gertec) e o formulário de distribuição (2026-08-04, 2ª leva)
+
+A segunda página do portal cobre o terceiro terminal — **Smart Rede GPOS700**
+(Gertec), com o `sdk-3.0` — e **repete em letra de forma** a mesma exclusão:
+"não são suportadas as operações de crediário, pré-autorização e corban". A
+limitação não é de um modelo: é da plataforma de pagamentos da Rede.
+
+O que a página resolve de vez:
+
+| Pergunta                             | Resposta                                                                                                                                |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Como obter o terminal de dev**     | (a) pelo **executivo de Parcerias Rede**, ou (b) **comprar direto da Gertec** pedindo "padrão de chaves — **Desenvolvimento Redeflex**" |
+| Sem Smart Store na maquininha de dev | escrever para `DevSmartRede@userede.com.br`                                                                                             |
+| Assinatura em dev (GPOS700)          | chave publicada no portal (Development — Gertec — Customer APP; senha/alias no "Manual de Assinaturas")                                 |
+| Distribuição pós-certificação        | planilha "Distribuição da Aplicação": CNPJ + PV + Nº Lógico por maquininha (`SR...` = SDK Rede/RFAL; `SB...` = TEF)                     |
+| Certificação (RFAL)                  | testes funcionais de todas as integrações usadas + **área de suporte obrigatória na tela inicial** + impressão + Mifare                 |
+
+**A porta entreaberta que sobrou:** o GPOS700 também opera em modo **TEF**
+(Software Express e PayGO). TEF é outra arquitetura — o app conversa com uma
+TEF House, não com o App Pagamentos — e soluções TEF tradicionalmente TÊM
+pré-autorização. Custo: contrato com TEF House e certificação por ela. Fica
+registrado como plano C do caminho A; a pergunta "a SiTef/PayGO no GPOS700
+expõe pré-autorização com captura parcial?" entra no e-mail à Rede.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

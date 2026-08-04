@@ -50,23 +50,81 @@ function lerEnv() {
 }
 
 const env = lerEnv();
-const token = env.BORA_PAGBANK_SANDBOX_TOKEN;
+
+// ---------------------------------------------------------------------------
+// Ambiente: sandbox (padrão) ou PRODUÇÃO
+//
+// A homologação do PagBank foi aprovada em 2026-08-04 (chamado 1424039934) e
+// o time de integração pede UM teste em produção com os logs das requisições.
+// O modo produção usa valores simbólicos, pula o teste de recusa (não existe
+// cartão de recusa em produção — a recusa foi provada no sandbox) e grava os
+// logs sanitizados num arquivo para enviar ao PagBank.
+// ---------------------------------------------------------------------------
+
+const ambiente = (env.BORA_PAGBANK_AMBIENTE || 'sandbox').toLowerCase();
+const producao = ambiente === 'producao';
+const token = producao ? env.BORA_PAGBANK_PROD_TOKEN : env.BORA_PAGBANK_SANDBOX_TOKEN;
 
 if (!token) {
   console.log('');
-  console.log('❌ Falta o token de sandbox do PagBank no arquivo .env da raiz do projeto.');
-  console.log('');
-  console.log('   1. Entre em portaldev.pagbank.com.br e clique em "Tokens".');
-  console.log('   2. Copie o token de teste.');
-  console.log('   3. Abra o .env no Bloco de Notas e acrescente, no final:');
-  console.log('');
-  console.log('   BORA_PAGBANK_SANDBOX_TOKEN=<o token copiado>');
+  if (producao) {
+    console.log('❌ Falta o token de PRODUÇÃO do PagBank no arquivo .env.');
+    console.log('');
+    console.log('   Como gerar (instrução do próprio PagBank no chamado):');
+    console.log('   1. Acesse o iBanking (conta PagBank).');
+    console.log('   2. Vá em Vendas > Plataformas e Checkout > Integrações.');
+    console.log('   3. Gere o token de produção e acrescente no .env:');
+    console.log('');
+    console.log('   BORA_PAGBANK_PROD_TOKEN=<o token de produção>');
+  } else {
+    console.log('❌ Falta o token de sandbox do PagBank no arquivo .env da raiz do projeto.');
+    console.log('');
+    console.log('   1. Entre em portaldev.pagbank.com.br e clique em "Tokens".');
+    console.log('   2. Copie o token de teste.');
+    console.log('   3. Abra o .env no Bloco de Notas e acrescente, no final:');
+    console.log('');
+    console.log('   BORA_PAGBANK_SANDBOX_TOKEN=<o token copiado>');
+  }
   console.log('');
   console.log('   Depois rode este comando de novo:  pnpm verificar:pagbank');
   process.exit(1);
 }
 
-const baseUrl = env.BORA_PAGBANK_BASE_URL || CONTRATO.baseUrlSandbox.valor;
+if (producao && env.BORA_PAGBANK_PRODUCAO_CONFIRMO !== 'sim') {
+  console.log('');
+  console.log('⚠️  MODO PRODUÇÃO: as transações movem DINHEIRO DE VERDADE no SEU cartão.');
+  console.log('');
+  console.log('   O roteiro usa valores simbólicos e devolve tudo ao final:');
+  console.log('   reserva de R$ 5,00 → captura de R$ 1,00 → devolução de R$ 1,00;');
+  console.log('   reserva de R$ 2,00 → cancelamento integral.');
+  console.log('   Custo esperado ao final: R$ 0,00 (fora eventual demora de estorno');
+  console.log('   na fatura, que é do emissor do cartão).');
+  console.log('');
+  console.log('   Para confirmar que entendeu e prosseguir, acrescente no .env:');
+  console.log('');
+  console.log('   BORA_PAGBANK_PRODUCAO_CONFIRMO=sim');
+  process.exit(1);
+}
+
+if (producao && !/^\d{11}$/.test(env.BORA_PAGBANK_CPF || '')) {
+  console.log('');
+  console.log('❌ Em produção o CPF do comprador precisa ser REAL (o seu), porque o');
+  console.log('   antifraude valida. Acrescente no .env (só números):');
+  console.log('');
+  console.log('   BORA_PAGBANK_CPF=<seu CPF, 11 dígitos>');
+  console.log('   BORA_PAGBANK_PORTADOR=<seu nome como está no cartão>');
+  process.exit(1);
+}
+
+const baseUrl =
+  env.BORA_PAGBANK_BASE_URL ||
+  (producao ? CONTRATO.baseUrlProducao.valor : CONTRATO.baseUrlSandbox.valor);
+
+// Valores do roteiro: simbólicos em produção, os de sempre no sandbox.
+const VALOR_RESERVA = producao ? 500 : 20000;
+const VALOR_CAPTURA = producao ? 100 : 800;
+const VALOR_RESERVA_2 = producao ? 200 : 5000;
+const reais = (c) => `R$ ${(c / 100).toFixed(2).replace('.', ',')}`;
 // O criptograma é de USO ÚNICO (erro 40002 ao reusar): cada autorização gasta
 // um blob. O roteiro faz DUAS autorizações aprovadas (passos 2 e 7), então
 // precisa de dois blobs do cartão aprovado.
@@ -78,9 +136,52 @@ const baseUrl = env.BORA_PAGBANK_BASE_URL || CONTRATO.baseUrlSandbox.valor;
 const blobAprovado = env.BORA_PAGBANK_CARTAO_APROVADO_CRIPTO;
 const blobAprovado2 = env.BORA_PAGBANK_CARTAO_APROVADO_CRIPTO_2;
 
-// CPF de exemplo da própria documentação do PagBank. Não é de ninguém.
-const CPF_TESTE = '12345678909';
-const PORTADOR = 'Teste Bora Carregar';
+// CPF de exemplo da própria documentação do PagBank (sandbox). Em produção o
+// antifraude valida, então o CPF e o nome vêm do .env — são os do dono do
+// cartão real usado no teste.
+const CPF_TESTE = producao ? env.BORA_PAGBANK_CPF : env.BORA_PAGBANK_CPF || '12345678909';
+const PORTADOR =
+  env.BORA_PAGBANK_PORTADOR || (producao ? 'PORTADOR NAO INFORMADO' : 'Teste Bora Carregar');
+const EMAIL_COMPRADOR = env.BORA_PAGBANK_EMAIL || 'teste@sonare.com.br';
+
+// ---------------------------------------------------------------------------
+// Logs para o PagBank: o time de integração pede os logs das requisições do
+// teste em produção. Todo tráfego passa por este fetch instrumentado, que
+// grava método, URL, corpo e resposta — com o token e o criptograma REDIGIDOS.
+// ---------------------------------------------------------------------------
+
+const logsRequisicoes = [];
+
+function sanitizarCorpo(texto) {
+  if (!texto) return texto;
+  let t = String(texto);
+  t = t.split(token).join('[TOKEN-REDIGIDO]');
+  t = t.replace(/"encrypted"\s*:\s*"[^"]+"/g, '"encrypted":"[CRIPTOGRAMA-REDIGIDO]"');
+  return t;
+}
+
+const fetchInstrumentado = async (url, init = {}) => {
+  const inicio = new Date().toISOString();
+  const resposta = await fetch(url, init);
+  const textoResposta = await resposta.clone().text().catch(() => '');
+  logsRequisicoes.push({
+    quando: inicio,
+    metodo: init.method || 'GET',
+    url: String(url),
+    cabecalhos: {
+      ...Object.fromEntries(
+        Object.entries(init.headers || {}).map(([k, v]) => [
+          k,
+          k.toLowerCase() === 'authorization' ? 'Bearer [TOKEN-REDIGIDO]' : v,
+        ]),
+      ),
+    },
+    corpoEnviado: sanitizarCorpo(init.body),
+    httpStatus: resposta.status,
+    corpoRecebido: sanitizarCorpo(textoResposta).slice(0, 4000),
+  });
+  return resposta;
+};
 
 // ---------------------------------------------------------------------------
 // Apoio
@@ -113,7 +214,11 @@ function chaveIdempotencia() {
 // ---------------------------------------------------------------------------
 
 console.log('');
-console.log('Verificação do adapter do PagBank contra o sandbox');
+console.log(
+  producao
+    ? '⚠️  Verificação do adapter do PagBank contra a PRODUÇÃO (dinheiro real)'
+    : 'Verificação do adapter do PagBank contra o sandbox',
+);
 console.log(`Endereço: ${baseUrl}`);
 // Raio-X do token SEM expor o token: tamanho e pontas. Serve para comparar
 // com o que o portal mostra — token cortado ou com quebra de linha dá 401.
@@ -131,6 +236,7 @@ console.log('');
 const adapter = new PagBankProvider({
   baseUrl,
   token,
+  fetchImpl: fetchInstrumentado,
   // `true` AQUI, e só aqui: este script É a verificação. O .env continua
   // com BORA_PAGBANK_VERIFIED=false até esta saída ser aprovada.
   verificado: true,
@@ -142,7 +248,7 @@ const adapter = new PagBankProvider({
 // e o corpo cru de cada tentativa: quando o PagBank recusa, o MOTIVO está aí.
 async function chamarChavePublica(metodo) {
   const caminho = metodo === 'GET' ? '/public-keys/card' : '/public-keys';
-  const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}${caminho}`, {
+  const resposta = await fetchInstrumentado(`${baseUrl.replace(/\/+$/, '')}${caminho}`, {
     method: metodo,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: metodo === 'GET' ? undefined : JSON.stringify({ type: 'card' }),
@@ -201,6 +307,27 @@ if (!blobAprovado || !blobAprovado2) {
   console.log('');
   console.log('⏸  Faltam os cartões criptografados. Como gerar (5 minutos):');
   console.log('');
+  if (producao) {
+    console.log('   ⚠️  PRODUÇÃO: use o SEU cartão de crédito REAL, e a chave pública de');
+    console.log('   PRODUÇÃO impressa acima (gerada em api.pagseguro.com/public-keys).');
+    console.log('');
+    console.log('   1. Entre em portaldev.pagbank.com.br → "Cartões teste".');
+    console.log('   2. Desça até "Criptografe seu cartão" (o gerador roda no navegador; os');
+    console.log('      dados do cartão não saem da página).');
+    console.log('   3. No campo da chave pública, cole a chave de PRODUÇÃO (linha acima).');
+    console.log('   4. Preencha com o SEU cartão real (número, nome como está no cartão,');
+    console.log('      CVV e validade) e copie o "Resultado".');
+    console.log('   5. Gere DE NOVO com os mesmos dados, mudando só o nome (ex.: acrescente');
+    console.log('      um "B" no final) e copie o segundo resultado.');
+    console.log('   6. Acrescente no .env, substituindo os valores antigos:');
+    console.log('');
+    console.log('   BORA_PAGBANK_CARTAO_APROVADO_CRIPTO=<resultado do passo 4>');
+    console.log('   BORA_PAGBANK_CARTAO_APROVADO_CRIPTO_2=<resultado do passo 5>');
+    console.log('');
+    console.log('   Depois rode de novo:  pnpm verificar:pagbank');
+    console.log('');
+    process.exit(resultados.every((r) => r.ok) ? 0 : 1);
+  }
   console.log('   1. Entre em portaldev.pagbank.com.br → "Cartões teste".');
   console.log('   2. Desça até "Criptografe seu cartão".');
   if (chavePublica) {
@@ -334,15 +461,15 @@ const metadataAprovado = {
   customerTaxId: CPF_TESTE,
   holderName: PORTADOR,
   // Obrigatório na prática (erro 40001) apesar de "opcional" na documentação.
-  customerEmail: 'teste@sonare.com.br',
+  customerEmail: EMAIL_COMPRADOR,
 };
 
 try {
-  // 2. Pré-autorização de R$ 200,00
+  // 2. Pré-autorização (o teto)
   let chargeId = null;
   {
     const r = await adapter.authorize({
-      amountCents: 20000,
+      amountCents: VALOR_RESERVA,
       method: 'CREDIT_CARD',
       idempotencyKey: chaveIdempotencia(),
       description: 'Bora Carregar verificacao',
@@ -352,7 +479,7 @@ try {
     const ok = r.status === 'AUTHORIZED' && Boolean(chargeId);
     registrar(
       ok,
-      '2. Reserva de R$ 200,00 (capture:false)',
+      `2. Reserva de ${reais(VALOR_RESERVA)} (capture:false)`,
       ok ? `cobrança ${chargeId}` : limpo(`status ${r.status} · ${JSON.stringify(r.raw).slice(0, 300)}`),
     );
     if (!ok) throw new Error('sem reserva não há o que capturar');
@@ -372,28 +499,29 @@ try {
     registrar(false, '3. Consulta pelo adapter mostra a reserva em pé', detalheDoErro(e));
   }
 
-  // 4. Captura de R$ 8,00 — MENOS que o reservado. É o produto inteiro.
+  // 4. Captura de valor MENOR que o reservado. É o produto inteiro.
+  const tituloCaptura = `4. Captura PARCIAL de ${reais(VALOR_CAPTURA)} sobre ${reais(VALOR_RESERVA)} reservados`;
   try {
-    const r = await adapter.capture(chargeId, 800);
+    const r = await adapter.capture(chargeId, VALOR_CAPTURA);
     registrar(
-      r.status === 'CAPTURED' && r.amountCapturedCents === 800,
-      '4. Captura PARCIAL de R$ 8,00 sobre R$ 200,00 reservados',
+      r.status === 'CAPTURED' && r.amountCapturedCents === VALOR_CAPTURA,
+      tituloCaptura,
       `status ${r.status}, capturado ${r.amountCapturedCents}`,
     );
   } catch (e) {
-    registrar(false, '4. Captura PARCIAL de R$ 8,00 sobre R$ 200,00 reservados', detalheDoErro(e));
+    registrar(false, tituloCaptura, detalheDoErro(e));
   }
 
   // 5. A consulta confirma a captura
   try {
     const r = await consultarComPaciencia(chargeId);
     registrar(
-      r.status === 'CAPTURED' && r.amountCapturedCents === 800,
-      '5. Consulta confirma R$ 8,00 cobrados',
+      r.status === 'CAPTURED' && r.amountCapturedCents === VALOR_CAPTURA,
+      `5. Consulta confirma ${reais(VALOR_CAPTURA)} cobrados`,
       `status ${r.status}, capturado ${r.amountCapturedCents}, devolvido ${r.amountRefundedCents}`,
     );
   } catch (e) {
-    registrar(false, '5. Consulta confirma R$ 8,00 cobrados', detalheDoErro(e));
+    registrar(false, `5. Consulta confirma ${reais(VALOR_CAPTURA)} cobrados`, detalheDoErro(e));
   }
 
   // 6. Devolução do valor cobrado.
@@ -408,7 +536,7 @@ try {
     let ultimoErro = null;
     for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa += 1) {
       try {
-        resultado = await adapter.refund(chargeId, 800);
+        resultado = await adapter.refund(chargeId, VALOR_CAPTURA);
         break;
       } catch (e) {
         ultimoErro = e;
@@ -422,19 +550,19 @@ try {
     }
     if (resultado) {
       registrar(
-        resultado.status === 'REFUNDED' && resultado.amountRefundedCents === 800,
-        '6. Devolução dos R$ 8,00',
+        resultado.status === 'REFUNDED' && resultado.amountRefundedCents === VALOR_CAPTURA,
+        `6. Devolução dos ${reais(VALOR_CAPTURA)}`,
         `status ${resultado.status}, devolvido ${resultado.amountRefundedCents}`,
       );
     } else {
-      registrar(false, '6. Devolução dos R$ 8,00', detalheDoErro(ultimoErro));
+      registrar(false, `6. Devolução dos ${reais(VALOR_CAPTURA)}`, detalheDoErro(ultimoErro));
     }
   }
 
   // 7. Nova reserva e cancelamento SEM captura (o caso "recarga não aconteceu")
   try {
     const r2 = await adapter.authorize({
-      amountCents: 5000,
+      amountCents: VALOR_RESERVA_2,
       method: 'CREDIT_CARD',
       idempotencyKey: chaveIdempotencia(),
       description: 'Bora Carregar cancelamento',
@@ -445,7 +573,7 @@ try {
       const r = await adapter.voidPayment(r2.providerPaymentId);
       registrar(
         r.status === 'VOIDED',
-        '7. Reserva de R$ 50,00 cancelada sem cobrar nada',
+        `7. Reserva de ${reais(VALOR_RESERVA_2)} cancelada sem cobrar nada`,
         `status ${r.status}, capturado ${r.amountCapturedCents}`,
       );
     } else {
@@ -456,10 +584,17 @@ try {
       );
     }
   } catch (e) {
-    registrar(false, '7. Reserva de R$ 50,00 cancelada sem cobrar nada', detalheDoErro(e));
+    registrar(false, `7. Reserva de ${reais(VALOR_RESERVA_2)} cancelada sem cobrar nada`, detalheDoErro(e));
   }
 
   // 8. Recusa do emissor — com o cartão da aba "Negada", NÚMERO EM CLARO.
+  //
+  // Em PRODUÇÃO este passo é pulado: não existe cartão de recusa em produção
+  // e forçar recusa real dispara antifraude. A recusa foi provada no sandbox
+  // (8/8 de 2026-08-04) — e o registro vale como aprovado por essa evidência.
+  if (producao) {
+    registrar(true, '8. Recusa do emissor — provada no sandbox (pulada em produção)', '8/8 de 2026-08-04');
+  } else
   //
   // O sandbox aprovou esse cartão em pré-autorização E em cobrança direta
   // quando veio criptografado (rodadas de 2026-08-03): o simulador de recusa
@@ -468,7 +603,7 @@ try {
   // porque o adapter se recusa a tocar em número de cartão, regra que
   // continua valendo em produção. Mesmo desenho do roteiro da Rede.
   try {
-    const resposta = await fetch(`${baseUrl.replace(/\/+$/, '')}/orders`, {
+    const resposta = await fetchInstrumentado(`${baseUrl.replace(/\/+$/, '')}/orders`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -514,7 +649,7 @@ try {
     );
     // Se o sandbox aprovar até a cobrança direta, desfaz para não deixar lixo.
     if (!recusada && cobranca?.id && (status === 'PAID' || status === 'AUTHORIZED')) {
-      await fetch(`${baseUrl.replace(/\/+$/, '')}/charges/${cobranca.id}/cancel`, {
+      await fetchInstrumentado(`${baseUrl.replace(/\/+$/, '')}/charges/${cobranca.id}/cancel`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -539,9 +674,33 @@ try {
 const total = resultados.length;
 const ok = resultados.filter((r) => r.ok).length;
 
+// Grava os logs das requisições — em produção eles são a última exigência da
+// homologação (chamado 1424039934): enviar ao time de integração do PagBank.
+const arquivoLogs = resolve(raiz, `pagbank-logs-${ambiente}-${Date.now()}.json`);
+writeFileSync(
+  arquivoLogs,
+  JSON.stringify(
+    {
+      ambiente,
+      geradoEm: new Date().toISOString(),
+      resultado: `${ok} de ${total} passos aprovados`,
+      passos: resultados,
+      requisicoes: logsRequisicoes,
+    },
+    null,
+    2,
+  ),
+);
+
 console.log('');
 console.log('==================================================');
 console.log(`Resultado: ${ok} de ${total} passos aprovados`);
+console.log('');
+console.log(`Logs das requisições gravados em: ${arquivoLogs}`);
+if (producao) {
+  console.log('→ Este é o arquivo que o PagBank pediu no chamado 1424039934: anexe-o na');
+  console.log('  resposta do e-mail de homologação (token e criptogramas já redigidos).');
+}
 console.log('');
 if (ok === total && total >= 8) {
   console.log('Tudo passou. COPIE TODA ESTA SAÍDA e cole no chat — a decisão de');

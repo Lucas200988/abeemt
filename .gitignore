@@ -27,3 +27,4 @@ backups/
 
 # memória local da verificação do PagBank (hashes de criptogramas gastos)
 .verificar-pagbank-usados.json
+pagbank-logs-*.json

@@ -517,6 +517,32 @@ resposta: "Pagamento | Deeplink" (um tipo de transação de confirmação?),
 "JSONS", "Consulta Status", ou o Conciliador (captura via backoffice?).
 Pendente.
 
+**Pagamento, Estorno e Modo Quiosque lidos (2026-08-04) — investigação
+documental esgotada:**
+
+- "Pagamento | Deeplink" (v1/v2/v3): tipos `credit`, `debit`, `voucher`,
+  `pix`. **Nenhum tipo de confirmação de pré-autorização.** A captura não
+  está em deeplink algum.
+- "Estorno | Deeplink": o estorno pelo terminal **exige inserir o cartão de
+  novo** e só funciona **no mesmo dia** (depois, "entrar em contato com a
+  Getnet"). Isso MATA o desvio "capturar cheio + estornar diferença" no
+  autoatendimento: o motorista já foi embora com o cartão. Dois detalhes
+  úteis: o estorno aceita `originTerminal` (estornar transação de outro
+  terminal) **apenas se "a funcionalidade de Pré-autorização estiver
+  habilitada no estabelecimento"** — confirmando que pré-autorização é
+  habilitação comercial por EC na Getnet.
+- **"Modo Quiosque": o melhor do mercado.** Funcionalidade oficial: um único
+  app aberto, senha para sair, tela sempre ligada, "pronto para ser colocado
+  em um totem de autoatendimento". Ativação por
+  `<meta-data android:name="kiosk_mode" android:value="1" />` no manifest.
+  Nenhuma outra adquirente documenta isso.
+
+**Veredito documental Getnet:** cria a pré-autorização no terminal, quiosque
+perfeito, captura invisível na documentação — resta perguntar a
+`parceiros_posdigital@getnet.com.br` como se confirma/captura (e se aceita
+valor menor). Se a resposta for "pela API da plataforma digital com captura
+parcial", a Getnet vira concorrente direta do PagBank com o melhor quiosque.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

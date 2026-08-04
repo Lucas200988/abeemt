@@ -452,6 +452,49 @@ Cielo responde. Pergunta enviada é o próximo passo; até lá, o E2 da Cielo
 fica **aberto**, e o PagBank segue como única candidata com o modelo completo
 documentado de ponta a ponta.
 
+### 8.1-G Stone: autorização sem captura e captura posterior EXPLÍCITAS no SDK (2026-08-04)
+
+Quarta candidata investigada (`sdkandroid.stone.com.br`, trazida por Lucas).
+A página "Provider de Captura" documenta com código:
+
+- `transaction.setCapture(false)` → transação **só de autorização** (a reserva);
+- `CaptureTransactionProvider(activity, transaction)` → **captura posterior
+  programática**, com callback de sucesso/erro;
+- consulta local (`TransactionDAO`) e `isCapture()` para saber o estado.
+
+É o SDK mais explícito de todos sobre o fluxo em duas etapas. **Porém** o
+`CaptureTransactionProvider` não recebe valor — e o texto diz "captura do
+valor autorizado previamente". Indício forte de captura **integral**, não
+parcial. O E2 continua em aberto também aqui.
+
+Caminho alternativo dentro da própria Stone, a confirmar: capturar o valor
+cheio e **cancelar parcialmente** a diferença (Provider de Cancelamento) —
+economicamente equivalente ao nosso modelo se o cancelamento aceitar valor
+parcial e devolver rápido.
+
+Outros pontos do índice: sandbox documentado ("Retorno do Sandbox"), apps
+demo com código no GitHub (`stone-payments/demo-sdk-android` e
+`pos-android-deeplink-demo`), build para dispositivos Positivo e Gertec
+(mesmas famílias de hardware da Rede), programa de parceria formal
+(partner.stone.com.br). Duas integrações: deeplink (simples) e Provider
+(profunda — a nossa seria esta).
+
+**TransactionObject e Transações Financeiras lidos (2026-08-04):**
+
+- "Transações Financeiras" oficializa: **Crédito com Captura Posterior** é
+  modalidade suportada (débito é só captura imediata — mesma restrição de
+  todos os adquirentes).
+- O `TransactionObject` tem `amount` (centavos, definido na criação) e
+  `capture` (boolean). **Não existe campo de valor de captura separado** em
+  lugar nenhum do objeto — confirma que a captura posterior é do valor
+  INTEGRAL autorizado. Captura parcial: inexistente no SDK da Stone.
+- O modelo da Stone para nós, portanto, seria: autorizar o teto com
+  `setCapture(false)` → capturar o TETO inteiro → **cancelar parcialmente a
+  diferença**. Viável APENAS se o Provider de Cancelamento aceitar valor
+  parcial — página pendente.
+
+Página pendente: Provider de Cancelamento (aceita valor parcial?).
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

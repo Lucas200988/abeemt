@@ -281,6 +281,53 @@ lido na íntegra em 2026-08-01) e páginas SmartPOS do portal
 (aguardando e-mail da Rede Store) e PagBank (SDK público, processo documentado).
 O servidor construído na FASE 8 atende os dois sem mudança.
 
+### 8.1-C Rede Store: documentação LIDA NA ÍNTEGRA (2026-08-04) — e a resposta que muda a decisão
+
+O acesso ao portal do desenvolvedor da Rede ("Laranjinha Store",
+`redestore.service-now.com/portal_dev`) foi concedido para
+lucas@sonareengenharia.com.br, e a documentação de integração do
+`smartrede-sdk` foi lida inteira.
+
+**A resposta da pergunta nº 2 que enviamos à Rede Store está lá, em letra de
+forma:**
+
+> "No entanto, **não são suportadas operações de crediário, PRÉ-AUTORIZAÇÃO e
+> corban**, mesmo se tratando de operações de crédito e débito."
+
+O SDK da maquininha da Rede **não faz pré-autorização**. Ele suporta:
+crédito à vista/parcelado, débito, voucher, **Pix**, estorno (por AUTE, via
+intent) e reimpressão. O modelo do ADR-0008 — reservar o teto e capturar o
+consumo real — **não roda no terminal da Rede**.
+
+| Item                | O que a documentação diz                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| Terminais           | Positivo **L400** e Newland **N960k** (biblioteca específica por modelo)                                  |
+| Arquitetura         | App parceiro → intents → **App Vender** da Rede (quem transaciona é o Vender)                             |
+| Tipos de pagamento  | `CREDITO_A_VISTA/PARCELADO(_EMISSOR)`, `DEBITO`, `VOUCHER`, `PIX`                                         |
+| **Pré-autorização** | ❌ **explicitamente não suportada**                                                                       |
+| Estorno             | Por código AUTE, via intent (sem menção a estorno PARCIAL)                                                |
+| Valores             | `Long amount` = valor × 100 (centavos, como o nosso padrão)                                               |
+| Status de retorno   | `AUTHORIZED` / `FAILED` / `DECLINED`                                                                      |
+| Desenvolvimento     | Terminal DEV com depuração USB, instalação via **ADB**, injetor de chaves de teste, sem assinatura (L400) |
+| Certificação        | SLA de **5 dias úteis** por versão; 1 release/mês + 1 correção; SDK ≥ 4.3.23                              |
+| Dados do lojista    | §9.3 devolve PV, número lógico, CNPJ — útil para vincular terminal ao backend automaticamente             |
+| Contatos            | `certificacaosmart@userede.com.br` (certificação) · `erika.reis@userede.com.br` (Conexão Itaú)            |
+
+**Consequência para a decisão do caminho A:**
+
+1. **PagBank passa a ser o único fornecedor com o NOSSO modelo no terminal**
+   (`doPreAutoCreate` / `doEffectuatePreAuto` / `doPreAutoCancel` no PlugPag).
+2. A maquininha da Rede só serve com **mudança de modelo**: cobrança direta do
+   valor exato ao FINAL da recarga (risco: motorista ir embora sem pagar) ou
+   **Pix de valor fixo antes** (o SDK tem Pix; casa com o ADR-0010, sem troco
+   automático pelo terminal).
+3. O e.Rede online (verificado 8/8) segue valendo para o caminho B — QR
+   Code/pagamento online — onde a pré-autorização existe.
+
+Pergunta que resta à Rede (via certificacaosmart@userede.com.br): como obter o
+terminal de desenvolvimento L400/N960k, e se há pré-autorização no roadmap do
+SDK.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

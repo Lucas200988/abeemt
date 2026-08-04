@@ -352,6 +352,27 @@ pré-autorização. Custo: contrato com TEF House e certificação por ela. Fica
 registrado como plano C do caminho A; a pergunta "a SiTef/PayGO no GPOS700
 expõe pré-autorização com captura parcial?" entra no e-mail à Rede.
 
+### 8.1-E O canal de cadastro de apps da Rede Store está FECHADO (2026-08-04)
+
+A tela "Meus Apps" tem o formulário completo de criação de aplicativo — tipo
+de loja (**pública ou privada** — privada é exatamente o nosso caso: app
+distribuído só para as nossas maquininhas), distribuição por planilha
+(CNPJ + PV + Nº Lógico), ramo de atividade, contatos de suporte, tipo de
+integração (TEF ou SDK Rede/RFAL) e modelo de terminal. Mas com este aviso:
+
+> "Todos os campos do formulário de cadastro do Aplicativo serão
+> **desabilitados enquanto o canal estiver fechado**. Assim que retornarmos
+> com novos processos atualizaremos nosso portal."
+
+E o portal direciona para `certificacaosmart@userede.com.br` para "acompanhar
+o status do processo".
+
+**Leitura do quadro Rede, completa:** sem pré-autorização no SDK **e** com o
+canal de publicação fechado por prazo indeterminado. Duas barreiras
+independentes. O caminho A da maquininha se concentra no **PagBank**; a Rede
+fica registrada com tudo pronto para reavaliar se (a) o canal reabrir E (b) a
+pré-autorização entrar no SDK ou o modo TEF a oferecer.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

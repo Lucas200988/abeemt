@@ -311,9 +311,13 @@ if (!blobAprovado || !blobAprovado2) {
     console.log('   ⚠️  PRODUÇÃO: use o SEU cartão de crédito REAL, e a chave pública de');
     console.log('   PRODUÇÃO impressa acima (gerada em api.pagseguro.com/public-keys).');
     console.log('');
-    console.log('   1. Entre em portaldev.pagbank.com.br → "Cartões teste".');
-    console.log('   2. Desça até "Criptografe seu cartão" (o gerador roda no navegador; os');
-    console.log('      dados do cartão não saem da página).');
+    console.log('   O gerador do portal de sandbox RECUSA a chave de produção. Use a');
+    console.log('   página local com o SDK oficial do PagBank:');
+    console.log('');
+    console.log('   1. Abra no navegador (duplo clique) o arquivo:');
+    console.log('      packages\\payment-core\\scripts\\criptografar-cartao.html');
+    console.log('   2. A criptografia roda no SEU navegador com o código oficial do');
+    console.log('      PagBank; o número do cartão não sai da página.');
     if (chavePublica) {
       console.log('   3. No campo da chave pública, cole ESTA chave de PRODUÇÃO (copie a');
       console.log('      linha inteira abaixo):');

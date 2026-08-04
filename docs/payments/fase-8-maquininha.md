@@ -419,6 +419,23 @@ O PagBank continua à frente por ter a captura parcial COM VALOR explícita no
 SDK. A Cielo vira o **plano B qualificado** — e com o processo mais rápido de
 testar, graças ao emulador e ao terminal solicitável sem executivo.
 
+**Dissecação do APK do emulador (lioemulator.apk, 2026-08-04).** As strings
+dos `classes*.dex` confirmam e refinam o quadro:
+
+- `PRE_AUTORIZACAO` está no enum `cielo/sdk/order/payment/PaymentCode`, junto
+  com os demais 26 códigos da tabela oficial — o emulador conhece o produto.
+- A superfície EXTERNA do emulador expõe `ExternalPaymentActivity` e
+  `ExternalCancellationActivity` — pagamento e cancelamento. **Não há
+  atividade, request ou string de CAPTURA/efetivação de pré-autorização** no
+  deep link (`CheckoutRequest` e `CancellationRequest` são os únicos domain
+  requests).
+- Hipótese de trabalho, agora bem fundamentada: pelo deep link se FAZ a
+  pré-autorização; a **captura** acontece por outro caminho — a API da
+  "integração remota", a API e-commerce da Cielo (por NSU), ou o menu do
+  próprio app Pagamentos. Qual deles, e se aceita valor MENOR, é a pergunta
+  que resta — para a Referência de API da integração remota ou para o
+  suporte técnico da Cielo.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

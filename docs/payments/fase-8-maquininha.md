@@ -373,6 +373,52 @@ independentes. O caminho A da maquininha se concentra no **PagBank**; a Rede
 fica registrada com tudo pronto para reavaliar se (a) o canal reabrir E (b) a
 pré-autorização entrar no SDK ou o modo TEF a oferecer.
 
+### 8.1-F Cielo Smart: QUALIFICADA — pré-autorização existe no terminal (2026-08-04)
+
+Investigação da documentação `docs.cielo.com.br/cielo-smart` (trazida por
+Lucas). A tabela oficial de `paymentCode` — os tipos de transação que o
+pedido via deep link aceita — inclui:
+
+> **`PRE_AUTORIZACAO` — "Reserva de limite com autorização pendente de
+> captura."**
+
+É a primeira adquirente brasileira, além do PagBank, com pré-autorização
+documentada NO terminal. E o processo da Cielo é o mais autosserviço dos
+três:
+
+| Item                 | O que a documentação diz                                                                |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| Integração           | Deep link (JSON em Base64 → app Pagamentos) ou **integração remota via API REST**       |
+| `paymentCode`        | 27 valores, incluindo `PRE_AUTORIZACAO` e `PIX`                                         |
+| Valores              | Centavos ("1000" = R$ 10,00)                                                            |
+| **Emulador**         | Existe — desenvolvimento sem o hardware físico                                          |
+| Terminal para testes | Solicitável pelo próprio fluxo do portal ("Solicitando e ativando uma Cielo Smart")     |
+| Loja                 | Cielo Store com **loja privada** (nosso caso) e Dev Console autosserviço                |
+| Extra relevante      | "Integração remota" — o servidor comanda o pedido no terminal; casa com autoatendimento |
+
+**O que AINDA falta confirmar (o E2 não está fechado):**
+
+1. **Como se captura** a pré-autorização pendente — por deep link no terminal,
+   pela API remota, ou pela API e-commerce? E, decisivo: **aceita capturar
+   valor MENOR que o reservado?** A frase "pendente de captura" garante que a
+   captura existe; a captura PARCIAL ainda não está provada na Cielo Smart.
+2. `PRE_AUTORIZACAO` aparece na lista de produtos "habilitados para o EC" —
+   ou seja, é **habilitação comercial** por estabelecimento. Confirmar como se
+   habilita.
+3. Prazo de validade da pré-autorização no produto da Cielo.
+
+**Quadro do caminho A com três candidatas avaliadas:**
+
+| Candidata | Pré-auto no terminal      | Captura parcial                    | Loja/processo                                  |
+| --------- | ------------------------- | ---------------------------------- | ---------------------------------------------- |
+| PagBank   | ✅ (PlugPag, com métodos) | ✅ (`doEffectuatePreAuto(amount)`) | loja ativa; comercial pendente                 |
+| **Cielo** | ✅ (`PRE_AUTORIZACAO`)    | ❓ a confirmar                     | autosserviço + emulador + terminal solicitável |
+| Rede      | ❌ (excluída na doc)      | —                                  | canal em dúvida                                |
+
+O PagBank continua à frente por ter a captura parcial COM VALOR explícita no
+SDK. A Cielo vira o **plano B qualificado** — e com o processo mais rápido de
+testar, graças ao emulador e ao terminal solicitável sem executivo.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

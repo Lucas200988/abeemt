@@ -495,6 +495,28 @@ demo com código no GitHub (`stone-payments/demo-sdk-android` e
 
 Página pendente: Provider de Cancelamento (aceita valor parcial?).
 
+### 8.1-H Getnet (Get Smart): pré-autorização com deeplink dedicado — captura ainda não localizada (2026-08-04)
+
+Quinta candidata (`getstore.getnet.com.br/docs`, trazida por Lucas). O menu de
+Integração de Pagamento tem duas páginas que nenhuma outra adquirente dedicou:
+
+- **"Pré-autorização | Deeplink"** — `getnet://pagamento/v2/pre-authorization`,
+  valor em 12 dígitos (2 decimais), `callerId` obrigatório para consulta de
+  status, `orderId` repassado ao Conciliador, NSU no retorno. Só crédito
+  (type 11/12). Exemplos em Java/Kotlin/React Native/Flutter.
+- **"Modo Quiosque"** — página própria para operação não assistida (pendente
+  de leitura). Primeira adquirente que documenta o nosso cenário pelo nome.
+
+Mais: simulador offline ("Rebatedor") instalável em emulador x86, GetStore
+gratuita com distribuição exclusiva ("Tailor Made"), terminal solicitável,
+contato `parceiros_posdigital@getnet.com.br`.
+
+**O E2 repete o padrão do mercado:** a página ensina a CRIAR a pré-autorização
+e o menu não tem página de captura/confirmação. Candidatas a esconder a
+resposta: "Pagamento | Deeplink" (um tipo de transação de confirmação?),
+"JSONS", "Consulta Status", ou o Conciliador (captura via backoffice?).
+Pendente.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

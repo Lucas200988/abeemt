@@ -1,11 +1,13 @@
 package br.com.sonare.bora.pos.pagamento
 
 import android.content.Context
+import br.com.sonare.bora.pos.BuildConfig
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEffectuatePreAutoData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPreAutoData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPreAutoKeyingData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,26 +19,28 @@ import kotlinx.coroutines.withContext
  *
  * O mapeamento (ADR-0008 no vocabulário do SDK):
  *
- *   preAutorizar          → PlugPag.doPreAutoCreate     (reserva o teto)
- *   efetivar              → PlugPag.doEffectuatePreAuto (captura PARCIAL — é o
- *                           que fez do PagBank o único adquirente completo da
- *                           matriz: cobra só o consumo real)
- *   cancelarPreAutorizacao→ PlugPag.doPreAutoCancel     (libera o limite)
+ *   preAutorizar          → PlugPag.doPreAutoCreate       (reserva o teto)
+ *   efetivar              → PlugPag.doEffectuatePreAuto   (captura PARCIAL — o
+ *                           amount é próprio, separado do reservado)
+ *   cancelarPreAutorizacao→ PlugPag.doPreAutoCancel       (libera o limite)
  *
- * ⚠ PROCEDÊNCIA: A CONFIRMAR (mesma disciplina do CONTRATO do backend).
- * Os nomes de classes e métodos vêm da leitura do repositório oficial
- * pagseguro/pagseguro-sdk-plugpagservicewrapper (GitHub) — mas o briefing §18
- * manda não presumir que biblioteca funciona sem teste. As assinaturas exatas
- * (nomes de parâmetros, campos do resultado, códigos de erro) DEVEM ser
- * validadas contra o .aar real no terminal de desenvolvimento que o PagBank
- * enviar pela parceria. Compilou, rodou no equipamento, aí vira "confirmado".
+ * PROCEDÊNCIA: assinaturas CONFIRMADAS NO BINÁRIO em 2026-08-05 — o .aar
+ * oficial 1.35.0 foi baixado do repositório Maven público do PagBank, extraído
+ * e inspecionado com javap, e as páginas Dokka geradas confirmam a ordem dos
+ * parâmetros. O que resta "a confirmar" é só o COMPORTAMENTO no equipamento
+ * (a captura parcial aceitar valor menor — teste: reservar 500, efetivar 100),
+ * porque assinatura lida ≠ comportamento exercitado (briefing §18).
  *
- * Regras que já valem, confirmadas ou não:
- *  - valores em CENTAVOS (mesma unidade do PlugPag e do backend — sem conversão);
- *  - do resultado do SDK, só saem daqui bandeira, 4 últimos dígitos, NSU e
- *    código de autorização. O que mais o PlugPag devolver, morre neste arquivo
- *    (briefing seção 12);
- *  - chamadas do PlugPag são bloqueantes → Dispatchers.IO.
+ * Regras que já valem:
+ *  - valores em CENTAVOS (a doc do SDK: "R$ 10,00 → 1000" — mesma convenção
+ *    do ADR-0005; o amount do PlugPag é Int);
+ *  - usamos SEMPRE PlugPagPreAutoData (cartão presente). A variante
+ *    PlugPagPreAutoKeyingData recebe pan/cvv DIGITADOS — proibida para nós
+ *    (briefing seção 12): número de cartão nunca passa pelo nosso código;
+ *  - do resultado do SDK, só saem daqui bandeira, NSU e código de autorização.
+ *    O bin (INÍCIO do cartão) e o holder ficam retidos neste arquivo;
+ *  - chamadas do PlugPag são bloqueantes e lançam PlugPagException →
+ *    Dispatchers.IO + try/catch aqui dentro.
  */
 object FabricaPagamento {
   fun criar(contexto: Context): PagamentoPort = PagamentoPlugPag(PlugPag(contexto))
@@ -45,15 +49,57 @@ object FabricaPagamento {
 private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
   override val nome = "pagbank-plugpag"
 
+  /** Referência curta que sai no comprovante/relatórios do PagBank. */
+  private val referenciaLoja = "BORACARREGAR"
+
+  private var ativado = false
+
+  /**
+   * O PlugPag exige o pinpad inicializado e ativado antes de transacionar
+   * (código PINPAD_NOT_INITIALIZED = -1036). A ativação usa o MESMO código de
+   * ativação da conta PagBank digitado ao ativar o terminal; aqui ele vem do
+   * gradle.properties local (bora.pagbank.codigoAtivacao), nunca do repositório.
+   *
+   * `isAuthenticated()` primeiro: se o terminal já está ativado (o caso normal
+   * depois da primeira vez), não se reativa a cada boot.
+   */
+  private fun garantirAtivacao() {
+    if (ativado) return
+    if (plugPag.isAuthenticated()) {
+      ativado = true
+      return
+    }
+    val codigo = BuildConfig.PAGBANK_CODIGO_ATIVACAO
+    if (codigo.isBlank()) {
+      throw PlugPagException(
+        "Terminal não ativado e sem código de ativação configurado " +
+          "(bora.pagbank.codigoAtivacao no gradle.properties).",
+      )
+    }
+    val resultado = plugPag.initializeAndActivatePinpad(PlugPagActivationData(codigo))
+    if (resultado.result != PlugPag.RET_OK) {
+      throw PlugPagException(
+        resultado.errorMessage ?: "Falha na ativação do terminal (${resultado.errorCode}).",
+      )
+    }
+    ativado = true
+  }
+
   override suspend fun preAutorizar(valorCents: Long): ResultadoPagamento =
     withContext(Dispatchers.IO) {
       try {
-        // PROCEDÊNCIA a confirmar: builder/campos do PlugPagPreAutoData.
+        garantirAtivacao()
         val resultado = plugPag.doPreAutoCreate(
-          PlugPagPreAutoKeyingData(amount = valorCents.toString()),
+          PlugPagPreAutoData(
+            amount = valorCents.toInt(),
+            installmentType = PlugPag.INSTALLMENT_TYPE_A_VISTA,
+            installments = 1,
+            userReference = referenciaLoja,
+            printReceipt = false,
+          ),
         )
         paraResultado(resultado)
-      } catch (e: Exception) {
+      } catch (e: PlugPagException) {
         ResultadoPagamento.Falha("Falha no PlugPag: ${e.message}")
       }
     }
@@ -62,16 +108,14 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     referencia: ReferenciaPreAutorizacao,
   ): ResultadoPagamento = withContext(Dispatchers.IO) {
     try {
-      // PROCEDÊNCIA a confirmar: o cancel recebe transactionCode/transactionId
-      // da pré-autorização original.
+      garantirAtivacao()
+      // Ordem confirmada na doc gerada: (transactionId, transactionCode).
       val resultado = plugPag.doPreAutoCancel(
-        PlugPagPreAutoData(
-          transactionCode = referencia.transactionCode.orEmpty(),
-          transactionId = referencia.transactionId.orEmpty(),
-        ),
+        referencia.transactionId.orEmpty(),
+        referencia.transactionCode.orEmpty(),
       )
       paraResultado(resultado)
-    } catch (e: Exception) {
+    } catch (e: PlugPagException) {
       ResultadoPagamento.Falha("Falha ao cancelar a reserva: ${e.message}")
     }
   }
@@ -81,19 +125,20 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     valorCents: Long,
   ): ResultadoPagamento = withContext(Dispatchers.IO) {
     try {
-      // PROCEDÊNCIA a confirmar: doEffectuatePreAuto aceita valor MENOR que o
-      // reservado (captura parcial) — é a capacidade que sustenta o ADR-0008.
-      // Validar no equipamento com reserva 500 / captura 100, como na
-      // verificação de produção da API.
+      garantirAtivacao()
+      // O amount é PRÓPRIO da efetivação — o formato da captura parcial que
+      // sustenta o ADR-0008. Validar no equipamento: reservar 500, efetivar 100.
       val resultado = plugPag.doEffectuatePreAuto(
         PlugPagEffectuatePreAutoData(
-          transactionCode = referencia.transactionCode.orEmpty(),
+          amount = valorCents.toInt(),
+          userReference = referenciaLoja,
+          printReceipt = false,
           transactionId = referencia.transactionId.orEmpty(),
-          amount = valorCents.toString(),
+          transactionCode = referencia.transactionCode.orEmpty(),
         ),
       )
       paraResultado(resultado)
-    } catch (e: Exception) {
+    } catch (e: PlugPagException) {
       ResultadoPagamento.Falha("Falha ao efetivar a cobrança: ${e.message}")
     }
   }
@@ -101,21 +146,17 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
   /**
    * Traduz o resultado do SDK para o vocabulário da porta.
    *
-   * SÓ os campos que o backend aceita atravessam. `cardLastFour` é derivado
-   * defensivamente: se o SDK devolver mais dígitos, cortamos para 4 aqui —
-   * nunca confiar que o campo vem como o nome promete (briefing seção 12).
+   * SÓ os campos que o backend aceita atravessam. `cardLastFour` fica nulo de
+   * propósito: o PlugPagTransactionResult expõe `bin` (o INÍCIO do número) e
+   * não os quatro últimos — enviar o bin no lugar seria mentira, e derivar
+   * qualquer outra coisa seria chutar. O campo é opcional no contrato.
    */
   private fun paraResultado(r: PlugPagTransactionResult): ResultadoPagamento {
-    // PROCEDÊNCIA a confirmar: PlugPag.RET_OK e os campos do resultado.
     if (r.result != PlugPag.RET_OK) {
       return ResultadoPagamento.Recusado(
         r.message ?: "Operação recusada (código ${r.errorCode ?: "?"}).",
       )
     }
-    val ultimos4 = r.cardApplication // campo real a confirmar no .aar
-      ?.filter { it.isDigit() }
-      ?.takeLast(4)
-      ?.takeIf { it.length == 4 }
     return ResultadoPagamento.Aprovado(
       referencia = ReferenciaPreAutorizacao(
         providerPaymentId = r.transactionId ?: r.transactionCode ?: "",
@@ -124,8 +165,8 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
       ),
       metodo = "CREDIT_CARD", // pré-autorização só existe no crédito (CONTRATO PagBank)
       cardBrand = r.cardBrand,
-      cardLastFour = ultimos4,
-      nsu = r.hostNsu,
+      cardLastFour = null,
+      nsu = r.hostNsu ?: r.nsu,
       authorizationCode = r.autoCode,
     )
   }

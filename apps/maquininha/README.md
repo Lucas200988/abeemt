@@ -44,27 +44,34 @@ O arquivo do encaixe: `app/src/pagbank/java/.../pagamento/ProvedorPagamento.kt`.
 Celular físico em vez de emulador: troque `BORA_BASE_URL` no
 `app/build.gradle.kts` pelo IP da sua máquina na rede local.
 
-## Flavor `pagbank` — o que ainda falta
+## Flavor `pagbank` — o que já está confirmado e o que falta
 
-O wrapper do PlugPag é distribuído pelo **GitHub Packages do PagBank** e exige
-autenticação. Em `~/.gradle/gradle.properties`:
+O wrapper do PlugPag é um repositório Maven **público** (sem credencial) no
+GitHub do PagBank — já configurado no `settings.gradle.kts`. Em 2026-08-05 o
+`.aar` oficial **1.35.0** foi baixado, extraído e inspecionado com `javap`:
+as assinaturas usadas no flavor estão **confirmadas no binário** —
+`doPreAutoCreate(PlugPagPreAutoData)`, `doEffectuatePreAuto` com `amount`
+próprio (o formato da captura parcial), `doPreAutoCancel(transactionId,
+transactionCode)` e a ativação `initializeAndActivatePinpad`.
+
+Configuração local (nunca versionada) em `~/.gradle/gradle.properties`:
 
 ```
-gpr.user=SEU_USUARIO_GITHUB
-gpr.token=SEU_TOKEN_GITHUB_COM_read_packages
+bora.pagbank.codigoAtivacao=CODIGO_DE_ATIVACAO_DA_SUA_CONTA
 ```
 
-Além da credencial, o flavor depende do que está em andamento com o PagBank:
+O que ainda depende do PagBank:
 
-- [ ] Parceria aprovada (formulário enviado; homologação da API já aprovada —
-      chamado 1424039934)
-- [ ] Terminal de desenvolvimento recebido
-- [ ] **Assinaturas do PlugPag confirmadas no equipamento** — o código do
-      flavor está marcado `PROCEDÊNCIA: A CONFIRMAR`, como no CONTRATO do
-      backend: foi escrito lendo o repositório oficial do wrapper, e o briefing
-      §18 proíbe presumir que biblioteca funciona sem teste
-- [ ] Captura **parcial** validada no equipamento (reserva 500 / captura 100,
-      como no teste de produção da API)
+- [ ] Parceria aprovada (formulário enviado; homologação da API já aprovada e
+      FINALIZADA — chamado 1424039934)
+- [ ] Terminal para desenvolvimento (deles, ou o do operador vinculado por SN
+      via chamado no portal — modelo Reseller da Loja de Aplicativos)
+- [ ] **Comportamento validado no equipamento**: assinatura lida ≠
+      comportamento exercitado (briefing §18). O teste decisivo é a captura
+      parcial — reservar 500, efetivar 100
+- [ ] Homologação do APK no Guia de Boas Práticas (targetSdk 23 no flavor
+      pagbank ✓, sem cleartext em release ✓, permissões mínimas ✓, assinatura
+      V1+V2 na geração do APK)
 - [ ] Orquestração da captura: hoje a conciliação do backend captura via API;
       com PlugPag a pré-autorização vive no equipamento, então o backend
       precisará mandar o terminal executar o `efetivar` (a porta já existe;

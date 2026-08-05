@@ -563,6 +563,66 @@ perfeito, captura invisível na documentação — resta perguntar a
 valor menor). Se a resposta for "pela API da plataforma digital com captura
 parcial", a Getnet vira concorrente direta do PagBank com o melhor quiosque.
 
+### 8.1-I PagBank: assinaturas do PlugPag CONFIRMADAS NO BINÁRIO + regras de produção (2026-08-05)
+
+Quatro páginas do portal SmartPOS (coladas por Lucas) e uma descoberta que
+mudou o patamar da confiança: o repositório GitHub do wrapper é **público e
+serve os artefatos Maven** — foi clonado, e o `.aar` oficial **1.35.0** foi
+extraído e inspecionado com `javap` + as páginas Dokka geradas. Assinatura por
+assinatura:
+
+| Operação           | Assinatura confirmada no .aar 1.35.0                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservar           | `doPreAutoCreate(PlugPagPreAutoData(amount: Int, installmentType, installments, userReference, printReceipt))`                                                            |
+| Capturar (parcial) | `doEffectuatePreAuto(PlugPagEffectuatePreAutoData(amount: Int, userReference, printReceipt, transactionId, transactionCode))` — **amount próprio, separado do reservado** |
+| Cancelar reserva   | `doPreAutoCancel(transactionId: String, transactionCode: String)` — ordem confirmada na doc Dokka                                                                         |
+| Ativação           | `initializeAndActivatePinpad(PlugPagActivationData(activationCode))`; `isAuthenticated()` para checar; `RET_OK = 0`                                                       |
+| Resultado          | `PlugPagTransactionResult`: `result`, `errorCode`, `message`, `transactionId`, `transactionCode`, `hostNsu`, `nsu`, `cardBrand`, `autoCode`, `bin`, `holder`…             |
+
+Descobertas que mudaram o código do aplicativo (`apps/maquininha`):
+
+1. **`PlugPagPreAutoKeyingData` existe e é PROIBIDA para nós** — recebe
+   `pan`/`securityCode`/`expirationDate` digitados (constante
+   `TYPE_PREAUTO_KEYED`). Cartão presente usa `PlugPagPreAutoData`
+   (`TYPE_PREAUTO_CARD`). Briefing seção 12: número de cartão nunca passa pelo
+   nosso código.
+2. **Ativação é pré-requisito** (`PINPAD_NOT_INITIALIZED = -1036`): o flavor
+   ganhou `garantirAtivacao()` — `isAuthenticated()` e, se preciso,
+   `initializeAndActivatePinpad` com o código da conta (config local, nunca
+   versionada).
+3. O resultado **não expõe os 4 últimos dígitos** (só `bin`, o INÍCIO do
+   número) — `cardLastFour` vai nulo, que o contrato aceita.
+4. Maven público `raw.githubusercontent.com/pagseguro/pagseguro-sdk-plugpagservicewrapper/master`,
+   versão mais recente **1.35.0** (metadata conferida) — sem credencial, ao
+   contrário do que se supunha.
+
+**Guia de Boas Práticas (homologação do APK)** — o que nos afeta:
+`minSdkVersion(23)` e `targetSdkVersion(23)` (aplicado no flavor pagbank);
+proibido `cleartextTrafficPermitted=true` (movido para overlay de debug);
+proibidos WebViews, ADB em produção, Google Play Services, SDKs de outros
+fabricantes (SUNMI/PAX); permissões mínimas (usamos só INTERNET +
+ACCESS_NETWORK_STATE, ambas permitidas); assinatura V1+V2; APK ≤ 200 MB;
+Android Keystore para dados sensíveis (nosso cofre já usa MasterKey/Keystore).
+
+**Página "Produção" — distribuição e a resposta prática para "a minha
+maquininha serve?"**: apps de terceiros são distribuídos em modelo fechado
+pela Loja de Aplicativos, atribuídos a terminais via **Reseller** (grupo) da
+conta do integrador homologado. A vinculação de um terminal é **chamado no
+portal de Integrações informando o número de série (SN)** — só o responsável
+técnico pela aplicação pode pedir (não o cliente final). Ou seja: homologado o
+app, o terminal do operador entra por SN; terminal movido de Reseller perde os
+apps do anterior.
+
+**Subadquirência** (≥ 1.28.2): gerenciamento de perfil de subadquirente no
+terminal (`initializeSubAcquirer`/`hasSubAcquirer`/…). **Não se aplica a nós**
+— somos lojista comum, não subadquirente.
+
+**O que resta "a confirmar"** caiu para um item só: o **comportamento** no
+equipamento — a captura parcial aceitar valor menor que o reservado (teste:
+reservar 500, efetivar 100). Assinatura lida ≠ comportamento exercitado
+(§18); todo o resto do flavor `pagbank` agora tem procedência de binário
+oficial.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

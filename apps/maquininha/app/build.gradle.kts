@@ -54,7 +54,22 @@ android {
   flavorDimensions += "pagamento"
   productFlavors {
     create("simulado") { dimension = "pagamento" }
-    create("pagbank") { dimension = "pagamento" }
+    create("pagbank") {
+      dimension = "pagamento"
+      // Exigência do Guia de Boas Práticas da homologação SmartPOS PagBank
+      // (lido em 2026-08-05): "minSdkVersion(23) e targetSdkVersion(23)".
+      // Só neste flavor — o simulado continua moderno para o emulador.
+      targetSdk = 23
+      // Código de ativação do terminal (o mesmo digitado ao ativar a
+      // maquininha na conta PagBank). Vem do gradle.properties LOCAL
+      // (~/.gradle/gradle.properties: bora.pagbank.codigoAtivacao=XXXXXX) —
+      // nunca do repositório.
+      buildConfigField(
+        "String",
+        "PAGBANK_CODIGO_ATIVACAO",
+        "\"${providers.gradleProperty("bora.pagbank.codigoAtivacao").orNull ?: ""}\"",
+      )
+    }
   }
 
   buildFeatures {
@@ -84,8 +99,8 @@ dependencies {
   // Guarda do token bora_pos_… — cifrado em repouso, nunca em SharedPreferences puro
   implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-  // SDK PlugPag — SÓ no flavor pagbank. A versão é a mais recente publicada no
-  // repositório oficial quando este arquivo foi escrito; confirme no GitHub do
-  // PagBank (pagseguro-sdk-plugpagservicewrapper) antes de compilar.
-  "pagbankImplementation"("br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.30.10")
+  // SDK PlugPag — SÓ no flavor pagbank. 1.35.0 é a versão mais recente do
+  // repositório oficial (maven-metadata conferido em 2026-08-05; o .aar desta
+  // versão foi extraído e as assinaturas verificadas com javap).
+  "pagbankImplementation"("br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.35.0")
 }

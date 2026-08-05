@@ -17,15 +17,14 @@ dependencyResolutionManagement {
   repositories {
     google()
     mavenCentral()
-    // O wrapper do PlugPag (flavor "pagbank") é distribuído pelo GitHub Packages
-    // do PagBank. Exige autenticação com um token pessoal do GitHub — ver
-    // README.md, seção "Flavor pagbank". Sem credencial, use o flavor "simulado".
+    // O wrapper do PlugPag (flavor "pagbank") é servido como repositório Maven
+    // PÚBLICO, direto do GitHub do PagBank — sem credencial nenhuma.
+    // Verificado em 2026-08-05: o repositório foi clonado e o artefato 1.35.0
+    // extraído e inspecionado (assinaturas conferidas com javap).
+    // O README oficial cita github.com/pagseguro/PlugPagServiceWrapper/raw/master;
+    // este é o endereço equivalente do repositório atual.
     maven {
-      url = uri("https://maven.pkg.github.com/pagseguro/pagseguro-sdk-plugpagservicewrapper")
-      credentials {
-        username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
-        password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
-      }
+      url = uri("https://raw.githubusercontent.com/pagseguro/pagseguro-sdk-plugpagservicewrapper/master")
     }
   }
 }

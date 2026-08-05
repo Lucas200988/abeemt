@@ -221,19 +221,19 @@ pnpm test
 
 ## Situação por fase
 
-| Fase | Escopo                                                        | Situação                            |
-| ---- | ------------------------------------------------------------- | ----------------------------------- |
-| 0    | Descoberta, arquitetura, riscos, ADRs                         | ✅ concluída — aguardando validação |
-| 1    | Fundação: monorepo, API, web, banco, auth, CI                 | ✅ **concluída**                    |
-| 2    | Núcleo OCPP 1.6J + simulador                                  | ✅ **concluída**                    |
-| 3    | Painel de carregadores e operação manual                      | ✅ **concluída**                    |
-| 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)   |
-| 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                        |
-| 5    | Pagamento simulado                                            | ✅ **concluída**                    |
-| 6    | Tarifação e regras comerciais                                 | ✅ **concluída**                    |
-| 7    | Integração com pagamento real                                 | 🟡 parcial — falta sandbox          |
-| 8    | SmartPOS / terminal de autoatendimento                        | ⬜ não iniciada                     |
-| 9    | Endurecimento para piloto                                     | ⬜ não iniciada                     |
+| Fase | Escopo                                                        | Situação                                                                  |
+| ---- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 0    | Descoberta, arquitetura, riscos, ADRs                         | ✅ concluída — aguardando validação                                       |
+| 1    | Fundação: monorepo, API, web, banco, auth, CI                 | ✅ **concluída**                                                          |
+| 2    | Núcleo OCPP 1.6J + simulador                                  | ✅ **concluída**                                                          |
+| 3    | Painel de carregadores e operação manual                      | ✅ **concluída**                                                          |
+| 4a   | Teste com o WEMOB real em rede local (Ethernet)               | ⬜ bloqueada (requer autorização)                                         |
+| 4b   | Teste com infraestrutura pública (`wss://ocpp.sonare.com.br`) | ⬜ bloqueada                                                              |
+| 5    | Pagamento simulado                                            | ✅ **concluída**                                                          |
+| 6    | Tarifação e regras comerciais                                 | ✅ **concluída**                                                          |
+| 7    | Integração com pagamento real                                 | ✅ PagBank verificado 8/8 em produção                                     |
+| 8    | SmartPOS / terminal de autoatendimento                        | 🟡 backend pronto; app Android em `apps/maquininha` (aguarda equipamento) |
+| 9    | Endurecimento para piloto                                     | ⬜ não iniciada                                                           |
 
 Cada fase só começa após validação explícita da anterior.
 

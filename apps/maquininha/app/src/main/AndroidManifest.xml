@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Só o necessário: falar com a API. Nada de câmera, contatos, localização. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <application
+    android:name=".App"
+    android:allowBackup="false"
+    android:label="@string/app_name"
+    android:supportsRtl="false"
+    android:theme="@style/Theme.Bora"
+    android:usesCleartextTraffic="true">
+    <!--
+      usesCleartextTraffic: SÓ para desenvolvimento (API local em http://).
+      O APK de campo fala https com a API de produção — remover este atributo
+      na virada, junto com o BORA_BASE_URL de release.
+    -->
+
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:launchMode="singleTask"
+      android:screenOrientation="portrait">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <!--
+          Modo quiosque: na maquininha de campo, o aplicativo vira a "home" do
+          equipamento — o motorista não navega para fora dele. Descomente na
+          instalação de campo (e confirme o mecanismo de kiosk do fabricante;
+          no PagBank isso é configurado na distribuição pela Loja de Aplicativos):
+
+          <category android:name="android.intent.category.HOME" />
+          <category android:name="android.intent.category.DEFAULT" />
+        -->
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

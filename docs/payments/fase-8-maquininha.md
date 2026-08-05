@@ -221,6 +221,17 @@ Tudo abaixo tem teste automatizado, e o fluxo foi exercitado contra a API no ar.
 Esta fase entregou **o lado do servidor**. O aplicativo que roda dentro do
 equipamento depende do SDK do fabricante, e é aí que você precisa entrar.
 
+> **Atualização de 2026-08-05.** O esqueleto do aplicativo existe:
+> [`apps/maquininha/`](../../apps/maquininha/README.md) — Android nativo
+> (Kotlin), o fluxo completo "conecte o cabo → aproxime o cartão → carregando
+> → encerrada", falando o contrato do §3 endpoint por endpoint. A camada de
+> pagamento é uma porta (`PagamentoPort`) com uma implementação por flavor do
+> Gradle: `simulado` roda **hoje** em qualquer emulador, casando com o
+> `terminal-mock`; `pagbank` é o PlugPag (`doPreAutoCreate` /
+> `doEffectuatePreAuto` / `doPreAutoCancel`), marcado `PROCEDÊNCIA: A
+CONFIRMAR` até compilar e rodar no terminal de desenvolvimento da parceria.
+> O que ainda depende do PagBank está listado no README do aplicativo.
+
 > **Atualização de 2026-07-31.** O Portal do Desenvolvedor Rede foi consultado e
 > **não distribui o SDK do SmartPOS** — ele entrega as APIs de servidor
 > (e.Rede, gateway, chargeback). O aplicativo que roda dentro do equipamento é

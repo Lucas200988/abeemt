@@ -472,6 +472,29 @@ Cielo responde. Pergunta enviada é o próximo passo; até lá, o E2 da Cielo
 fica **aberto**, e o PagBank segue como única candidata com o modelo completo
 documentado de ponta a ponta.
 
+**RESPOSTA OFICIAL DA CIELO (2026-08-05, Victor, Integração Smart):**
+
+> "O payment_code, de fato, está disponível, mas **o processo de uma
+> transação de pré-autorização na integração Smart ainda não está
+> disponível**. Temos um backlog em desenvolvimento para disponibilizar todo
+> o fluxo de pré-autorização, mas **ainda não temos a previsão de
+> conclusão**. [...] criaremos um tópico na documentação, dentro da seção
+> 'Conteúdos complementares', quando a integração com pré-auth estiver
+> pronta."
+
+A resposta confirma **na fonte** o que a dissecação do APK tinha mostrado por
+ausência: o código existe no enum, o fluxo não existe na integração. **Cielo
+está ELIMINADA para o MVP** — E1 reprovado na prática (não é só o E2/captura
+parcial: a própria pré-autorização não roda). Sem ETA = não dá para planejar
+em cima.
+
+Dois pontos positivos para o futuro: (a) eles anotaram o contato de Lucas
+como referência de validação e devem procurá-lo quando pilotarem o fluxo de
+pré-auth — seremos possivelmente beta do produto; (b) o canal respondeu
+rápido e por escrito. Quando o tópico aparecer em "Conteúdos complementares",
+reavalia-se — o custo de trocar é um flavor novo no aplicativo, que foi
+desenhado exatamente para isso.
+
 ### 8.1-G Stone: autorização sem captura e captura posterior EXPLÍCITAS no SDK (2026-08-04)
 
 Quarta candidata investigada (`sdkandroid.stone.com.br`, trazida por Lucas).

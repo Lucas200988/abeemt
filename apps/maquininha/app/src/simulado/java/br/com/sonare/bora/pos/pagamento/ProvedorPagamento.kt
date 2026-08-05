@@ -22,10 +22,17 @@ object FabricaPagamento {
 private class PagamentoSimulado : PagamentoPort {
   override val nome = "simulado"
 
-  override suspend fun preAutorizar(valorCents: Long): ResultadoPagamento {
+  override suspend fun preAutorizar(
+    valorCents: Long,
+    aoMensagem: (String) -> Unit,
+  ): ResultadoPagamento {
     // Os 2 segundos existem para a tela "aproxime o cartão" ser vista e o
-    // fluxo de espera ser exercitado — igualzinho ao equipamento real.
-    delay(2000)
+    // fluxo de espera ser exercitado — igualzinho ao equipamento real,
+    // incluindo as mensagens de progresso que o PlugPag manda pela mesma via.
+    aoMensagem("APROXIME OU INSIRA O CARTÃO")
+    delay(1200)
+    aoMensagem("PROCESSANDO…")
+    delay(800)
     return ResultadoPagamento.Aprovado(
       referencia = ReferenciaPreAutorizacao(providerPaymentId = "SIM-${UUID.randomUUID()}"),
       metodo = "CREDIT_CARD",

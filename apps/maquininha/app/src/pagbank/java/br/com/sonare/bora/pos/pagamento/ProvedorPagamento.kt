@@ -5,6 +5,8 @@ import br.com.sonare.bora.pos.BuildConfig
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEffectuatePreAutoData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPreAutoData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
@@ -85,10 +87,21 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     ativado = true
   }
 
-  override suspend fun preAutorizar(valorCents: Long): ResultadoPagamento =
+  override suspend fun preAutorizar(
+    valorCents: Long,
+    aoMensagem: (String) -> Unit,
+  ): ResultadoPagamento =
     withContext(Dispatchers.IO) {
       try {
         garantirAtivacao()
+        // As instruções do serviço ("INSIRA O CARTÃO", "SENHA OK"…) chegam
+        // por aqui enquanto o doPreAutoCreate bloqueia — mesmo padrão do app
+        // demo oficial (SmartCoffee, PreAutoViewModel).
+        plugPag.setEventListener(object : PlugPagEventListener {
+          override fun onEvent(data: PlugPagEventData) {
+            data.customMessage?.let(aoMensagem)
+          }
+        })
         val resultado = plugPag.doPreAutoCreate(
           PlugPagPreAutoData(
             amount = valorCents.toInt(),

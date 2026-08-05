@@ -160,6 +160,17 @@
       android:textColor="@color/bora_texto_suave"
       android:textSize="16sp" />
 
+    <!-- Instruções ao vivo do SDK de pagamento: "INSIRA O CARTÃO", "SENHA OK"… -->
+    <TextView
+      android:id="@+id/textoEventoCartao"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:gravity="center"
+      android:textColor="@color/bora_primaria"
+      android:textSize="22sp"
+      android:textStyle="bold" />
+
     <Button
       android:id="@+id/botaoCancelarCobranca"
       android:layout_width="wrap_content"

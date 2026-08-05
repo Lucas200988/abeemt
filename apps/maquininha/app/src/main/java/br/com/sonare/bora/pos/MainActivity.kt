@@ -94,6 +94,7 @@ class MainActivity : AppCompatActivity() {
       is Tela.Cobranca -> {
         telaCobranca.visibility = View.VISIBLE
         textoCobrancaValor.text = getString(R.string.cobranca_subtitulo, reais(tela.valorCents))
+        textoEventoCartao.text = tela.mensagemDoCartao ?: ""
       }
 
       is Tela.Registrando -> telaRegistrando.visibility = View.VISIBLE

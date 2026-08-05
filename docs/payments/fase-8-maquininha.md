@@ -623,6 +623,44 @@ reservar 500, efetivar 100). Assinatura lida ≠ comportamento exercitado
 (§18); todo o resto do flavor `pagbank` agora tem procedência de binário
 oficial.
 
+### 8.1-J PagBank: o terminal de desenvolvimento (DEBUG) e o SmartCoffee (2026-08-05)
+
+Página "Conhecendo seu terminal de Desenvolvimento" + clone do app demo
+oficial. Três fatos que mudam o planejamento:
+
+1. **O terminal de desenvolvimento é um equipamento DEDICADO** — GERTEC
+   GPOS780 ou SUNMI P2, com marca d'água de DEBUG na tela, entregue **já
+   ativado**, operando em ambiente de QA onde **as transações são simuladas e
+   não afetam saldo real**. Consequências:
+   - a maquininha de produção do operador **não serve** como terminal de
+     desenvolvimento — ela entra depois, vinculada por SN à Loja de
+     Aplicativos (§8.1-I). O equipamento de dev vem da parceria;
+   - o teste decisivo da captura parcial (reservar 500/efetivar 100) rodará
+     **sem dinheiro real** — melhor que o teste de produção da API;
+   - instalação de app externo no terminal de dev é por **ADB** (o proibido
+     em produção é liberado no DEBUG); recomendam atualizar os apps de
+     serviço pela Loja antes de testar; divergências → chamado com o SN.
+   - nota de mercado: os terminais do PagBank são Gertec/Sunmi — mais uma
+     confirmação de que hardware é commodity e quem define a operadora são as
+     chaves injetadas (§8.1-D).
+
+2. **SmartCoffee** (`pagseguro/pagseguro-plugpagservicewrapper-smartcoffeedemo`,
+   público, clonado e lido): o app demo oficial exercita pré-autorização por
+   cartão E digitada. **Confirma nosso uso argumento por argumento** —
+   `PlugPagPreAutoData(amount, installmentType, installments, userReference,
+printReceipt)`, `PlugPagEffectuatePreAutoData(value, ref, print,
+transactionId, transactionCode)`, `doPreAutoCancel(transactionId,
+transactionCode)`, checagem por `result == PlugPag.RET_OK`. O demo **não
+   chama ativação nenhuma** — consistente com "entregue já ativado"; nosso
+   `garantirAtivacao()` fica como salvaguarda para terminal de produção.
+
+3. **As instruções ao motorista vêm por `setEventListener`**: durante o
+   `doPreAutoCreate` (bloqueante), o serviço emite `PlugPagEventData` com
+   `customMessage` pronto para a tela ("INSIRA O CARTÃO", "SENHA OK"…). O
+   aplicativo ganhou esse canal: `PagamentoPort.preAutorizar(valor,
+aoMensagem)` — o flavor pagbank encaminha o `customMessage`, o simulado
+   emite mensagens equivalentes, e a tela COBRANÇA mostra ao vivo.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

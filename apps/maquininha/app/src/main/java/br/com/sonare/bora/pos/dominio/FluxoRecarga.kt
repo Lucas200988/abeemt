@@ -48,7 +48,7 @@ class FluxoRecarga(
     object Iniciando : Tela()
     data class Pareamento(val emAndamento: Boolean, val erro: String? = null) : Tela()
     data class Pronta(val contexto: ContextoTerminal) : Tela()
-    data class Cobranca(val valorCents: Long) : Tela()
+    data class Cobranca(val valorCents: Long, val mensagemDoCartao: String? = null) : Tela()
     object Registrando : Tela()
     data class Carregando(val sessao: SessaoTerminal, val encerrando: Boolean = false) : Tela()
     data class Encerrada(val sessao: SessaoTerminal) : Tela()
@@ -121,7 +121,14 @@ class FluxoRecarga(
 
     trocarTrabalho {
       _tela.value = Tela.Cobranca(valor)
-      when (val resultado = pagamento.preAutorizar(valor)) {
+      // As instruções do SDK ("INSIRA O CARTÃO"…) chegam de outra thread;
+      // atribuir StateFlow.value é seguro a partir de qualquer uma.
+      val aoMensagem = { mensagem: String ->
+        if (_tela.value is Tela.Cobranca) {
+          _tela.value = Tela.Cobranca(valor, mensagem)
+        }
+      }
+      when (val resultado = pagamento.preAutorizar(valor, aoMensagem)) {
         is ResultadoPagamento.Aprovado -> registrarNoBackend(resultado, valor)
         is ResultadoPagamento.Recusado -> _tela.value = Tela.Erro(resultado.mensagem)
         is ResultadoPagamento.Falha -> _tela.value = Tela.Erro(resultado.mensagem)

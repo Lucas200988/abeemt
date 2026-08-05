@@ -27,8 +27,13 @@ interface PagamentoPort {
    * O valor vem SEMPRE do `GET /terminal/me` (preAuthAmountCents) — o
    * aplicativo nunca decide quanto reservar (fase-8 §3.2). Em centavos
    * inteiros, nunca ponto flutuante (ADR-0005).
+   *
+   * `aoMensagem` recebe as instruções do SDK durante a leitura ("INSIRA O
+   * CARTÃO", "SENHA OK"…) para a tela mostrar ao motorista — no PlugPag é o
+   * `setEventListener`/`customMessage` (padrão do app demo oficial
+   * SmartCoffee). Pode ser chamado de qualquer thread.
    */
-  suspend fun preAutorizar(valorCents: Long): ResultadoPagamento
+  suspend fun preAutorizar(valorCents: Long, aoMensagem: (String) -> Unit = {}): ResultadoPagamento
 
   /**
    * Desfaz uma reserva que não vai virar recarga (backend recusou a sessão,

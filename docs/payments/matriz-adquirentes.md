@@ -518,13 +518,29 @@ criptograma de produção sai do SDK JS oficial
 (`scripts/criptografar-cartao.html`); e a chave Pix da conta PagBank fica
 pendente de cadastro para quando o Pix entrar.
 
+### Homologação OFICIALMENTE FINALIZADA (2026-08-05)
+
+E-mail de encerramento do chamado 1424039934 (Gabriel de Souza Santos,
+integração PagBank): _"Sua homologação foi finalizada e você está apto para
+transacionar em produção. Ficamos felizes em confirmar que a sua integração
+foi concluída com sucesso."_ Nada mais pendente do lado da API — o ciclo
+formulário → aprovação → teste de produção → validação fechou em 3 dias.
+
+Recomendação deles, adotada: acompanhar o funcionamento das APIs pelo Status
+Page oficial, `https://status.pagbank.uol.com.br/` (vale se inscrever para
+receber notificações — é o primeiro lugar a olhar quando uma cobrança falhar
+em produção).
+
+O que ESTE e-mail não cobre: a parceria da maquininha (PlugPag/equipamento de
+desenvolvimento), que segue no processo comercial à parte.
+
 ---
 
 ## Situação da consulta
 
 | Fornecedor             | Contatado em                                                      | Respondeu                                      | Atende                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------------------- | ----------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PagBank (API online)   | 2026-08-01                                                        | **✅ VERIFICADO no sandbox: 8/8**              | Pré-autorização + captura parcial de R$ 8 sobre R$ 200 + devolução + cancelamento + recusa provados no adquirente real em 2026-08-03 — ver a seção "Verificação aprovada" abaixo. **Homologação formal enviada em 2026-08-03** (formulário Pipefy, com anexo de requests/responses e instruções de validação; retorno prometido por e-mail). SmartPOS (PlugPag) segue pelo processo comercial: formulário → equipamento de dev → homologação (fase-8-maquininha.md §8.1-B)             |
+| PagBank (API online)   | 2026-08-01                                                        | **✅ HOMOLOGAÇÃO FINALIZADA (2026-08-05)**     | Sandbox 8/8 (2026-08-03) + produção 8/8 com dinheiro real (2026-08-04) + e-mail oficial de encerramento do chamado 1424039934: _"apto para transacionar em produção"_. Nada pendente na API. Status Page para monitorar: status.pagbank.uol.com.br. SmartPOS (PlugPag) segue pelo processo comercial: formulário → equipamento de dev → homologação (fase-8-maquininha.md §8.1-B)                                                                                                      |
 | Rede (portal e.Rede)   | 2026-07-31                                                        | **✅ VERIFICADO no sandbox: 8/8**              | Escolhido. Pré-autorização + captura parcial provadas no adquirente real — ver [rede-e-rede-contrato.md §9](rede-e-rede-contrato.md)                                                                                                                                                                                                                                                                                                                                                   |
 | Cielo Smart (SmartPOS) | 2026-08-04 (pesquisa na documentação pública, sem contato ainda)  | **✅ QUALIFICADA na documentação**             | `PRE_AUTORIZACAO` ("Reserva de limite com autorização pendente de captura") consta na tabela oficial de `paymentCode` do terminal — a única adquirente além do PagBank com pré-autorização documentada NO terminal. Processo autosserviço: emulador, terminal solicitável pelo portal, Cielo Store com loja privada. ❓ Falta confirmar CAPTURA PARCIAL e habilitação comercial do produto. Detalhes: fase-8-maquininha.md §8.1-F                                                      |
 | Rede Store (SmartPOS)  | **2026-07-31** (e-mail de Lucas para DevSmartRede@userede.com.br) | **✅ ACESSO + documentação LIDA (2026-08-04)** | Portal "Laranjinha Store" (`redestore.service-now.com/portal_dev`) liberado e documentação do `smartrede-sdk` lida na íntegra. **❌ E2 REPROVADO no terminal: "não são suportadas operações de… pré-autorização"** — o nosso modelo não roda na maquininha da Rede (só cobrança direta, Pix, estorno). Terminais L400/N960k, dev via ADB, certificação 5 dias úteis. Contatos: `certificacaosmart@userede.com.br` · `erika.reis@userede.com.br`. Detalhes: fase-8-maquininha.md §8.1-C |

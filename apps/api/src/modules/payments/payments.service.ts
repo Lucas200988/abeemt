@@ -447,6 +447,30 @@ export class PaymentsService {
       );
     }
 
+    /**
+     * Captura que vive no equipamento (PlugPag: `doEffectuatePreAuto` é chamada
+     * do SDK, não da API). O backend não tem como capturar — ele CONGELA o
+     * valor em `finalAmountCents` e publica a pendência no
+     * `GET /terminal/sessions/:id`. O aplicativo executa no SDK e confirma via
+     * `POST /terminal/sessions/:id/capture-result`, que é quem fecha o
+     * pagamento. Até lá ele fica AUTHORIZED — e o alerta de cobrança pendente
+     * do painel continua apontando para ele, que é o comportamento certo para
+     * uma maquininha que ficou muda antes de efetivar.
+     */
+    if (provider.capabilities.captureLocation === 'terminal') {
+      await this.prisma.chargingSession.update({
+        where: { id: sessionId },
+        data: { finalAmountCents: aCobrar },
+      });
+
+      this.logger.log(
+        { sessionId, aCobrarCents: aCobrar, provider: provider.name },
+        'captura pendente no terminal — aguardando o equipamento efetivar',
+      );
+
+      return { settled: true, reason: `captura de ${aCobrar} centavos pendente no terminal` };
+    }
+
     const resultado = await provider.capture(providerPaymentId, assertCents(aCobrar));
     await this.aplicarResultado(sessao.payment.id, resultado);
 
@@ -493,6 +517,27 @@ export class PaymentsService {
 
     if (pagamento.status === 'AUTHORIZED') {
       const provider = this.providers.get(pagamento.provider);
+
+      /**
+       * No PlugPag o cancelamento da reserva (`doPreAutoCancel`) também é
+       * chamada do SDK, dentro do equipamento. Congelar `finalAmountCents = 0`
+       * publica a pendência com valor zero — o vocabulário que o aplicativo
+       * entende como "cancele a reserva" — e o pagamento só sai de AUTHORIZED
+       * quando o capture-result confirmar.
+       */
+      if (provider.capabilities.captureLocation === 'terminal') {
+        await this.prisma.chargingSession.update({
+          where: { id: sessionId },
+          data: { finalAmountCents: 0 },
+        });
+
+        this.logger.log(
+          { sessionId, paymentId: pagamento.id, motivo },
+          'cancelamento da reserva pendente no terminal',
+        );
+        return;
+      }
+
       const resultado = await provider.voidPayment(providerPaymentId);
       await this.aplicarResultado(pagamento.id, resultado);
 
@@ -511,6 +556,137 @@ export class PaymentsService {
         'Pix devolvido: a recarga não chegou a começar',
       );
     }
+  }
+
+  /**
+   * O terminal confirmou (ou não) a captura que a conciliação deixou pendente.
+   *
+   * É a segunda metade do circuito `captureLocation: 'terminal'`: a conciliação
+   * congelou o valor em `finalAmountCents` e ESTE método é quem fecha o
+   * pagamento. As regras espelham o R-32 — o terminal executa, mas não decide:
+   *
+   * - o VALOR aceito é exatamente o congelado pela conciliação. Confirmar um
+   *   valor diferente é recusado, porque aceitaria uma captura que ninguém
+   *   calculou;
+   * - valor congelado zero significa "cancele a reserva" (VOIDED), nunca
+   *   captura;
+   * - repetir a confirmação de um pagamento já fechado devolve sucesso sem
+   *   mexer em nada — a maquininha reenvia quando a resposta se perde;
+   * - falha reportada mantém AUTHORIZED: o aplicativo tenta de novo e o
+   *   alerta de cobrança pendente continua aceso até resolver.
+   */
+  async registerTerminalCaptureResult(input: {
+    sessionId: string;
+    success: boolean;
+    amountCapturedCents?: number;
+    nsu?: string;
+    authorizationCode?: string;
+    errorMessage?: string;
+  }): Promise<{ recorded: boolean; status: PaymentStatus | null; message: string }> {
+    const sessao = await this.prisma.chargingSession.findUnique({
+      where: { id: input.sessionId },
+      include: { payment: true },
+    });
+
+    if (!sessao?.payment) {
+      throw new NotFoundException({
+        code: 'PAYMENT_NOT_FOUND',
+        message: 'Esta recarga não tem pagamento associado.',
+      });
+    }
+
+    const pagamento = sessao.payment;
+    const provider = this.providers.get(pagamento.provider);
+
+    if (provider.capabilities.captureLocation !== 'terminal') {
+      throw new BadRequestException({
+        code: 'CAPTURE_NOT_TERMINAL',
+        message: 'A captura deste provedor é feita pelo servidor, não pelo terminal.',
+      });
+    }
+
+    if (sessao.finalAmountCents === null) {
+      throw new ConflictException({
+        code: 'NO_PENDING_CAPTURE',
+        message: 'A conciliação ainda não definiu o valor. Aguarde e consulte a sessão de novo.',
+      });
+    }
+
+    const esperado = sessao.finalAmountCents;
+
+    // Reenvio de uma confirmação que já foi aplicada: idempotente.
+    if (pagamento.status !== 'AUTHORIZED') {
+      const jaFechadoCoerente =
+        (esperado > 0 && pagamento.status === 'CAPTURED') ||
+        (esperado === 0 && pagamento.status === 'VOIDED');
+
+      if (input.success && jaFechadoCoerente) {
+        return {
+          recorded: true,
+          status: pagamento.status,
+          message: 'Resultado já registrado anteriormente.',
+        };
+      }
+
+      throw new ConflictException({
+        code: 'PAYMENT_NOT_AUTHORIZED',
+        message: `O pagamento está em ${pagamento.status} e não aguarda captura.`,
+      });
+    }
+
+    if (!input.success) {
+      this.logger.warn(
+        { sessionId: input.sessionId, paymentId: pagamento.id, erro: input.errorMessage },
+        'terminal reportou falha ao efetivar a captura — pagamento segue AUTHORIZED',
+      );
+      return {
+        recorded: false,
+        status: pagamento.status,
+        message: 'Falha registrada. A captura continua pendente; tente novamente.',
+      };
+    }
+
+    if (esperado > 0 && input.amountCapturedCents !== esperado) {
+      throw new BadRequestException({
+        code: 'AMOUNT_MISMATCH',
+        message:
+          `O valor confirmado (${input.amountCapturedCents ?? 'nenhum'}) difere do valor ` +
+          `pendente (${esperado}). O terminal executa a captura, mas não decide o valor.`,
+      });
+    }
+
+    const agora = new Date();
+    const novoStatus: PaymentStatus = esperado > 0 ? 'CAPTURED' : 'VOIDED';
+
+    await this.prisma.payment.update({
+      where: { id: pagamento.id },
+      data: {
+        status: novoStatus,
+        amountCapturedCents: esperado,
+        capturedAt: novoStatus === 'CAPTURED' ? agora : undefined,
+        cancelledAt: novoStatus === 'VOIDED' ? agora : undefined,
+        ...this.camposDoInstrumento({
+          nsu: input.nsu,
+          authorizationCode: input.authorizationCode,
+        }),
+      },
+    });
+
+    this.logger.log(
+      { sessionId: input.sessionId, paymentId: pagamento.id, valorCents: esperado, novoStatus },
+      novoStatus === 'CAPTURED'
+        ? 'captura confirmada pelo terminal'
+        : 'cancelamento da reserva confirmado pelo terminal',
+    );
+
+    return {
+      recorded: true,
+      status: novoStatus,
+      message:
+        novoStatus === 'CAPTURED'
+          ? 'Cobrança do consumo confirmada.'
+          : 'Reserva cancelada. Nada foi cobrado.',
+    };
   }
 
   /**

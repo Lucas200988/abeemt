@@ -135,4 +135,17 @@ describe('adoção da autorização do terminal', () => {
 
     expect((await p.capture('APROVACAO-MANUAL-1', assertCents(2_500))).status).toBe('CAPTURED');
   });
+
+  /**
+   * O modo que simula o PlugPag real: a captura acontece NO equipamento
+   * (doEffectuatePreAuto é chamada do SDK), então a conciliação delega em vez
+   * de capturar. O padrão continua 'backend' para não mudar quem já usa o
+   * terminal-mock hoje.
+   */
+  it('declara onde a captura acontece, e o padrão é o backend', () => {
+    expect(new TerminalMockPaymentProvider().capabilities.captureLocation).toBe('backend');
+    expect(new TerminalMockPaymentProvider('terminal').capabilities.captureLocation).toBe(
+      'terminal',
+    );
+  });
 });

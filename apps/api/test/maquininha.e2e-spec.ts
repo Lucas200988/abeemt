@@ -5,6 +5,7 @@ import { OcppSimulator } from '@bora/ocpp-simulator';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { OcppGateway } from '../src/modules/ocpp/ocpp.gateway';
 import { PaymentsService } from '../src/modules/payments/payments.service';
+import { PaymentProviderRegistry } from '../src/modules/payments/payment-provider.registry';
 import { TerminalsService } from '../src/modules/terminals/terminals.service';
 import { createTestApp } from './setup-app';
 
@@ -397,6 +398,132 @@ describe('recarga pela maquininha', () => {
     expect(pagamento.cardLastFour).toBe('4321');
     // O pagamento aponta para o terminal que o originou.
     expect(pagamento.terminalRefId).toBe(terminalId);
+  });
+
+  it('captura no TERMINAL: conciliação publica a pendência, o equipamento executa e confirma', async () => {
+    /**
+     * O circuito do PlugPag de verdade: `doEffectuatePreAuto` é chamada do SDK,
+     * dentro do equipamento — o backend não captura; ele congela o valor,
+     * publica a pendência e espera a confirmação. Aqui o terminal-mock é
+     * colocado nesse modo para provar o circuito inteiro sem equipamento.
+     */
+    const registry = app.get(PaymentProviderRegistry);
+    const capabilities = registry.get('terminal-mock').capabilities as {
+      captureLocation?: 'backend' | 'terminal';
+    };
+    capabilities.captureLocation = 'terminal';
+
+    try {
+      const { token } = await terminalPareado();
+      const sim = await simuladorPronto();
+
+      const autorizacao = await comoTerminal(token, 'POST', '/terminal/authorization', {
+        providerPaymentId: 'NSU-POS-TERMCAP',
+        method: 'CREDIT_CARD',
+        amountAuthorizedCents: 20_000,
+        idempotencyKey: 'pos-e2e-termcap',
+        cardBrand: 'ELO',
+        cardLastFour: '9876',
+      });
+      expect(autorizacao.status).toBe(201);
+      const sessionId = autorizacao.body?.sessionId as string;
+
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'CHARGING' && sim.transactionId !== null;
+        },
+        { descricao: 'recarga em curso' },
+      );
+
+      sim.advanceMeter(2000);
+      await sim.meterValues(1);
+      await aguardar(async () => {
+        const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+        return (s?.energyWh ?? 0) >= 2000;
+      });
+
+      await comoTerminal(token, 'POST', `/terminal/sessions/${sessionId}/stop`, {});
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'COMPLETED';
+        },
+        { descricao: 'sessão encerrada' },
+      );
+
+      // Antes de a conciliação decidir o valor, NÃO pode haver pendência —
+      // publicar zero aqui faria o aplicativo cancelar uma reserva cobrável.
+      const antes = await comoTerminal(token, 'GET', `/terminal/sessions/${sessionId}`);
+      expect(antes.body?.pendingCapture).toBeNull();
+
+      // A conciliação congela o valor e delega, sem chamar capture().
+      const fechamento = await payments.settleSession(sessionId);
+      expect(fechamento.settled).toBe(true);
+      expect(fechamento.reason).toContain('pendente no terminal');
+
+      let pagamento = await prisma.payment.findFirstOrThrow({
+        where: { session: { id: sessionId } },
+      });
+      expect(pagamento.status).toBe('AUTHORIZED');
+
+      // A pendência aparece para o terminal, com o valor exato (R$ 8,00).
+      const comPendencia = await comoTerminal(token, 'GET', `/terminal/sessions/${sessionId}`);
+      expect(comPendencia.body?.pendingCapture).toEqual({ amountCents: 800 });
+
+      // E também no contexto — é o que permite ao aplicativo retomar a
+      // pendência depois de reiniciar, quando a sessão já não está ativa.
+      const contexto = await comoTerminal(token, 'GET', '/terminal/me');
+      expect(contexto.body?.pendingCaptureSessionId).toBe(sessionId);
+
+      // O terminal executa, mas NÃO decide o valor: divergência é recusada.
+      const divergente = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/capture-result`,
+        { success: true, amountCapturedCents: 500 },
+      );
+      expect(divergente.status).toBe(400);
+
+      // Falha reportada mantém tudo pendente, para retentar.
+      const falha = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/capture-result`,
+        { success: false, errorMessage: 'simulando SDK fora do ar' },
+      );
+      expect(falha.body?.recorded).toBe(false);
+
+      // A confirmação certa fecha o pagamento.
+      const confirmacao = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/capture-result`,
+        { success: true, amountCapturedCents: 800, nsu: '112233' },
+      );
+      expect(confirmacao.status).toBe(201);
+      expect(confirmacao.body?.recorded).toBe(true);
+      expect(confirmacao.body?.pendingCapture).toBeNull();
+
+      pagamento = await prisma.payment.findFirstOrThrow({
+        where: { session: { id: sessionId } },
+      });
+      expect(pagamento.status).toBe('CAPTURED');
+      expect(pagamento.amountCapturedCents).toBe(800);
+      expect(pagamento.nsu).toBe('112233');
+
+      // Reenviar a mesma confirmação é idempotente — a maquininha reenvia
+      // quando a resposta se perde na rede.
+      const reenvio = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/capture-result`,
+        { success: true, amountCapturedCents: 800 },
+      );
+      expect(reenvio.body?.recorded).toBe(true);
+    } finally {
+      capabilities.captureLocation = 'backend';
+    }
   });
 
   it('reenvio da mesma chave não cria segunda cobrança', async () => {

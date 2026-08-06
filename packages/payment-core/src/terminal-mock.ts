@@ -37,5 +37,21 @@ const CAPABILITIES: PaymentCapabilities = {
 
 export class TerminalMockPaymentProvider extends MockPaymentProvider {
   override readonly name = 'terminal-mock';
-  override readonly capabilities = CAPABILITIES;
+  override readonly capabilities: PaymentCapabilities;
+
+  /**
+   * `captureLocation: 'terminal'` — o modo que simula o PlugPag de verdade.
+   *
+   * No PlugPag a captura (`doEffectuatePreAuto`) é uma chamada do SDK dentro
+   * do equipamento; o backend só publica a pendência e espera a confirmação.
+   * Este modo permite desenvolver e testar ESSE circuito completo (conciliação
+   * → pendência → aplicativo executa → capture-result) sem equipamento.
+   *
+   * O padrão continua 'backend' para não mudar o comportamento de quem já usa
+   * o terminal-mock hoje.
+   */
+  constructor(captureLocation: 'backend' | 'terminal' = 'backend') {
+    super();
+    this.capabilities = { ...CAPABILITIES, captureLocation };
+  }
 }

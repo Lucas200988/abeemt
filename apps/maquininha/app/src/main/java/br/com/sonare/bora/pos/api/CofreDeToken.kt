@@ -60,8 +60,48 @@ class CofreDeToken(contexto: Context) {
     prefs.edit().remove(CHAVE_IDEMPOTENCIA).apply()
   }
 
+  /**
+   * Referência da pré-autorização de uma sessão (transactionId/transactionCode
+   * do SDK), persistida para o caso `captureLocation: 'terminal'`: a captura
+   * pode ser pedida pelo backend MINUTOS depois — inclusive após o app
+   * reiniciar — e sem a referência o SDK não sabe qual reserva efetivar.
+   *
+   * Formato: "providerPaymentId|transactionId|transactionCode" (nenhum dos
+   * três contém '|': são identificadores alfanuméricos do adquirente).
+   */
+  fun guardarReferenciaDaSessao(
+    sessionId: String,
+    providerPaymentId: String,
+    transactionId: String?,
+    transactionCode: String?,
+  ) {
+    prefs.edit()
+      .putString(
+        PREFIXO_REFERENCIA + sessionId,
+        listOf(providerPaymentId, transactionId.orEmpty(), transactionCode.orEmpty())
+          .joinToString("|"),
+      )
+      .apply()
+  }
+
+  fun referenciaDaSessao(sessionId: String): Triple<String, String?, String?>? {
+    val bruto = prefs.getString(PREFIXO_REFERENCIA + sessionId, null) ?: return null
+    val partes = bruto.split("|")
+    if (partes.isEmpty() || partes[0].isBlank()) return null
+    return Triple(
+      partes[0],
+      partes.getOrNull(1)?.takeIf { it.isNotBlank() },
+      partes.getOrNull(2)?.takeIf { it.isNotBlank() },
+    )
+  }
+
+  fun limparReferenciaDaSessao(sessionId: String) {
+    prefs.edit().remove(PREFIXO_REFERENCIA + sessionId).apply()
+  }
+
   private companion object {
     const val CHAVE_TOKEN = "token"
     const val CHAVE_IDEMPOTENCIA = "idempotency_key_pendente"
+    const val PREFIXO_REFERENCIA = "preauto_"
   }
 }

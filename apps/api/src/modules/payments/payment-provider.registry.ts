@@ -30,7 +30,7 @@ export class PaymentProviderRegistry implements OnModuleInit {
   constructor() {
     this.register(new MockPaymentProvider());
     this.register(new ManualPaymentProvider());
-    this.register(new TerminalMockPaymentProvider());
+    this.register(new TerminalMockPaymentProvider(runtimeEnv.BORA_TERMINAL_MOCK_CAPTURE_LOCATION));
 
     /**
      * O adquirente real só é registrado quando há credencial configurada.

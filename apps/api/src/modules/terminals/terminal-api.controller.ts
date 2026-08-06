@@ -20,6 +20,7 @@ import { CurrentTerminal } from './current-terminal.decorator';
 import {
   PairTerminalDto,
   TerminalAuthorizationDto,
+  TerminalCaptureResultDto,
   TerminalHeartbeatDto,
   TerminalStopSessionDto,
 } from './dto/terminal.dto';
@@ -138,5 +139,21 @@ export class TerminalApiController {
     @Body() dto: TerminalStopSessionDto,
   ) {
     return this.sessions.stop(terminal, id, dto.reason);
+  }
+
+  @Post('sessions/:id/capture-result')
+  @ApiOperation({
+    summary: 'O terminal confirma a captura (ou cancelamento) que executou no SDK',
+    description:
+      'Fecha o circuito dos provedores com captura NO equipamento (PlugPag): a conciliação ' +
+      'publica a pendência em pendingCapture, o aplicativo executa doEffectuatePreAuto / ' +
+      'doPreAutoCancel e confirma aqui. O valor confirmado precisa ser exatamente o pendente.',
+  })
+  captureResult(
+    @CurrentTerminal() terminal: TerminalIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TerminalCaptureResultDto,
+  ) {
+    return this.sessions.captureResult(terminal, id, dto);
   }
 }

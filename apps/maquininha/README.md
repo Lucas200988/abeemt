@@ -72,10 +72,12 @@ O que ainda depende do PagBank:
 - [ ] Homologação do APK no Guia de Boas Práticas (targetSdk 23 no flavor
       pagbank ✓, sem cleartext em release ✓, permissões mínimas ✓, assinatura
       V1+V2 na geração do APK)
-- [ ] Orquestração da captura: hoje a conciliação do backend captura via API;
-      com PlugPag a pré-autorização vive no equipamento, então o backend
-      precisará mandar o terminal executar o `efetivar` (a porta já existe;
-      falta o comando no contrato HTTP)
+- [x] Orquestração da captura: **pronta e testada ponta a ponta** (fase-8
+      §3.5). A conciliação congela o valor e publica `pendingCapture`; o app
+      executa `efetivar`/`cancelar` no SDK e confirma via
+      `POST /terminal/sessions/:id/capture-result` — com retomada após
+      reinício (`pendingCaptureSessionId` no `/terminal/me`). Para exercitar
+      no emulador: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal` no backend
 
 ## Estado honesto deste esqueleto
 

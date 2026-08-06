@@ -136,6 +136,37 @@ equipamento, além de energia, duração e valor corrente.
 carregador confirmar a parada e a leitura final do medidor chegar — cobrar antes
 faturaria um consumo que ainda pode subir.
 
+### 3.5 Captura executada PELO terminal (provedores `captureLocation: 'terminal'`)
+
+No PlugPag, a pré-autorização vive **dentro do equipamento**: efetivar
+(`doEffectuatePreAuto`) e cancelar (`doPreAutoCancel`) são chamadas do SDK, não
+da API. Para esses provedores a conciliação não captura — ela **congela o valor
+e delega**:
+
+```
+1. Conciliação fecha a conta   → finalAmountCents congelado; pagamento segue AUTHORIZED
+2. GET /terminal/sessions/:id  → "pendingCapture": { "amountCents": 800 }
+   (amountCents 0 = cancele a reserva; nada a cobrar)
+3. O aplicativo executa no SDK → doEffectuatePreAuto / doPreAutoCancel
+4. POST /terminal/sessions/:id/capture-result
+   { "success": true, "amountCapturedCents": 800, "nsu": "…" }
+   → fecha o pagamento (CAPTURED ou VOIDED)
+```
+
+As regras espelham o R-32 — **o terminal executa, mas não decide**:
+
+- o valor confirmado precisa ser EXATAMENTE o pendente (AMOUNT_MISMATCH);
+- antes de a conciliação decidir, `pendingCapture` é **nulo** — publicar zero
+  nesse intervalo faria o aplicativo cancelar uma reserva cobrável;
+- reenviar a confirmação é idempotente; falha reportada mantém AUTHORIZED e o
+  alerta de cobrança pendente aceso;
+- `GET /terminal/me` traz `pendingCaptureSessionId` para o equipamento que
+  reiniciou entre o fim da recarga e a efetivação retomar a pendência.
+
+Para desenvolver sem equipamento: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`
+põe o terminal-mock nesse modo. Coberto ponta a ponta em
+`apps/api/test/maquininha.e2e-spec.ts` ("captura no TERMINAL").
+
 ---
 
 ## 4. O que a maquininha nunca faz

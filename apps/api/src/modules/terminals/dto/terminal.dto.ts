@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -198,6 +199,49 @@ export class TerminalAuthorizationDto {
   @IsString()
   @MaxLength(60)
   authorizationCode?: string;
+}
+
+/**
+ * Resultado da captura (ou cancelamento) que o terminal executou no SDK.
+ *
+ * O terminal NÃO decide o valor: `amountCapturedCents` precisa ser exatamente
+ * o publicado em `pendingCapture.amountCents` — divergência é recusada com
+ * AMOUNT_MISMATCH (mesma lógica R-32 da autorização).
+ */
+export class TerminalCaptureResultDto {
+  @ApiProperty({ description: 'A operação no SDK do equipamento deu certo?' })
+  @IsBoolean()
+  success!: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Valor efetivamente capturado, em CENTAVOS. Obrigatório no sucesso com valor ' +
+      'pendente > 0, e precisa ser IGUAL ao publicado em pendingCapture.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'amountCapturedCents precisa ser inteiro em centavos (ADR-0005).' })
+  @Min(0)
+  @Max(TETO_AUTORIZACAO_CENTS)
+  amountCapturedCents?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  nsu?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  authorizationCode?: string;
+
+  @ApiPropertyOptional({ description: 'Mensagem de erro do SDK, quando success=false.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  errorMessage?: string;
 }
 
 export class TerminalHeartbeatDto {

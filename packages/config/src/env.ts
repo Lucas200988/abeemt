@@ -83,6 +83,15 @@ export const envSchema = z
      */
     BORA_TERMINAL_PAYMENT_PROVIDER: z.string().min(1).default('terminal-mock'),
     /**
+     * Onde o terminal-mock finge que a captura acontece.
+     *
+     * `backend` (padrão): a conciliação captura via provedor, como sempre.
+     * `terminal`: simula o PlugPag real — a captura vira PENDÊNCIA publicada
+     * no GET /terminal/sessions/:id, e é o aplicativo da maquininha quem a
+     * executa e confirma. Use para desenvolver/testar esse circuito.
+     */
+    BORA_TERMINAL_MOCK_CAPTURE_LOCATION: z.enum(['backend', 'terminal']).default('backend'),
+    /**
      * Validade do código de pareamento da maquininha, em minutos.
      *
      * Curta de propósito: o código é um portador — quem o tiver vira terminal

@@ -63,6 +63,21 @@ export interface PaymentCapabilities {
    * Alimenta o alerta do risco R-23. `null` quando não se aplica.
    */
   authorizationValidityDays: number | null;
+  /**
+   * QUEM executa a captura de uma autorização nascida no terminal.
+   *
+   * `backend` (padrão quando omitido): a conciliação chama `capture()` na API
+   * do provedor — o caso do e-commerce e dos simulados.
+   *
+   * `terminal`: a pré-autorização vive DENTRO do equipamento (PlugPag:
+   * `doEffectuatePreAuto` é chamada do SDK, não da API) e o backend não tem
+   * como capturá-la. A conciliação então publica a captura como PENDÊNCIA no
+   * `GET /terminal/sessions/:id`, o aplicativo da maquininha executa no SDK e
+   * confirma via `POST /terminal/sessions/:id/capture-result`.
+   *
+   * Só faz sentido em provedores `initiatedBy: 'terminal'`.
+   */
+  captureLocation?: 'backend' | 'terminal';
 }
 
 /** Dados que aceitamos guardar. Nunca número completo, CVV ou trilha. */

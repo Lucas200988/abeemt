@@ -7,8 +7,10 @@ import br.com.sonare.bora.pos.api.PedidoAutorizacao
 import br.com.sonare.bora.pos.api.PedidoEncerramento
 import br.com.sonare.bora.pos.api.PedidoHeartbeat
 import br.com.sonare.bora.pos.api.PedidoPareamento
+import br.com.sonare.bora.pos.api.PedidoResultadoCaptura
 import br.com.sonare.bora.pos.api.SessaoTerminal
 import br.com.sonare.bora.pos.pagamento.PagamentoPort
+import br.com.sonare.bora.pos.pagamento.ReferenciaPreAutorizacao
 import br.com.sonare.bora.pos.pagamento.ResultadoPagamento
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -174,6 +176,15 @@ class FluxoRecarga(
         if (resposta.isSuccessful && corpo != null) {
           cofre.limparChaveIdempotencia()
           if (corpo.approved && corpo.sessionId != null) {
+            // Guardada ANTES de seguir: se o backend pedir a captura no
+            // equipamento horas depois (pendingCapture), é ela que diz ao SDK
+            // qual reserva efetivar — mesmo que o app tenha reiniciado.
+            cofre.guardarReferenciaDaSessao(
+              corpo.sessionId,
+              aprovado.referencia.providerPaymentId,
+              aprovado.referencia.transactionId,
+              aprovado.referencia.transactionCode,
+            )
             acompanharSessao(corpo.sessionId)
           } else {
             // O backend recusou a sessão (conector ocupado, teto…). O dinheiro
@@ -225,15 +236,34 @@ class FluxoRecarga(
     trocarTrabalho { carregarContexto() }
   }
 
-  /** Poll do estado a cada 5 s até a sessão deixar de estar ativa. */
+  /**
+   * Poll do estado a cada 5 s até a sessão deixar de estar ativa — e, quando o
+   * backend publicar uma captura pendente (`pendingCapture`), executá-la no
+   * SDK e confirmar. É a segunda metade do circuito dos provedores com captura
+   * no equipamento (PlugPag): sem isto, a recarga terminaria sem cobrança.
+   */
   private suspend fun acompanharSessao(sessionId: String) {
+    var tentativasDeCaptura = 0
+
     while (escopo.isActive) {
       try {
         val resposta = api.sessao(sessionId)
         val sessao = resposta.body()
         if (resposta.code() == 401) return aoTokenRevogado()
         if (resposta.isSuccessful && sessao != null) {
+          val pendencia = sessao.pendingCapture
+          if (!sessao.active && pendencia != null && tentativasDeCaptura < 5) {
+            tentativasDeCaptura += 1
+            resolverCapturaPendente(sessionId, pendencia.amountCents)
+            // Volta ao topo: o próximo GET mostra a pendência resolvida (ou
+            // mantida, se falhou — aí tenta de novo, até 5 vezes).
+            delay(1500)
+            continue
+          }
           if (!sessao.active) {
+            // Pendência resolvida (ou esgotadas as tentativas — nesse caso ela
+            // continua no servidor e o alerta do painel aponta para ela).
+            cofre.limparReferenciaDaSessao(sessionId)
             _tela.value = Tela.Encerrada(sessao)
             return
           }
@@ -244,6 +274,66 @@ class FluxoRecarga(
         // Rede oscilou; a tela segura o último estado e o loop tenta de novo.
       }
       delay(5000)
+    }
+  }
+
+  /**
+   * Executa no SDK o que o backend pediu — efetivar (valor > 0) ou cancelar a
+   * reserva (valor 0) — e confirma o resultado. O VALOR vem do servidor,
+   * nunca daqui: o terminal executa, mas não decide (fase-8 §4).
+   */
+  private suspend fun resolverCapturaPendente(sessionId: String, valorCents: Long) {
+    val guardada = cofre.referenciaDaSessao(sessionId)
+    if (guardada == null) {
+      // Sem referência local (app reinstalado?): o SDK não sabe qual reserva
+      // mexer. Reporta a falha para a pendência ficar visível no painel.
+      try {
+        api.resultadoCaptura(
+          sessionId,
+          PedidoResultadoCaptura(success = false, errorMessage = "terminal sem a referência da pré-autorização"),
+        )
+      } catch (e: IOException) {
+        // O próximo ciclo tenta de novo.
+      }
+      return
+    }
+
+    val (providerPaymentId, transactionId, transactionCode) = guardada
+    val referencia = ReferenciaPreAutorizacao(
+      providerPaymentId = providerPaymentId,
+      transactionId = transactionId,
+      transactionCode = transactionCode,
+    )
+
+    val resultado = if (valorCents > 0) {
+      pagamento.efetivar(referencia, valorCents)
+    } else {
+      pagamento.cancelarPreAutorizacao(referencia)
+    }
+
+    try {
+      when (resultado) {
+        is ResultadoPagamento.Aprovado -> api.resultadoCaptura(
+          sessionId,
+          PedidoResultadoCaptura(
+            success = true,
+            amountCapturedCents = valorCents,
+            nsu = resultado.nsu,
+            authorizationCode = resultado.authorizationCode,
+          ),
+        )
+        is ResultadoPagamento.Recusado -> api.resultadoCaptura(
+          sessionId,
+          PedidoResultadoCaptura(success = false, errorMessage = resultado.mensagem),
+        )
+        is ResultadoPagamento.Falha -> api.resultadoCaptura(
+          sessionId,
+          PedidoResultadoCaptura(success = false, errorMessage = resultado.mensagem),
+        )
+      }
+    } catch (e: IOException) {
+      // Confirmação perdida na rede: a pendência continua publicada e o
+      // próximo ciclo do poll resolve — o backend é idempotente.
     }
   }
 
@@ -260,9 +350,14 @@ class FluxoRecarga(
       if (resposta.isSuccessful && contexto != null) {
         contextoAtual = contexto
         val ativa = contexto.activeSessionId
+        val comCapturaPendente = contexto.pendingCaptureSessionId
         if (ativa != null) {
           // O app reabriu no meio de uma recarga: volta direto para a tela dela.
           acompanharSessao(ativa)
+        } else if (comCapturaPendente != null) {
+          // O app reiniciou DEPOIS do fim da recarga mas ANTES de efetivar a
+          // cobrança no SDK: resolve a pendência antes de aceitar recarga nova.
+          acompanharSessao(comCapturaPendente)
         } else {
           _tela.value = Tela.Pronta(contexto)
         }

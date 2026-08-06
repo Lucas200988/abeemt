@@ -13,7 +13,7 @@ import { PaymentProviderRegistry } from '../payments/payment-provider.registry';
 import { SessionPricingService } from '../pricing/session-pricing.service';
 import { OcppCommands } from '../ocpp/ocpp-commands.service';
 import type { TerminalIdentity } from './terminal.guard';
-import type { TerminalAuthorizationDto } from './dto/terminal.dto';
+import type { TerminalAuthorizationDto, TerminalCaptureResultDto } from './dto/terminal.dto';
 
 /**
  * O que a maquininha pode fazer (FASE 8, caminho A).
@@ -52,6 +52,13 @@ export interface TerminalContext {
   methods: string[];
   /** Sessão em andamento neste conector, se houver. */
   activeSessionId: string | null;
+  /**
+   * Sessão JÁ ENCERRADA deste conector com captura aguardando este terminal
+   * (captureLocation: 'terminal'). Cobre o equipamento que reiniciou entre o
+   * fim da recarga e a efetivação: sem isto, a pendência só apareceria no
+   * alerta do painel.
+   */
+  pendingCaptureSessionId: string | null;
 }
 
 /** Estado da recarga, no vocabulário da tela do motorista. */
@@ -70,6 +77,17 @@ export interface TerminalSessionView {
   amountCapturedCents: number | null;
   /** Mensagem pronta para a tela, em português. */
   message: string;
+  /**
+   * Captura aguardando execução PELO TERMINAL (captureLocation: 'terminal').
+   *
+   * `amountCents > 0`: efetivar a pré-autorização por este valor exato.
+   * `amountCents === 0`: cancelar a reserva (nada a cobrar).
+   *
+   * O terminal executa e confirma via POST /terminal/sessions/:id/capture-result.
+   * Nulo quando não há pendência — inclusive nos provedores em que a captura é
+   * do servidor.
+   */
+  pendingCapture: { amountCents: number } | null;
 }
 
 @Injectable()
@@ -110,6 +128,22 @@ export class TerminalSessionService {
       select: { id: true, status: true },
     });
 
+    const sessaoComCapturaPendente = await this.prisma.chargingSession.findFirst({
+      where: {
+        connectorId: terminal.connectorId,
+        stoppedAt: { not: null },
+        finalAmountCents: { not: null },
+        payment: { status: 'AUTHORIZED' },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        stoppedAt: true,
+        finalAmountCents: true,
+        payment: { select: { status: true, provider: true } },
+      },
+    });
+
     const provider = this.providers.terminalDefault();
 
     return {
@@ -133,6 +167,10 @@ export class TerminalSessionService {
       ceilingAmountCents: termos.ceilingAmountCents,
       methods: provider.capabilities.methods,
       activeSessionId: sessaoAtiva && isActiveSession(sessaoAtiva.status) ? sessaoAtiva.id : null,
+      pendingCaptureSessionId:
+        sessaoComCapturaPendente && this.pendenciaDeCaptura(sessaoComCapturaPendente)
+          ? sessaoComCapturaPendente.id
+          : null,
     };
   }
 
@@ -250,6 +288,51 @@ export class TerminalSessionService {
       amountAuthorizedCents: sessao.payment?.amountAuthorizedCents ?? null,
       amountCapturedCents: sessao.payment?.amountCapturedCents ?? null,
       message: this.mensagemDaTela(sessao.status, sessao.ceilingReachedAt !== null),
+      pendingCapture: this.pendenciaDeCaptura(sessao),
+    };
+  }
+
+  /**
+   * O terminal registra o resultado do efetivar/cancelar que executou no SDK.
+   *
+   * A regra financeira mora no PaymentsService; aqui fica o que é do terminal:
+   * a sessão precisa ser DESTE conector (R-32) e o resultado vai para a
+   * auditoria com a identidade do equipamento.
+   */
+  async captureResult(
+    terminal: TerminalIdentity,
+    sessionId: string,
+    dto: TerminalCaptureResultDto,
+  ): Promise<TerminalSessionView & { recorded: boolean; resultMessage: string }> {
+    await this.buscarSessaoDoTerminal(terminal, sessionId);
+
+    const resultado = await this.payments.registerTerminalCaptureResult({
+      sessionId,
+      success: dto.success,
+      amountCapturedCents: dto.amountCapturedCents,
+      nsu: dto.nsu,
+      authorizationCode: dto.authorizationCode,
+      errorMessage: dto.errorMessage,
+    });
+
+    await this.audit.record({
+      action: 'terminal.capture_result',
+      entityType: 'ChargingSession',
+      entityId: sessionId,
+      organizationId: terminal.organizationId,
+      newValue: {
+        terminalId: terminal.id,
+        success: dto.success,
+        amountCapturedCents: dto.amountCapturedCents ?? null,
+        status: resultado.status,
+        erro: dto.errorMessage ?? null,
+      },
+    });
+
+    return {
+      ...(await this.session(terminal, sessionId)),
+      recorded: resultado.recorded,
+      resultMessage: resultado.message,
     };
   }
 
@@ -312,7 +395,12 @@ export class TerminalSessionService {
       where: { id: sessionId },
       include: {
         payment: {
-          select: { amountAuthorizedCents: true, amountCapturedCents: true, status: true },
+          select: {
+            amountAuthorizedCents: true,
+            amountCapturedCents: true,
+            status: true,
+            provider: true,
+          },
         },
       },
     });
@@ -332,6 +420,36 @@ export class TerminalSessionService {
     }
 
     return sessao;
+  }
+
+  /**
+   * Existe captura esperando ESTE terminal executar?
+   *
+   * Só quando a conciliação já congelou o valor (`finalAmountCents` não nulo),
+   * o pagamento continua AUTHORIZED e o provedor declara a captura no
+   * terminal. Antes de a conciliação decidir, NÃO há pendência — publicar
+   * zero nesse intervalo faria o aplicativo cancelar uma reserva que ainda
+   * seria cobrada.
+   */
+  private pendenciaDeCaptura(sessao: {
+    stoppedAt: Date | null;
+    finalAmountCents: number | null;
+    payment: { status: string; provider: string } | null;
+  }): { amountCents: number } | null {
+    const pagamento = sessao.payment;
+    if (!pagamento || pagamento.status !== 'AUTHORIZED') return null;
+    if (!sessao.stoppedAt || sessao.finalAmountCents === null) return null;
+
+    try {
+      const provider = this.providers.get(pagamento.provider);
+      if (provider.capabilities.captureLocation !== 'terminal') return null;
+    } catch {
+      // Provedor não registrado (configuração mudou): sem pendência para o
+      // terminal — o caso aparece no alerta de cobrança pendente do painel.
+      return null;
+    }
+
+    return { amountCents: sessao.finalAmountCents };
   }
 
   /** Texto curto, em português, para a tela pequena da maquininha. */

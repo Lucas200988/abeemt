@@ -38,6 +38,8 @@ data class ContextoTerminal(
   val methods: List<String>,
   /** Sessão em andamento neste conector — o app retoma a tela CARREGANDO. */
   val activeSessionId: String?,
+  /** Sessão encerrada com captura ainda pendente NESTE terminal — resolver antes de tudo. */
+  val pendingCaptureSessionId: String? = null,
 )
 
 data class ConectorContexto(
@@ -101,6 +103,30 @@ data class SessaoTerminal(
   val message: String?,
   /** Presente só na resposta do stop. */
   val command: ComandoResultado? = null,
+  /**
+   * Captura aguardando execução POR ESTE terminal (provedores com a captura
+   * no equipamento, como o PlugPag). amountCents > 0 = efetivar por esse valor
+   * exato; amountCents == 0 = cancelar a reserva. Nulo = nada pendente.
+   */
+  val pendingCapture: PendenciaCaptura? = null,
+)
+
+data class PendenciaCaptura(val amountCents: Long)
+
+// --- POST /terminal/sessions/:id/capture-result ------------------------------
+
+data class PedidoResultadoCaptura(
+  val success: Boolean,
+  val amountCapturedCents: Long? = null,
+  val nsu: String? = null,
+  val authorizationCode: String? = null,
+  val errorMessage: String? = null,
+)
+
+data class RespostaResultadoCaptura(
+  val recorded: Boolean,
+  val resultMessage: String?,
+  val pendingCapture: PendenciaCaptura?,
 )
 
 data class ComandoResultado(val accepted: Boolean, val message: String?)

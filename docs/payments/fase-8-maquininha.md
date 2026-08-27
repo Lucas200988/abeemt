@@ -715,6 +715,25 @@ transactionCode)`, checagem por `result == PlugPag.RET_OK`. O demo **não
 aoMensagem)` — o flavor pagbank encaminha o `customMessage`, o simulado
    emite mensagens equivalentes, e a tela COBRANÇA mostra ao vivo.
 
+### 8.1-K Parceria PagBank: RISCOS APROVADOS — contrato e terminais a caminho (2026-08-26)
+
+E-mail de Geovanna Borges dos Santos (Analista de Produtos PagBank, com
+Ingrid e Antonio em cópia): _"Você avançou na etapa de aprovação de riscos e
+já pode começar a desenvolver com nossas APIs."_ Pergunta de triagem: a
+aplicação é Android nativo ou WebView? — **WebView é eliminatório** (coerente
+com o Guia de Boas Práticas, §8.1-I).
+
+Resposta enviada: **100% Android nativo (Kotlin)**, sem WebView, integração
+via PlugPagServiceWrapper 1.35.0, já desenvolvido conforme o Guia
+(targetSdk 23, permissões mínimas, sem cleartext em produção) — e com a
+homologação da API online citada como credencial (chamado 1424039934).
+
+Próximos passos confirmados por eles: **assinatura do contrato** → **envio
+dos terminais de debug**. O funil da parceria, portanto:
+formulário ✅ → riscos ✅ → confirmação nativo ✅ (aguardando processarem) →
+contrato ⬜ → terminais DEBUG ⬜ → homologação do APK ⬜ → distribuição por
+Reseller/SN ⬜.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

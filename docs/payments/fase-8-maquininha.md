@@ -1,0 +1,773 @@
+# FASE 8 — a maquininha (caminho A)
+
+O motorista chega, passa o cartão numa maquininha montada no poste, e carrega.
+Sem aplicativo, sem cadastro, sem conta.
+
+Este documento descreve **o que já funciona**, **o contrato que o aplicativo da
+maquininha precisa cumprir**, e **o que ainda depende do fabricante**.
+
+---
+
+## 1. Por que caminho A
+
+Você escolheu desenvolver um aplicativo que roda **dentro** da maquininha
+(SmartPOS), em vez de a maquininha ser um periférico controlado por outro
+computador. A consequência prática é boa: o poste precisa de um equipamento só,
+com 4G próprio, e a pré-autorização acontece no chip da maquininha, pelo SDK do
+fabricante — nós nunca tocamos em número de cartão.
+
+A consequência estrutural é que o sistema ganha um **terceiro tipo de cliente**,
+ao lado do painel e do carregador OCPP. Ele precisa de identidade, credencial e
+limites próprios.
+
+---
+
+## 2. As quatro decisões, e o motivo de cada uma
+
+### 2.1 O terminal é uma identidade própria, não um usuário
+
+Um operador tem acesso ao painel: sessões, receita, cadastro. A maquininha fica
+pendurada num poste, ligada o dia inteiro, ao alcance de qualquer pessoa. Pôr
+uma credencial de operador nela seria deixar a chave do painel inteiro na rua.
+
+O token de terminal só abre `/terminal/*`, e só do próprio conector.
+
+### 2.2 Pareamento por código curto, gerado no painel
+
+O caminho oposto — digitar um segredo longo no teclado da maquininha — falha de
+duas formas: erra-se ao digitar, e o segredo passa a existir escrito em algum
+lugar. Aqui o painel gera um código de 8 caracteres, válido por 15 minutos e de
+**uso único**; o equipamento troca esse código pelo token de verdade, que só
+existe em claro naquele instante.
+
+O alfabeto do código não tem `0/O` nem `1/I/L`: ele é lido de uma tela e digitado
+num teclado pequeno, muitas vezes ao ar livre.
+
+### 2.3 O terminal já sabe qual é o seu conector
+
+Ele está parafusado naquele carregador. Perguntar a ele qual conector usar seria
+aceitar como verdade um dado que o atacante controla — e a resposta certa está no
+nosso cadastro.
+
+### 2.4 O terminal informa o que aconteceu no cartão, e nada além disso
+
+Conector, provedor de pagamento, tarifa e teto são resolvidos no servidor. É o
+que impede que um erro no aplicativo — ou um token furtado — inicie recarga no
+carregador do vizinho, escolha um provedor simulado, ou reserve um valor que
+ninguém autorizou.
+
+---
+
+## 3. O contrato HTTP
+
+Base: `/api/v1`. Autenticação: `Authorization: Bearer <token do terminal>`.
+
+### 3.1 Parear (sem token)
+
+```
+POST /terminal/pair
+{ "pairingCode": "K7M2QP4X", "serialNumber": "...", "model": "...", "appVersion": "1.0.0" }
+
+→ 201 { "token": "bora_pos_…", "terminal": { … } }
+```
+
+O token é devolvido **uma única vez**. Guardamos apenas o hash. Perdido, o
+caminho é gerar outro código no painel — não recuperar.
+
+### 3.2 Contexto da tela
+
+```
+GET /terminal/me
+
+→ 200 {
+  "terminal":  { "id": "…", "name": "Maquininha do poste 1" },
+  "connector": { "label": "Carregador 1 — conector 1", "status": "AVAILABLE", "available": true },
+  "tariff":    { "name": "…", "pricePerKwhCents": 250, "connectionFeeCents": 300, … },
+  "preAuthAmountCents": 20000,
+  "ceilingAmountCents": 20000,
+  "methods": ["CREDIT_CARD", "DEBIT_CARD"],
+  "activeSessionId": null
+}
+```
+
+**O aplicativo não decide o valor da reserva.** Ele lê `preAuthAmountCents` daqui.
+Se o valor morasse no aplicativo, mudar o teto exigiria atualizar a maquininha de
+cada poste.
+
+### 3.3 Registrar a pré-autorização e iniciar a recarga
+
+```
+POST /terminal/authorization
+{
+  "providerPaymentId": "<identificador devolvido pelo SDK>",
+  "method": "CREDIT_CARD",
+  "amountAuthorizedCents": 20000,
+  "idempotencyKey": "<gerada pelo terminal, estável entre retentativas>",
+  "cardBrand": "VISA", "cardLastFour": "4321",
+  "nsu": "…", "authorizationCode": "…"
+}
+
+→ 201 { "sessionId": "…", "paymentId": "…", "approved": true, "message": "…", "command": { … } }
+```
+
+Nenhuma chamada a adquirente parte daqui: o valor já foi reservado no
+equipamento. Guardamos o resultado e mandamos o carregador ligar.
+
+**O que o corpo não aceita, de propósito:** `connectorId`, `provider`, e qualquer
+dado de cartão além dos quatro últimos dígitos. Mandar um deles faz a requisição
+inteira ser recusada com 400.
+
+**Idempotência:** repetir a mesma `idempotencyKey` devolve o mesmo pagamento. A
+maquininha reenvia quando a resposta se perde na rede, e recusar a repetição
+transformaria uma retentativa em cobrança dupla ou em recarga não iniciada.
+
+### 3.4 Acompanhar e encerrar
+
+```
+GET  /terminal/sessions/:id
+POST /terminal/sessions/:id/stop     { "reason": "motorista encerrou" }
+POST /terminal/heartbeat             { "appVersion": "1.0.0" }   → 204
+```
+
+A resposta traz `message` já pronto em português para a tela pequena do
+equipamento, além de energia, duração e valor corrente.
+
+**A cobrança não acontece no `stop`.** Quem captura é a conciliação, depois que o
+carregador confirmar a parada e a leitura final do medidor chegar — cobrar antes
+faturaria um consumo que ainda pode subir.
+
+### 3.5 Captura executada PELO terminal (provedores `captureLocation: 'terminal'`)
+
+No PlugPag, a pré-autorização vive **dentro do equipamento**: efetivar
+(`doEffectuatePreAuto`) e cancelar (`doPreAutoCancel`) são chamadas do SDK, não
+da API. Para esses provedores a conciliação não captura — ela **congela o valor
+e delega**:
+
+```
+1. Conciliação fecha a conta   → finalAmountCents congelado; pagamento segue AUTHORIZED
+2. GET /terminal/sessions/:id  → "pendingCapture": { "amountCents": 800 }
+   (amountCents 0 = cancele a reserva; nada a cobrar)
+3. O aplicativo executa no SDK → doEffectuatePreAuto / doPreAutoCancel
+4. POST /terminal/sessions/:id/capture-result
+   { "success": true, "amountCapturedCents": 800, "nsu": "…" }
+   → fecha o pagamento (CAPTURED ou VOIDED)
+```
+
+As regras espelham o R-32 — **o terminal executa, mas não decide**:
+
+- o valor confirmado precisa ser EXATAMENTE o pendente (AMOUNT_MISMATCH);
+- antes de a conciliação decidir, `pendingCapture` é **nulo** — publicar zero
+  nesse intervalo faria o aplicativo cancelar uma reserva cobrável;
+- reenviar a confirmação é idempotente; falha reportada mantém AUTHORIZED e o
+  alerta de cobrança pendente aceso;
+- `GET /terminal/me` traz `pendingCaptureSessionId` para o equipamento que
+  reiniciou entre o fim da recarga e a efetivação retomar a pendência.
+
+Para desenvolver sem equipamento: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`
+põe o terminal-mock nesse modo. Coberto ponta a ponta em
+`apps/api/test/maquininha.e2e-spec.ts` ("captura no TERMINAL").
+
+---
+
+## 4. O que a maquininha nunca faz
+
+| Nunca                                            | Por quê                                                 |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| Guarda ou transmite número completo, CVV, trilha | Briefing seção 12. A API recusa o campo                 |
+| Escolhe o conector                               | Um token furtado ligaria o carregador do vizinho (R-32) |
+| Escolhe o provedor de pagamento                  | Escolheria um simulado e teria recarga de graça (R-32)  |
+| Decide o valor do teto                           | O teto é comercial e mora no servidor (ADR-0008 §9)     |
+| Consulta ou encerra sessão de outro conector     | Encerraria a recarga de outro motorista (R-32)          |
+
+---
+
+## 5. O provedor `terminal-mock`
+
+O único provedor `initiatedBy: 'terminal'` que existia era o `manual`, e ele só
+aceita o método `MANUAL` — a aprovação de uma pessoa no painel. Com ele não dá
+para exercitar o fluxo do cartão.
+
+`terminal-mock` preenche essa lacuna: crédito e débito, autorização nascida no
+terminal, estado em memória. **Não é adquirente e nenhum dinheiro se move.** O
+registro de provedores recusa subir com ele em produção, pela mesma regra que
+vale para o `mock`, e o painel avisa na tela que o pagamento é simulado.
+
+Ele existe para que o aplicativo da maquininha seja desenvolvido e testado
+**antes** de haver SDK e credencial de homologação.
+
+---
+
+## 6. Um defeito encontrado ao ligar isto ponta a ponta
+
+O fechamento de uma sessão iniciada na maquininha **falhava**.
+
+O identificador da cobrança nasce no equipamento. Horas depois, a conciliação
+chamava `capture(identificador)` — e o provedor nunca tinha visto aquele
+identificador, porque não foi ele quem criou a cobrança. Nos provedores
+simulados isso dava `NOT_FOUND`.
+
+O sintoma seria o pior possível: **recarga entregue, nada cobrado, e nenhum erro
+visível** até a conciliação manual.
+
+Valia também para o `manual`, que é o caminho previsto para o teste com o
+equipamento real (FASE 4).
+
+**Correção:** a porta de pagamento ganhou `adoptTerminalAuthorization`, chamado
+antes de a autorização ser marcada no banco. Num adquirente real ele é
+dispensável — a cobrança já existe do lado deles. Nos simulados, é o que faz o
+`capture` posterior funcionar.
+
+Coberto por `packages/payment-core/src/terminal-mock.spec.ts` e pelo teste
+ponta a ponta em `apps/api/test/maquininha.e2e-spec.ts`.
+
+---
+
+## 7. O que já está provado
+
+Tudo abaixo tem teste automatizado, e o fluxo foi exercitado contra a API no ar.
+
+| Garantia                                                                              | Onde                     |
+| ------------------------------------------------------------------------------------- | ------------------------ |
+| Código vira token; código não serve duas vezes                                        | `maquininha.e2e-spec.ts` |
+| Código expirado é recusado                                                            | idem                     |
+| Token em claro nunca fica no banco                                                    | idem                     |
+| Sem token, ou com token inventado, não passa                                          | idem                     |
+| Revogar corta o acesso na hora                                                        | idem                     |
+| Gerar código novo invalida o token anterior                                           | idem                     |
+| Contexto traz tarifa, teto e estado do conector                                       | idem                     |
+| Autoriza → carrega → encerra → cobra só o consumido (R$ 8,00 de R$ 200,00 reservados) | idem                     |
+| Reenvio da mesma chave não cria segunda cobrança                                      | idem                     |
+| Valor acima do teto é recusado                                                        | idem                     |
+| Número completo de cartão é recusado                                                  | idem                     |
+| Não inicia recarga em outro conector                                                  | idem                     |
+| Não escolhe provedor simulado                                                         | idem                     |
+| Não consulta nem encerra sessão de outro ponto                                        | idem                     |
+
+---
+
+## 8. O que falta, e quem destrava
+
+### 8.1 O aplicativo da maquininha
+
+Esta fase entregou **o lado do servidor**. O aplicativo que roda dentro do
+equipamento depende do SDK do fabricante, e é aí que você precisa entrar.
+
+> **Atualização de 2026-08-05.** O esqueleto do aplicativo existe:
+> [`apps/maquininha/`](../../apps/maquininha/README.md) — Android nativo
+> (Kotlin), o fluxo completo "conecte o cabo → aproxime o cartão → carregando
+> → encerrada", falando o contrato do §3 endpoint por endpoint. A camada de
+> pagamento é uma porta (`PagamentoPort`) com uma implementação por flavor do
+> Gradle: `simulado` roda **hoje** em qualquer emulador, casando com o
+> `terminal-mock`; `pagbank` é o PlugPag (`doPreAutoCreate` /
+> `doEffectuatePreAuto` / `doPreAutoCancel`), marcado `PROCEDÊNCIA: A
+CONFIRMAR` até compilar e rodar no terminal de desenvolvimento da parceria.
+> O que ainda depende do PagBank está listado no README do aplicativo.
+
+> **Atualização de 2026-07-31.** O Portal do Desenvolvedor Rede foi consultado e
+> **não distribui o SDK do SmartPOS** — ele entrega as APIs de servidor
+> (e.Rede, gateway, chargeback). O aplicativo que roda dentro do equipamento é
+> outro canal: a **Rede Store**, contato `DevSmartRede@userede.com.br`. Detalhes
+> em [matriz-adquirentes.md](matriz-adquirentes.md#rede--o-que-o-portal-do-desenvolvedor-confirmou-2026-07-31).
+>
+> Confirmado também: o sandbox da Rede é **gratuito e não exige contrato**, e a
+> autenticação é **OAuth 2.0** (`clientId` + `clientSecret`), não um token
+> estático como o do PagBank.
+
+Para escrevê-lo, preciso das seguintes informações do fabricante. **O ambiente
+onde eu rodo bloqueia o acesso a esses portais** — a política de saída do
+contêiner recusa a conexão (`connect_rejected`), não os sites. Você consegue
+abri-los normalmente no seu navegador; cole aqui o conteúdo das páginas:
+
+| Preciso saber                                                           | Por quê                                                  |
+| ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| Qual é o SDK e em que linguagem (Android nativo? há camada web?)        | Define como o aplicativo é escrito                       |
+| O SDK expõe **pré-autorização** e **captura parcial** no terminal?      | É o modelo inteiro do ADR-0008. Sem isso, muda o desenho |
+| Se não expõe: a captura é feita pela API do adquirente, com o servidor? | Muda quem chama o quê                                    |
+| Existe modo quiosque (o aplicativo abre sozinho e não sai)?             | O poste não tem ninguém para destravar a tela            |
+| Qual é o processo de homologação, e quanto tempo leva?                  | Entra no cronograma do piloto                            |
+| Credenciais de homologação: como obter?                                 | Regra 18.20 — sem sandbox, não há chamada real           |
+
+### 8.1-B PagBank: as respostas que a Rede Store ainda não deu — LIDAS NO SDK (2026-08-01)
+
+Sem esperar e-mail de ninguém: o SDK oficial da Moderninha Smart
+(**PlugPagServiceWrapper**) é público no GitHub, e a documentação gerada dele
+responde as perguntas com nome de método:
+
+| Pergunta                          | Resposta no SDK                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservar no cartão?               | `doPreAutoCreate(PlugPagPreAutoData)` — **valor em CENTAVOS** ("R$ 10,00 → 1000", literal na doc — a MESMA convenção do ADR-0005)                              |
+| Cobrar depois, com valor próprio? | `doEffectuatePreAuto(PlugPagEffectuatePreAutoData)` — a efetivação recebe **um `amount` próprio**, separado do valor reservado. É o formato da captura parcial |
+| Cancelar a reserva?               | `doPreAutoCancel(transactionId, transactionCode)`                                                                                                              |
+| Consultar?                        | `getPreAutoData` / `getPreAutoList` / `PlugPagPreAutoQueryResult`                                                                                              |
+| Linguagem do aplicativo           | **Android nativo, Java/Kotlin** — WebView/Ionic/Cordova NÃO são permitidos                                                                                     |
+| Publicação                        | "Loja de Aplicativos" própria do PagBank (gestão de terminais e apps)                                                                                          |
+| Processo                          | 1º contato comercial (formulário de parceria) → **equipamento de desenvolvimento** enviado → testes → homologação                                              |
+| Extras úteis                      | impressão (`doPrintAction`), NFC, beep, deeplink de launcher, app demo oficial                                                                                 |
+
+Fontes: repositório `pagseguro/pagseguro-sdk-plugpagservicewrapper` (GitHub,
+lido na íntegra em 2026-08-01) e páginas SmartPOS do portal
+`developer.pagbank.com.br` (via busca).
+
+**Ressalvas honestas:**
+
+1. O `amount` próprio na efetivação é o formato da captura parcial, mas a doc
+   não escreve a frase "pode ser menor que o reservado" — a prova final é o
+   equipamento de desenvolvimento (mesma disciplina do R-31: formato lido ≠
+   comportamento exercitado).
+2. Modo quiosque não aparece nomeado no SDK (há integração com launcher via
+   deeplink); pergunta para o contato comercial.
+3. O caminho começa num **formulário de parceria comercial** — não é
+   autosserviço completo; o equipamento de dev vem deles.
+
+**Consequência:** o caminho A tem agora DOIS fornecedores viáveis — Rede
+(aguardando e-mail da Rede Store) e PagBank (SDK público, processo documentado).
+O servidor construído na FASE 8 atende os dois sem mudança.
+
+### 8.1-C Rede Store: documentação LIDA NA ÍNTEGRA (2026-08-04) — e a resposta que muda a decisão
+
+O acesso ao portal do desenvolvedor da Rede ("Laranjinha Store",
+`redestore.service-now.com/portal_dev`) foi concedido para
+lucas@sonareengenharia.com.br, e a documentação de integração do
+`smartrede-sdk` foi lida inteira.
+
+**A resposta da pergunta nº 2 que enviamos à Rede Store está lá, em letra de
+forma:**
+
+> "No entanto, **não são suportadas operações de crediário, PRÉ-AUTORIZAÇÃO e
+> corban**, mesmo se tratando de operações de crédito e débito."
+
+O SDK da maquininha da Rede **não faz pré-autorização**. Ele suporta:
+crédito à vista/parcelado, débito, voucher, **Pix**, estorno (por AUTE, via
+intent) e reimpressão. O modelo do ADR-0008 — reservar o teto e capturar o
+consumo real — **não roda no terminal da Rede**.
+
+| Item                | O que a documentação diz                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| Terminais           | Positivo **L400** e Newland **N960k** (biblioteca específica por modelo)                                  |
+| Arquitetura         | App parceiro → intents → **App Vender** da Rede (quem transaciona é o Vender)                             |
+| Tipos de pagamento  | `CREDITO_A_VISTA/PARCELADO(_EMISSOR)`, `DEBITO`, `VOUCHER`, `PIX`                                         |
+| **Pré-autorização** | ❌ **explicitamente não suportada**                                                                       |
+| Estorno             | Por código AUTE, via intent (sem menção a estorno PARCIAL)                                                |
+| Valores             | `Long amount` = valor × 100 (centavos, como o nosso padrão)                                               |
+| Status de retorno   | `AUTHORIZED` / `FAILED` / `DECLINED`                                                                      |
+| Desenvolvimento     | Terminal DEV com depuração USB, instalação via **ADB**, injetor de chaves de teste, sem assinatura (L400) |
+| Certificação        | SLA de **5 dias úteis** por versão; 1 release/mês + 1 correção; SDK ≥ 4.3.23                              |
+| Dados do lojista    | §9.3 devolve PV, número lógico, CNPJ — útil para vincular terminal ao backend automaticamente             |
+| Contatos            | `certificacaosmart@userede.com.br` (certificação) · `erika.reis@userede.com.br` (Conexão Itaú)            |
+
+**Consequência para a decisão do caminho A:**
+
+1. **PagBank passa a ser o único fornecedor com o NOSSO modelo no terminal**
+   (`doPreAutoCreate` / `doEffectuatePreAuto` / `doPreAutoCancel` no PlugPag).
+2. A maquininha da Rede só serve com **mudança de modelo**: cobrança direta do
+   valor exato ao FINAL da recarga (risco: motorista ir embora sem pagar) ou
+   **Pix de valor fixo antes** (o SDK tem Pix; casa com o ADR-0010, sem troco
+   automático pelo terminal).
+3. O e.Rede online (verificado 8/8) segue valendo para o caminho B — QR
+   Code/pagamento online — onde a pré-autorização existe.
+
+Pergunta que resta à Rede (via certificacaosmart@userede.com.br): como obter o
+terminal de desenvolvimento L400/N960k, e se há pré-autorização no roadmap do
+SDK.
+
+### 8.1-D GPOS700 (Gertec) e o formulário de distribuição (2026-08-04, 2ª leva)
+
+A segunda página do portal cobre o terceiro terminal — **Smart Rede GPOS700**
+(Gertec), com o `sdk-3.0` — e **repete em letra de forma** a mesma exclusão:
+"não são suportadas as operações de crediário, pré-autorização e corban". A
+limitação não é de um modelo: é da plataforma de pagamentos da Rede.
+
+O que a página resolve de vez:
+
+| Pergunta                             | Resposta                                                                                                                                |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Como obter o terminal de dev**     | (a) pelo **executivo de Parcerias Rede**, ou (b) **comprar direto da Gertec** pedindo "padrão de chaves — **Desenvolvimento Redeflex**" |
+| Sem Smart Store na maquininha de dev | escrever para `DevSmartRede@userede.com.br`                                                                                             |
+| Assinatura em dev (GPOS700)          | chave publicada no portal (Development — Gertec — Customer APP; senha/alias no "Manual de Assinaturas")                                 |
+| Distribuição pós-certificação        | planilha "Distribuição da Aplicação": CNPJ + PV + Nº Lógico por maquininha (`SR...` = SDK Rede/RFAL; `SB...` = TEF)                     |
+| Certificação (RFAL)                  | testes funcionais de todas as integrações usadas + **área de suporte obrigatória na tela inicial** + impressão + Mifare                 |
+
+**A porta entreaberta que sobrou:** o GPOS700 também opera em modo **TEF**
+(Software Express e PayGO). TEF é outra arquitetura — o app conversa com uma
+TEF House, não com o App Pagamentos — e soluções TEF tradicionalmente TÊM
+pré-autorização. Custo: contrato com TEF House e certificação por ela. Fica
+registrado como plano C do caminho A; a pergunta "a SiTef/PayGO no GPOS700
+expõe pré-autorização com captura parcial?" entra no e-mail à Rede.
+
+### 8.1-E O canal de cadastro de apps da Rede Store está FECHADO (2026-08-04)
+
+A tela "Meus Apps" tem o formulário completo de criação de aplicativo — tipo
+de loja (**pública ou privada** — privada é exatamente o nosso caso: app
+distribuído só para as nossas maquininhas), distribuição por planilha
+(CNPJ + PV + Nº Lógico), ramo de atividade, contatos de suporte, tipo de
+integração (TEF ou SDK Rede/RFAL) e modelo de terminal. Mas com este aviso:
+
+> "Todos os campos do formulário de cadastro do Aplicativo serão
+> **desabilitados enquanto o canal estiver fechado**. Assim que retornarmos
+> com novos processos atualizaremos nosso portal."
+
+E o portal direciona para `certificacaosmart@userede.com.br` para "acompanhar
+o status do processo".
+
+**Resposta do certificacaosmart (2026-08-04):** não respondeu nenhuma das
+três perguntas técnicas — redirecionou para "o fluxo de onboarding com o time
+Conectados Itaú" (copiado no próprio e-mail), dizendo que o SDK e as operações
+podem ser consultados "posteriormente" no portal. Funil comercial padrão. A
+tréplica pede o início do onboarding E repete a pergunta qualificadora
+(pré-autorização com captura parcial — roadmap do SDK ou modo TEF), porque
+sem ela o onboarding inteiro pode ser esforço num fornecedor que não atende o
+modelo.
+
+**Leitura do quadro Rede, completa:** sem pré-autorização no SDK **e** com o
+canal de publicação fechado por prazo indeterminado. Duas barreiras
+independentes. O caminho A da maquininha se concentra no **PagBank**; a Rede
+fica registrada com tudo pronto para reavaliar se (a) o canal reabrir E (b) a
+pré-autorização entrar no SDK ou o modo TEF a oferecer.
+
+### 8.1-F Cielo Smart: QUALIFICADA — pré-autorização existe no terminal (2026-08-04)
+
+Investigação da documentação `docs.cielo.com.br/cielo-smart` (trazida por
+Lucas). A tabela oficial de `paymentCode` — os tipos de transação que o
+pedido via deep link aceita — inclui:
+
+> **`PRE_AUTORIZACAO` — "Reserva de limite com autorização pendente de
+> captura."**
+
+É a primeira adquirente brasileira, além do PagBank, com pré-autorização
+documentada NO terminal. E o processo da Cielo é o mais autosserviço dos
+três:
+
+| Item                 | O que a documentação diz                                                                |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| Integração           | Deep link (JSON em Base64 → app Pagamentos) ou **integração remota via API REST**       |
+| `paymentCode`        | 27 valores, incluindo `PRE_AUTORIZACAO` e `PIX`                                         |
+| Valores              | Centavos ("1000" = R$ 10,00)                                                            |
+| **Emulador**         | Existe — desenvolvimento sem o hardware físico                                          |
+| Terminal para testes | Solicitável pelo próprio fluxo do portal ("Solicitando e ativando uma Cielo Smart")     |
+| Loja                 | Cielo Store com **loja privada** (nosso caso) e Dev Console autosserviço                |
+| Extra relevante      | "Integração remota" — o servidor comanda o pedido no terminal; casa com autoatendimento |
+
+**O que AINDA falta confirmar (o E2 não está fechado):**
+
+1. **Como se captura** a pré-autorização pendente — por deep link no terminal,
+   pela API remota, ou pela API e-commerce? E, decisivo: **aceita capturar
+   valor MENOR que o reservado?** A frase "pendente de captura" garante que a
+   captura existe; a captura PARCIAL ainda não está provada na Cielo Smart.
+2. `PRE_AUTORIZACAO` aparece na lista de produtos "habilitados para o EC" —
+   ou seja, é **habilitação comercial** por estabelecimento. Confirmar como se
+   habilita.
+3. Prazo de validade da pré-autorização no produto da Cielo.
+
+**Quadro do caminho A com três candidatas avaliadas:**
+
+| Candidata | Pré-auto no terminal      | Captura parcial                    | Loja/processo                                  |
+| --------- | ------------------------- | ---------------------------------- | ---------------------------------------------- |
+| PagBank   | ✅ (PlugPag, com métodos) | ✅ (`doEffectuatePreAuto(amount)`) | loja ativa; comercial pendente                 |
+| **Cielo** | ✅ (`PRE_AUTORIZACAO`)    | ❓ a confirmar                     | autosserviço + emulador + terminal solicitável |
+| Rede      | ❌ (excluída na doc)      | —                                  | canal em dúvida                                |
+
+O PagBank continua à frente por ter a captura parcial COM VALOR explícita no
+SDK. A Cielo vira o **plano B qualificado** — e com o processo mais rápido de
+testar, graças ao emulador e ao terminal solicitável sem executivo.
+
+**Dissecação do APK do emulador (lioemulator.apk, 2026-08-04).** As strings
+dos `classes*.dex` confirmam e refinam o quadro:
+
+- `PRE_AUTORIZACAO` está no enum `cielo/sdk/order/payment/PaymentCode`, junto
+  com os demais 26 códigos da tabela oficial — o emulador conhece o produto.
+- A superfície EXTERNA do emulador expõe `ExternalPaymentActivity` e
+  `ExternalCancellationActivity` — pagamento e cancelamento. **Não há
+  atividade, request ou string de CAPTURA/efetivação de pré-autorização** no
+  deep link (`CheckoutRequest` e `CancellationRequest` são os únicos domain
+  requests).
+- Hipótese de trabalho, agora bem fundamentada: pelo deep link se FAZ a
+  pré-autorização; a **captura** acontece por outro caminho — a API da
+  "integração remota", a API e-commerce da Cielo (por NSU), ou o menu do
+  próprio app Pagamentos. Qual deles, e se aceita valor MENOR, é a pergunta
+  que resta — para a Referência de API da integração remota ou para o
+  suporte técnico da Cielo.
+
+**Referência da API remota lida (2026-08-04):** é um Order Manager — criar/
+consultar/alterar/excluir pedidos e itens, adicionar/consultar transações,
+notificações. **Nenhum endpoint de captura de pré-autorização.** Sandbox
+autosserviço (conta no portal + Client-ID, sem EC e sem terminal):
+`api.cielo.com.br/sandbox-lio/order-management/v1`; token de produção via
+formulário "Token Integração Remota" exigindo EC + Cielo Smart ativa.
+
+**Estado final da investigação Cielo por documentação:** a pré-autorização
+EXISTE no terminal (`paymentCode` oficial), mas **nenhuma das duas superfícies
+de integração documentadas (deep link e API remota) expõe a captura**. As
+hipóteses restantes — captura pelo menu do app Pagamentos (inviável para
+autoatendimento) ou por caminho não documentado — só o suporte técnico da
+Cielo responde. Pergunta enviada é o próximo passo; até lá, o E2 da Cielo
+fica **aberto**, e o PagBank segue como única candidata com o modelo completo
+documentado de ponta a ponta.
+
+**RESPOSTA OFICIAL DA CIELO (2026-08-05, Victor, Integração Smart):**
+
+> "O payment_code, de fato, está disponível, mas **o processo de uma
+> transação de pré-autorização na integração Smart ainda não está
+> disponível**. Temos um backlog em desenvolvimento para disponibilizar todo
+> o fluxo de pré-autorização, mas **ainda não temos a previsão de
+> conclusão**. [...] criaremos um tópico na documentação, dentro da seção
+> 'Conteúdos complementares', quando a integração com pré-auth estiver
+> pronta."
+
+A resposta confirma **na fonte** o que a dissecação do APK tinha mostrado por
+ausência: o código existe no enum, o fluxo não existe na integração. **Cielo
+está ELIMINADA para o MVP** — E1 reprovado na prática (não é só o E2/captura
+parcial: a própria pré-autorização não roda). Sem ETA = não dá para planejar
+em cima.
+
+Dois pontos positivos para o futuro: (a) eles anotaram o contato de Lucas
+como referência de validação e devem procurá-lo quando pilotarem o fluxo de
+pré-auth — seremos possivelmente beta do produto; (b) o canal respondeu
+rápido e por escrito. Quando o tópico aparecer em "Conteúdos complementares",
+reavalia-se — o custo de trocar é um flavor novo no aplicativo, que foi
+desenhado exatamente para isso.
+
+### 8.1-G Stone: autorização sem captura e captura posterior EXPLÍCITAS no SDK (2026-08-04)
+
+Quarta candidata investigada (`sdkandroid.stone.com.br`, trazida por Lucas).
+A página "Provider de Captura" documenta com código:
+
+- `transaction.setCapture(false)` → transação **só de autorização** (a reserva);
+- `CaptureTransactionProvider(activity, transaction)` → **captura posterior
+  programática**, com callback de sucesso/erro;
+- consulta local (`TransactionDAO`) e `isCapture()` para saber o estado.
+
+É o SDK mais explícito de todos sobre o fluxo em duas etapas. **Porém** o
+`CaptureTransactionProvider` não recebe valor — e o texto diz "captura do
+valor autorizado previamente". Indício forte de captura **integral**, não
+parcial. O E2 continua em aberto também aqui.
+
+Caminho alternativo dentro da própria Stone, a confirmar: capturar o valor
+cheio e **cancelar parcialmente** a diferença (Provider de Cancelamento) —
+economicamente equivalente ao nosso modelo se o cancelamento aceitar valor
+parcial e devolver rápido.
+
+Outros pontos do índice: sandbox documentado ("Retorno do Sandbox"), apps
+demo com código no GitHub (`stone-payments/demo-sdk-android` e
+`pos-android-deeplink-demo`), build para dispositivos Positivo e Gertec
+(mesmas famílias de hardware da Rede), programa de parceria formal
+(partner.stone.com.br). Duas integrações: deeplink (simples) e Provider
+(profunda — a nossa seria esta).
+
+**TransactionObject e Transações Financeiras lidos (2026-08-04):**
+
+- "Transações Financeiras" oficializa: **Crédito com Captura Posterior** é
+  modalidade suportada (débito é só captura imediata — mesma restrição de
+  todos os adquirentes).
+- O `TransactionObject` tem `amount` (centavos, definido na criação) e
+  `capture` (boolean). **Não existe campo de valor de captura separado** em
+  lugar nenhum do objeto — confirma que a captura posterior é do valor
+  INTEGRAL autorizado. Captura parcial: inexistente no SDK da Stone.
+- O modelo da Stone para nós, portanto, seria: autorizar o teto com
+  `setCapture(false)` → capturar o TETO inteiro → **cancelar parcialmente a
+  diferença**. Viável APENAS se o Provider de Cancelamento aceitar valor
+  parcial — página pendente.
+
+Página pendente: Provider de Cancelamento (aceita valor parcial?).
+
+### 8.1-H Getnet (Get Smart): pré-autorização com deeplink dedicado — captura ainda não localizada (2026-08-04)
+
+Quinta candidata (`getstore.getnet.com.br/docs`, trazida por Lucas). O menu de
+Integração de Pagamento tem duas páginas que nenhuma outra adquirente dedicou:
+
+- **"Pré-autorização | Deeplink"** — `getnet://pagamento/v2/pre-authorization`,
+  valor em 12 dígitos (2 decimais), `callerId` obrigatório para consulta de
+  status, `orderId` repassado ao Conciliador, NSU no retorno. Só crédito
+  (type 11/12). Exemplos em Java/Kotlin/React Native/Flutter.
+- **"Modo Quiosque"** — página própria para operação não assistida (pendente
+  de leitura). Primeira adquirente que documenta o nosso cenário pelo nome.
+
+Mais: simulador offline ("Rebatedor") instalável em emulador x86, GetStore
+gratuita com distribuição exclusiva ("Tailor Made"), terminal solicitável,
+contato `parceiros_posdigital@getnet.com.br`.
+
+**O E2 repete o padrão do mercado:** a página ensina a CRIAR a pré-autorização
+e o menu não tem página de captura/confirmação. Candidatas a esconder a
+resposta: "Pagamento | Deeplink" (um tipo de transação de confirmação?),
+"JSONS", "Consulta Status", ou o Conciliador (captura via backoffice?).
+Pendente.
+
+**Pagamento, Estorno e Modo Quiosque lidos (2026-08-04) — investigação
+documental esgotada:**
+
+- "Pagamento | Deeplink" (v1/v2/v3): tipos `credit`, `debit`, `voucher`,
+  `pix`. **Nenhum tipo de confirmação de pré-autorização.** A captura não
+  está em deeplink algum.
+- "Estorno | Deeplink": o estorno pelo terminal **exige inserir o cartão de
+  novo** e só funciona **no mesmo dia** (depois, "entrar em contato com a
+  Getnet"). Isso MATA o desvio "capturar cheio + estornar diferença" no
+  autoatendimento: o motorista já foi embora com o cartão. Dois detalhes
+  úteis: o estorno aceita `originTerminal` (estornar transação de outro
+  terminal) **apenas se "a funcionalidade de Pré-autorização estiver
+  habilitada no estabelecimento"** — confirmando que pré-autorização é
+  habilitação comercial por EC na Getnet.
+- **"Modo Quiosque": o melhor do mercado.** Funcionalidade oficial: um único
+  app aberto, senha para sair, tela sempre ligada, "pronto para ser colocado
+  em um totem de autoatendimento". Ativação por
+  `<meta-data android:name="kiosk_mode" android:value="1" />` no manifest.
+  Nenhuma outra adquirente documenta isso.
+
+**Veredito documental Getnet:** cria a pré-autorização no terminal, quiosque
+perfeito, captura invisível na documentação — resta perguntar a
+`parceiros_posdigital@getnet.com.br` como se confirma/captura (e se aceita
+valor menor). Se a resposta for "pela API da plataforma digital com captura
+parcial", a Getnet vira concorrente direta do PagBank com o melhor quiosque.
+
+### 8.1-I PagBank: assinaturas do PlugPag CONFIRMADAS NO BINÁRIO + regras de produção (2026-08-05)
+
+Quatro páginas do portal SmartPOS (coladas por Lucas) e uma descoberta que
+mudou o patamar da confiança: o repositório GitHub do wrapper é **público e
+serve os artefatos Maven** — foi clonado, e o `.aar` oficial **1.35.0** foi
+extraído e inspecionado com `javap` + as páginas Dokka geradas. Assinatura por
+assinatura:
+
+| Operação           | Assinatura confirmada no .aar 1.35.0                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservar           | `doPreAutoCreate(PlugPagPreAutoData(amount: Int, installmentType, installments, userReference, printReceipt))`                                                            |
+| Capturar (parcial) | `doEffectuatePreAuto(PlugPagEffectuatePreAutoData(amount: Int, userReference, printReceipt, transactionId, transactionCode))` — **amount próprio, separado do reservado** |
+| Cancelar reserva   | `doPreAutoCancel(transactionId: String, transactionCode: String)` — ordem confirmada na doc Dokka                                                                         |
+| Ativação           | `initializeAndActivatePinpad(PlugPagActivationData(activationCode))`; `isAuthenticated()` para checar; `RET_OK = 0`                                                       |
+| Resultado          | `PlugPagTransactionResult`: `result`, `errorCode`, `message`, `transactionId`, `transactionCode`, `hostNsu`, `nsu`, `cardBrand`, `autoCode`, `bin`, `holder`…             |
+
+Descobertas que mudaram o código do aplicativo (`apps/maquininha`):
+
+1. **`PlugPagPreAutoKeyingData` existe e é PROIBIDA para nós** — recebe
+   `pan`/`securityCode`/`expirationDate` digitados (constante
+   `TYPE_PREAUTO_KEYED`). Cartão presente usa `PlugPagPreAutoData`
+   (`TYPE_PREAUTO_CARD`). Briefing seção 12: número de cartão nunca passa pelo
+   nosso código.
+2. **Ativação é pré-requisito** (`PINPAD_NOT_INITIALIZED = -1036`): o flavor
+   ganhou `garantirAtivacao()` — `isAuthenticated()` e, se preciso,
+   `initializeAndActivatePinpad` com o código da conta (config local, nunca
+   versionada).
+3. O resultado **não expõe os 4 últimos dígitos** (só `bin`, o INÍCIO do
+   número) — `cardLastFour` vai nulo, que o contrato aceita.
+4. Maven público `raw.githubusercontent.com/pagseguro/pagseguro-sdk-plugpagservicewrapper/master`,
+   versão mais recente **1.35.0** (metadata conferida) — sem credencial, ao
+   contrário do que se supunha.
+
+**Guia de Boas Práticas (homologação do APK)** — o que nos afeta:
+`minSdkVersion(23)` e `targetSdkVersion(23)` (aplicado no flavor pagbank);
+proibido `cleartextTrafficPermitted=true` (movido para overlay de debug);
+proibidos WebViews, ADB em produção, Google Play Services, SDKs de outros
+fabricantes (SUNMI/PAX); permissões mínimas (usamos só INTERNET +
+ACCESS_NETWORK_STATE, ambas permitidas); assinatura V1+V2; APK ≤ 200 MB;
+Android Keystore para dados sensíveis (nosso cofre já usa MasterKey/Keystore).
+
+**Página "Produção" — distribuição e a resposta prática para "a minha
+maquininha serve?"**: apps de terceiros são distribuídos em modelo fechado
+pela Loja de Aplicativos, atribuídos a terminais via **Reseller** (grupo) da
+conta do integrador homologado. A vinculação de um terminal é **chamado no
+portal de Integrações informando o número de série (SN)** — só o responsável
+técnico pela aplicação pode pedir (não o cliente final). Ou seja: homologado o
+app, o terminal do operador entra por SN; terminal movido de Reseller perde os
+apps do anterior.
+
+**Subadquirência** (≥ 1.28.2): gerenciamento de perfil de subadquirente no
+terminal (`initializeSubAcquirer`/`hasSubAcquirer`/…). **Não se aplica a nós**
+— somos lojista comum, não subadquirente.
+
+**O que resta "a confirmar"** caiu para um item só: o **comportamento** no
+equipamento — a captura parcial aceitar valor menor que o reservado (teste:
+reservar 500, efetivar 100). Assinatura lida ≠ comportamento exercitado
+(§18); todo o resto do flavor `pagbank` agora tem procedência de binário
+oficial.
+
+### 8.1-J PagBank: o terminal de desenvolvimento (DEBUG) e o SmartCoffee (2026-08-05)
+
+Página "Conhecendo seu terminal de Desenvolvimento" + clone do app demo
+oficial. Três fatos que mudam o planejamento:
+
+1. **O terminal de desenvolvimento é um equipamento DEDICADO** — GERTEC
+   GPOS780 ou SUNMI P2, com marca d'água de DEBUG na tela, entregue **já
+   ativado**, operando em ambiente de QA onde **as transações são simuladas e
+   não afetam saldo real**. Consequências:
+   - a maquininha de produção do operador **não serve** como terminal de
+     desenvolvimento — ela entra depois, vinculada por SN à Loja de
+     Aplicativos (§8.1-I). O equipamento de dev vem da parceria;
+   - o teste decisivo da captura parcial (reservar 500/efetivar 100) rodará
+     **sem dinheiro real** — melhor que o teste de produção da API;
+   - instalação de app externo no terminal de dev é por **ADB** (o proibido
+     em produção é liberado no DEBUG); recomendam atualizar os apps de
+     serviço pela Loja antes de testar; divergências → chamado com o SN.
+   - nota de mercado: os terminais do PagBank são Gertec/Sunmi — mais uma
+     confirmação de que hardware é commodity e quem define a operadora são as
+     chaves injetadas (§8.1-D).
+
+2. **SmartCoffee** (`pagseguro/pagseguro-plugpagservicewrapper-smartcoffeedemo`,
+   público, clonado e lido): o app demo oficial exercita pré-autorização por
+   cartão E digitada. **Confirma nosso uso argumento por argumento** —
+   `PlugPagPreAutoData(amount, installmentType, installments, userReference,
+printReceipt)`, `PlugPagEffectuatePreAutoData(value, ref, print,
+transactionId, transactionCode)`, `doPreAutoCancel(transactionId,
+transactionCode)`, checagem por `result == PlugPag.RET_OK`. O demo **não
+   chama ativação nenhuma** — consistente com "entregue já ativado"; nosso
+   `garantirAtivacao()` fica como salvaguarda para terminal de produção.
+
+3. **As instruções ao motorista vêm por `setEventListener`**: durante o
+   `doPreAutoCreate` (bloqueante), o serviço emite `PlugPagEventData` com
+   `customMessage` pronto para a tela ("INSIRA O CARTÃO", "SENHA OK"…). O
+   aplicativo ganhou esse canal: `PagamentoPort.preAutorizar(valor,
+aoMensagem)` — o flavor pagbank encaminha o `customMessage`, o simulado
+   emite mensagens equivalentes, e a tela COBRANÇA mostra ao vivo.
+
+### 8.1-K Parceria PagBank: RISCOS APROVADOS — contrato e terminais a caminho (2026-08-26)
+
+E-mail de Geovanna Borges dos Santos (Analista de Produtos PagBank, com
+Ingrid e Antonio em cópia): _"Você avançou na etapa de aprovação de riscos e
+já pode começar a desenvolver com nossas APIs."_ Pergunta de triagem: a
+aplicação é Android nativo ou WebView? — **WebView é eliminatório** (coerente
+com o Guia de Boas Práticas, §8.1-I).
+
+Resposta enviada: **100% Android nativo (Kotlin)**, sem WebView, integração
+via PlugPagServiceWrapper 1.35.0, já desenvolvido conforme o Guia
+(targetSdk 23, permissões mínimas, sem cleartext em produção) — e com a
+homologação da API online citada como credencial (chamado 1424039934).
+
+Próximos passos confirmados por eles: **assinatura do contrato** → **envio
+dos terminais de debug**. O funil da parceria, portanto:
+formulário ✅ → riscos ✅ → confirmação nativo ✅ (aguardando processarem) →
+contrato ⬜ → terminais DEBUG ⬜ → homologação do APK ⬜ → distribuição por
+Reseller/SN ⬜.
+
+### 8.2 Confirmar a autorização contra o adquirente
+
+É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando
+houver sandbox, a autorização deve ser conferida contra o adquirente **antes** de
+o carregador ligar. Depende das mesmas credenciais da FASE 7 —
+ver [`fase-7-o-que-falta.md`](fase-7-o-que-falta.md).
+
+---
+
+## 9. Como operar, no painel
+
+**Painel → Maquininhas.**
+
+1. Cadastre a maquininha, escolhendo o conector em que ela está montada.
+2. Anote o código de 8 caracteres (vale poucos minutos, serve uma vez).
+3. No aplicativo da maquininha, digite o código.
+4. A situação muda para **Pareada** e o "visto por último" passa a ser
+   atualizado pelo `heartbeat`.
+
+Se o equipamento sumir, use **Revogar**: o acesso é cortado na hora. Gerar um
+código novo também invalida o token anterior — é o caso de equipamento trocado.
+
+---
+
+## 10. Configuração
+
+```
+# Provedor usado pelas maquininhas. A maquininha NUNCA escolhe (risco R-32).
+BORA_TERMINAL_PAYMENT_PROVIDER=terminal-mock
+
+# Validade do código de pareamento, em minutos.
+BORA_TERMINAL_PAIRING_TTL_MINUTES=15
+```
+
+A API recusa subir se `BORA_TERMINAL_PAYMENT_PROVIDER` apontar para um provedor
+não registrado, para um provedor que autoriza pelo backend, ou — em produção —
+para um provedor simulado.

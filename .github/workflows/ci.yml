@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Segredos de teste, não de produção. Precisam passar pela validação do
+  # @bora/config, que exige 16+ caracteres e chaves distintas.
+  JWT_SECRET: ci_secret_0123456789abcdef0123456789abcdef
+  JWT_REFRESH_SECRET: ci_refresh_fedcba9876543210fedcba9876543210
+  DATABASE_URL: postgresql://bora:bora_ci@localhost:5432/bora_carregar?schema=public
+  DATABASE_URL_TEST: postgresql://bora:bora_ci@localhost:5432/bora_carregar_test?schema=public
+
+jobs:
+  verificar:
+    name: Lint, tipos e testes
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bora
+          POSTGRES_PASSWORD: bora_ci
+          POSTGRES_DB: bora_carregar
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Criar banco de testes
+        run: PGPASSWORD=bora_ci psql -h localhost -U bora -d bora_carregar -c 'CREATE DATABASE bora_carregar_test;'
+
+      - name: Gerar cliente Prisma
+        run: pnpm db:generate
+
+      - name: Aplicar migrations
+        run: |
+          pnpm db:deploy
+          DATABASE_URL="$DATABASE_URL_TEST" pnpm db:deploy
+
+      - name: Construir pacotes
+        run: pnpm build
+
+      - name: Formatação
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm exec eslint .
+
+      - name: Verificação de tipos
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+  segredos:
+    name: Nenhum segredo real no repositório
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: .env não pode estar versionado
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env está versionado. Ele contém segredos e precisa ficar fora do repositório (risco R-20)."
+            exit 1
+          fi
+          echo "OK: .env não está versionado."
+
+      - name: .env.example só pode conter placeholders
+        run: |
+          # Um segredo real tem entropia; os placeholders são reconhecíveis.
+          if grep -nE '^(JWT_SECRET|JWT_REFRESH_SECRET|SEED_ADMIN_PASSWORD)=' .env.example \
+             | grep -vqE 'CHANGE_ME'; then
+            echo "::error::.env.example tem um segredo que não é placeholder (risco R-20)."
+            exit 1
+          fi
+          if grep -nE '^POSTGRES_PASSWORD=' .env.example | grep -vqE 'TROQUE_ESTA_SENHA'; then
+            echo "::error::.env.example tem senha de banco real (risco R-20)."
+            exit 1
+          fi
+          echo "OK: apenas placeholders."

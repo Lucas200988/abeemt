@@ -1,0 +1,44 @@
+{
+  "name": "bora-carregar",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --filter=@bora/api --filter=@bora/web",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "db:generate": "pnpm --filter @bora/database run generate",
+    "db:migrate": "pnpm --filter @bora/database run migrate",
+    "db:deploy": "pnpm --filter @bora/database run migrate:deploy",
+    "db:seed": "pnpm --filter @bora/database run seed",
+    "db:reset": "pnpm --filter @bora/database run migrate:reset",
+    "db:studio": "pnpm --filter @bora/database run studio",
+    "up": "docker compose up -d --build",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "dev:watch": "turbo run dev",
+    "sim": "node apps/ocpp-simulator/dist/cli.js",
+    "verificar:rede": "turbo run build --filter=@bora/payment-core && pnpm --filter @bora/payment-core verificar",
+    "verificar:pagbank": "turbo run build --filter=@bora/payment-core && pnpm --filter @bora/payment-core verificar:pagbank",
+    "backup": "node scripts/backup.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "playwright": "^1.62.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.6.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}

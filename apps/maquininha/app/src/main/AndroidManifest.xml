@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Só o necessário: falar com a API. Nada de câmera, contatos, localização. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <!--
+    O Guia de Boas Práticas da homologação PagBank (2026-08-05) proíbe
+    cleartextTraffic em produção — por isso ele mora SÓ no manifesto de debug
+    (src/debug/AndroidManifest.xml), onde a API local fala http://.
+
+    allowBackup="false" fica: o guia pede a remoção de configurações de DEBUG,
+    e backup desligado é o que impede o token do terminal de sair num backup
+    do Android (risco R-32). Se a homologação apontar, discute-se lá.
+  -->
+  <application
+    android:name=".App"
+    android:allowBackup="false"
+    android:label="@string/app_name"
+    android:supportsRtl="false"
+    android:theme="@style/Theme.Bora">
+
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:launchMode="singleTask"
+      android:screenOrientation="portrait">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <!--
+          Modo quiosque: na maquininha de campo, o aplicativo vira a "home" do
+          equipamento — o motorista não navega para fora dele. Descomente na
+          instalação de campo (e confirme o mecanismo de kiosk do fabricante;
+          no PagBank isso é configurado na distribuição pela Loja de Aplicativos):
+
+          <category android:name="android.intent.category.HOME" />
+          <category android:name="android.intent.category.DEFAULT" />
+        -->
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

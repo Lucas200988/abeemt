@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Uma tela só, com um contêiner por estado do fluxo:
+
+    PAREAMENTO → PRONTA → COBRANÇA → REGISTRANDO → CARREGANDO → ENCERRADA
+                                                          (ERRO em qualquer ponto)
+
+  A MainActivity mostra exatamente UM contêiner por vez. É deliberadamente
+  simples: sem fragments, sem navegação — a maquininha é um totem de um fluxo só,
+  e cada abstração a mais é um lugar a mais para travar no equipamento.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:padding="24dp">
+
+  <!-- PAREAMENTO -->
+  <LinearLayout
+    android:id="@+id/telaPareamento"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/pareamento_titulo"
+      android:textSize="28sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:gravity="center"
+      android:text="@string/pareamento_instrucao"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
+    <EditText
+      android:id="@+id/campoCodigoPareamento"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:autofillHints=""
+      android:gravity="center"
+      android:hint="@string/pareamento_hint"
+      android:inputType="textCapCharacters|textVisiblePassword"
+      android:letterSpacing="0.3"
+      android:maxLength="12"
+      android:textColorHint="@color/bora_texto_suave"
+      android:textSize="28sp" />
+
+    <Button
+      android:id="@+id/botaoParear"
+      android:layout_width="match_parent"
+      android:layout_height="64dp"
+      android:layout_marginTop="24dp"
+      android:backgroundTint="@color/bora_primaria"
+      android:text="@string/pareamento_botao"
+      android:textSize="20sp" />
+  </LinearLayout>
+
+  <!-- PRONTA: "conecte o cabo" -->
+  <LinearLayout
+    android:id="@+id/telaPronta"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:gravity="center"
+      android:text="@string/pronta_titulo"
+      android:textSize="30sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="@string/pronta_subtitulo"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
+    <TextView
+      android:id="@+id/textoPrecoKwh"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="32dp"
+      android:textSize="24sp" />
+
+    <TextView
+      android:id="@+id/textoTaxaConexao"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
+    <TextView
+      android:id="@+id/textoReserva"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:gravity="center"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="14sp" />
+
+    <TextView
+      android:id="@+id/textoIndisponivel"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="@string/pronta_indisponivel"
+      android:textColor="@color/bora_erro"
+      android:textSize="18sp"
+      android:visibility="gone" />
+
+    <Button
+      android:id="@+id/botaoIniciar"
+      android:layout_width="match_parent"
+      android:layout_height="72dp"
+      android:layout_marginTop="32dp"
+      android:backgroundTint="@color/bora_primaria"
+      android:text="@string/pronta_botao"
+      android:textSize="22sp" />
+  </LinearLayout>
+
+  <!-- COBRANÇA: "aproxime o cartão" -->
+  <LinearLayout
+    android:id="@+id/telaCobranca"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <ProgressBar
+      android:layout_width="64dp"
+      android:layout_height="64dp" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:text="@string/cobranca_titulo"
+      android:textSize="30sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoCobrancaValor"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
+    <!-- Instruções ao vivo do SDK de pagamento: "INSIRA O CARTÃO", "SENHA OK"… -->
+    <TextView
+      android:id="@+id/textoEventoCartao"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:gravity="center"
+      android:textColor="@color/bora_primaria"
+      android:textSize="22sp"
+      android:textStyle="bold" />
+
+    <Button
+      android:id="@+id/botaoCancelarCobranca"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="48dp"
+      android:text="@string/cobranca_cancelar" />
+  </LinearLayout>
+
+  <!-- REGISTRANDO: pré-autorização aprovada, avisando o backend -->
+  <LinearLayout
+    android:id="@+id/telaRegistrando"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <ProgressBar
+      android:layout_width="64dp"
+      android:layout_height="64dp" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:text="@string/registrando_titulo"
+      android:textSize="30sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="@string/registrando_subtitulo"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+  </LinearLayout>
+
+  <!-- CARREGANDO -->
+  <LinearLayout
+    android:id="@+id/telaCarregando"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/carregando_titulo"
+      android:textSize="28sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoEnergia"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:textSize="48sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoValorCorrente"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:textColor="@color/bora_primaria"
+      android:textSize="32sp" />
+
+    <TextView
+      android:id="@+id/textoDuracao"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="18sp" />
+
+    <TextView
+      android:id="@+id/textoMensagemSessao"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:gravity="center"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
+    <Button
+      android:id="@+id/botaoEncerrar"
+      android:layout_width="match_parent"
+      android:layout_height="64dp"
+      android:layout_marginTop="32dp"
+      android:backgroundTint="@color/bora_erro"
+      android:text="@string/carregando_botao_encerrar"
+      android:textSize="20sp" />
+  </LinearLayout>
+
+  <!-- ENCERRADA -->
+  <LinearLayout
+    android:id="@+id/telaEncerrada"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/encerrada_titulo"
+      android:textSize="30sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoResumoEnergia"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:textSize="22sp" />
+
+    <TextView
+      android:id="@+id/textoResumoValor"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textSize="22sp" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:gravity="center"
+      android:text="@string/encerrada_aviso_captura"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="14sp" />
+
+    <Button
+      android:id="@+id/botaoNovaRecarga"
+      android:layout_width="match_parent"
+      android:layout_height="64dp"
+      android:layout_marginTop="32dp"
+      android:backgroundTint="@color/bora_primaria"
+      android:text="@string/encerrada_botao_nova"
+      android:textSize="20sp" />
+  </LinearLayout>
+
+  <!-- ERRO -->
+  <LinearLayout
+    android:id="@+id/telaErro"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/erro_titulo"
+      android:textColor="@color/bora_erro"
+      android:textSize="28sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoErro"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:gravity="center"
+      android:textSize="18sp" />
+
+    <Button
+      android:id="@+id/botaoTentarDeNovo"
+      android:layout_width="match_parent"
+      android:layout_height="64dp"
+      android:layout_marginTop="32dp"
+      android:backgroundTint="@color/bora_primaria"
+      android:text="@string/erro_botao_tentar"
+      android:textSize="20sp" />
+  </LinearLayout>
+</FrameLayout>

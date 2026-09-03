@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="Theme.Bora" parent="Theme.AppCompat.NoActionBar">
+    <item name="android:windowBackground">@color/bora_fundo</item>
+    <item name="android:textColor">@color/bora_texto</item>
+    <item name="colorPrimary">@color/bora_primaria</item>
+    <item name="colorAccent">@color/bora_primaria</item>
+    <!-- A tela nunca apaga: a maquininha é um totem, não um celular. -->
+    <item name="android:keepScreenOn">true</item>
+  </style>
+</resources>

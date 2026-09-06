@@ -734,6 +734,14 @@ formulário ✅ → riscos ✅ → confirmação nativo ✅ (aguardando processa
 contrato ⬜ → terminais DEBUG ⬜ → homologação do APK ⬜ → distribuição por
 Reseller/SN ⬜.
 
+**Atualização 2026-09-03** (Geovanna, em resposta à cobrança de Lucas do
+mesmo dia): _"estamos com uma pendência com a área jurídica para envio do
+terminal debug. Assim que essa pendência for resolvida, entraremos em
+contato para assinatura do contrato e envio do terminal."_ Ou seja: a
+pendência é INTERNA deles (jurídico), não nossa — não há documento ou ação
+pendente do nosso lado. Cadência de acompanhamento: cobrança educada a cada
+~7–10 dias enquanto o jurídico não libera.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

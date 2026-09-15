@@ -7,7 +7,7 @@ botão de emergência à direita, base escura e tampa escura fina.
 
 Eixos: X = largura, Y = altura, Z = profundidade (frente em +Z). Unidades: mm.
 Impressão: em pé, apoiado na base. Sem suportes.
-Abridor de garrafa embutido na face de trás: furo de 21 x 14 mm na parede e cavidade interna de 8 mm.
+Abridor de garrafa embutido na face de trás: boca de 21 x 7,5 mm numa parede de 1,6 mm, cavidade de 8 mm atrás.
 """
 import numpy as np
 import trimesh
@@ -142,19 +142,18 @@ side_texts = [
 side_text_mesh = trimesh.util.concatenate(side_texts)
 
 # ---------- abridor de garrafa embutido na face de trás ----------
-# Como nos abridores de disco: furo na parede traseira (3 mm) e cavidade por dentro para a
-# aba da tampa entrar. Segura-se o gabinete pelo topo; a borda de baixo do furo apoia no topo
-# da tampa (fulcro), a borda reta de cima engancha sob a aba, e levanta-se o topo.
-WALL = 3.0                                  # espessura da parede atrás do furo
-HOLE_X0, HOLE_X1 = 2.5, W - 2.5             # furo com 21 mm de largura (corda da tampa a ~5 mm)
-HOLE_Y0, HOLE_Y1 = 10.0, 24.0               # furo com 14 mm de altura
+# Lógica de abridor de parede: a tampa (26,6 mm) é mais larga que a boca, então ela entra só
+# de lado, uns 3 a 5 mm. Com a parede de 1,6 mm, a aba engancha com 3,1 mm de penetração,
+# onde a corda da tampa mede 17,6 mm (a boca tem 21). A borda de baixo da boca é o gancho sob a
+# aba; a borda de cima apoia no topo da tampa. Segura-se o gabinete pelo topo e inclina-se para fora.
+WALL = 1.6                                  # espessura da parede em volta da boca
+HOLE_X0, HOLE_X1 = 2.5, W - 2.5             # boca com 21 mm de largura
+HOLE_Y0, HOLE_Y1 = 12.0, 19.5               # boca com 7,5 mm de altura (tampa tem 6,3)
 CAV_X0, CAV_X1 = 2.0, W - 2.0               # cavidade interna 22 mm de largura
-CAV_Y0, CAV_Y1 = 8.0, 30.0                  # cavidade sobe 6 mm acima do furo: é onde a aba engancha
-CAV_D = 8.0                                 # profundidade da cavidade atrás da parede
+CAV_Y0, CAV_Y1 = HOLE_Y0 - 2.0, HOLE_Y1 + 4.0   # folga para a aba embaixo e para o topo da tampa em cima
+CAV_D = 8.0                                 # profundidade da cavidade atrás da parede (tampa entra até 5 mm)
 from shapely.geometry import Point, box as sbox
-# furo (plano XY da parede): retângulo com cantos arredondados + saliência de gancho no topo
-hole2d = sbox(HOLE_X0, HOLE_Y0, HOLE_X1, HOLE_Y1).buffer(-3, join_style=1).buffer(3, join_style=1)
-# a borda reta de cima do furo é o gancho (uma saliência ali ficaria no ar durante a impressão)
+hole2d = sbox(HOLE_X0, HOLE_Y0, HOLE_X1, HOLE_Y1).buffer(-2, join_style=1).buffer(2, join_style=1)
 hole = extrude_polygon(hole2d, WALL + 0.02)
 hole.apply_translation([0, 0, -0.01])
 # cavidade com teto inclinado a 45° para imprimir sem suporte (perfil no plano YZ)

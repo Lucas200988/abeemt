@@ -1,0 +1,10 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+packages/database/prisma/migrations
+index.html
+
+# Gerado pelo Next.js a cada build; formatar não adianta.
+apps/web/next-env.d.ts

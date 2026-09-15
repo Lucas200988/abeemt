@@ -192,7 +192,17 @@ for name, m in parts.items():
     m.fix_normals()
     print(f"{name:18s} watertight={m.is_watertight}  volume={m.volume:.0f} mm³")
 
+# Fatiadores usam Z como vertical; o modelo foi construído com Y para cima.
+# Na exportação, gira 90° em X: Y -> Z (altura), frente (+Z) -> -Y (frente da mesa).
+TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
+export_parts = {}
+for name, m in parts.items():
+    e = m.copy()
+    e.apply_transform(TO_Z_UP)
+    export_parts[name] = e
+
 single = body.union(bands).union(details_mesh)
+single.apply_transform(TO_Z_UP)
 single.merge_vertices()
 print(f"{'stl_uma_cor':18s} watertight={single.is_watertight}  volume={single.volume:.0f} mm³")
 print("dimensões (mm):", np.round(single.extents, 1))
@@ -209,7 +219,7 @@ def mesh_xml(obj_id, name, m):
     return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
             f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
-objs = "".join(mesh_xml(i + 1, name, m) for i, (name, m) in enumerate(parts.items()))
+objs = "".join(mesh_xml(i + 1, name, m) for i, (name, m) in enumerate(export_parts.items()))
 comps = "".join(f'<component objectid="{i + 1}"/>' for i in range(len(parts)))
 assembly_id = len(parts) + 1
 model_xml = (

@@ -227,9 +227,20 @@ plate_stl.merge_vertices()
 print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_stl.volume:8.0f} mm³  extents={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_powerstack_placa.stl")
 
-# 3MF multicor: três objetos (corpo com suas partes; tampa com a barra), ambos em pé na mesa
+# 3MF multicor: três objetos, cada um com partes agrupadas em 4 cores (AMS de 4 canais)
+#   1_branco: corpo | 2_cinza_escuro: rodapé, marca, alça, anel, tampa, placa
+#   3_laranja: barra de luz, indicador, logo do rodapé, texto da placa | 4_vermelho: botão
 import zipfile
 from xml.sax.saxutils import escape
+
+COLOR_GROUPS = {
+    "powerstack_corpo": {"1_branco": ["corpo_branco"], "2_cinza_escuro": ["rodape_escuro", "detalhes_cinza"],
+                         "3_laranja": ["detalhes_azuis"], "4_vermelho": ["botao_vermelho"]},
+    "powerstack_tampa": {"2_cinza_escuro": ["tampa_escura"], "3_laranja": ["barra_luz_laranja"]},
+    "placa_base":       {"2_cinza_escuro": ["placa_base"], "3_laranja": ["texto_placa"]},
+}
+OBJ_XFORM = {"powerstack_corpo": (0, 0, 0), "powerstack_tampa": None, "placa_base": (-(PLATE_S + 20), 0, PLATE_T)}
+flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 def mesh_xml(obj_id, name, m):
     v = "".join(f'<vertex x="{x:.3f}" y="{y:.3f}" z="{z:.3f}"/>' for x, y, z in m.vertices)
@@ -237,38 +248,37 @@ def mesh_xml(obj_id, name, m):
     return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
             f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
-body_parts = ["corpo_branco", "rodape_escuro", "detalhes_cinza", "botao_vermelho", "detalhes_azuis"]
-cap_parts = ["tampa_escura", "barra_luz_laranja"]
-plate_parts = ["placa_base", "texto_placa"]
-flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
-objs, next_id, ids = "", 1, {}
-for name in body_parts + cap_parts + plate_parts:
+def placed(name, obj):
     e = parts[name].copy()
     e.apply_transform(TO_Z_UP)
-    if name in cap_parts:
+    if obj == "powerstack_tampa":
         e.apply_transform(flip)
-    ids[name] = next_id
-    objs += mesh_xml(next_id, name, e)
+    return e
+
+# tampa virada: leva para a mesa e afasta em X
+cap_meshes = [placed(n, "powerstack_tampa") for g in COLOR_GROUPS["powerstack_tampa"].values() for n in g]
+cb = trimesh.util.concatenate(cap_meshes).bounds
+OBJ_XFORM["powerstack_tampa"] = (W + 20, -cb[0][1], -cb[0][2])
+
+objs, next_id, assemblies, items = "", 1, "", ""
+for obj, groups in COLOR_GROUPS.items():
+    comp_ids = []
+    for color, names in groups.items():
+        m = trimesh.util.concatenate([placed(n, obj) for n in names])
+        objs += mesh_xml(next_id, f"{obj}__{color}", m)
+        comp_ids.append(next_id)
+        next_id += 1
+    tx, ty, tz = OBJ_XFORM[obj]
+    comps = "".join(f'<component objectid="{i}" transform="1 0 0 0 1 0 0 0 1 {tx:.3f} {ty:.3f} {tz:.3f}"/>' for i in comp_ids)
+    assemblies += f'<object id="{next_id}" name="{obj}" type="model"><components>{comps}</components></object>'
+    items += f'<item objectid="{next_id}"/>'
     next_id += 1
-# a tampa virada fica com z negativo: leva para a mesa e afasta em X
-cap_bounds = None
-for name in cap_parts:
-    e = parts[name].copy(); e.apply_transform(TO_Z_UP); e.apply_transform(flip)
-    cap_bounds = e.bounds if cap_bounds is None else np.array([np.minimum(cap_bounds[0], e.bounds[0]), np.maximum(cap_bounds[1], e.bounds[1])])
-cap_dz, cap_dy = -cap_bounds[0][2], -cap_bounds[0][1]
-comps_body = "".join(f'<component objectid="{ids[n]}"/>' for n in body_parts)
-comps_cap = "".join(f'<component objectid="{ids[n]}" transform="1 0 0 0 1 0 0 0 1 {W + 20:.3f} {cap_dy:.3f} {cap_dz:.3f}"/>' for n in cap_parts)
-comps_plate = "".join(f'<component objectid="{ids[n]}" transform="1 0 0 0 1 0 0 0 1 {-(PLATE_S + 20):.3f} 0 {PLATE_T:.3f}"/>' for n in plate_parts)
-a_body, a_cap, a_plate = next_id, next_id + 1, next_id + 2
+
 model_xml = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
     '<metadata name="Title">Miniatura Sungrow PowerStack 1:25</metadata>'
-    f'<resources>{objs}'
-    f'<object id="{a_body}" name="powerstack_corpo" type="model"><components>{comps_body}</components></object>'
-    f'<object id="{a_cap}" name="powerstack_tampa" type="model"><components>{comps_cap}</components></object>'
-    f'<object id="{a_plate}" name="placa_base" type="model"><components>{comps_plate}</components></object>'
-    f'</resources><build><item objectid="{a_body}"/><item objectid="{a_cap}"/><item objectid="{a_plate}"/></build></model>'
+    f'<resources>{objs}{assemblies}</resources><build>{items}</build></model>'
 )
 content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -282,10 +292,13 @@ with zipfile.ZipFile("miniatura_powerstack_multicor.3mf", "w", zipfile.ZIP_DEFLA
     zf.writestr("_rels/.rels", rels)
     zf.writestr("3D/3dmodel.model", model_xml)
 
-# dados para o visualizador (Y para cima, tampa montada no corpo)
+# dados para o visualizador (Y para cima, montado), agrupados nas 4 cores
 import json
+VIEW_GROUPS = {"branco": ["corpo_branco"], "cinza_escuro": ["rodape_escuro", "detalhes_cinza", "tampa_escura", "placa_base"],
+               "laranja": ["detalhes_azuis", "barra_luz_laranja", "texto_placa"], "vermelho": ["botao_vermelho"]}
 out = {}
-for name, m in parts.items():
-    out[name] = {"v": np.round(m.vertices, 2).flatten().tolist(), "f": m.faces.flatten().tolist()}
+for color, names in VIEW_GROUPS.items():
+    m = trimesh.util.concatenate([parts[n] for n in names])
+    out[color] = {"v": np.round(m.vertices, 2).flatten().tolist(), "f": m.faces.flatten().tolist()}
 open("mesh_data_mini.js", "w").write("const MESH_DATA=" + json.dumps(out, separators=(",", ":")) + ";")
 print("arquivos gravados")

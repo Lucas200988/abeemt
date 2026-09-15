@@ -217,19 +217,14 @@
     </section>
 
     <section>
-      <h2>Peças (cores no AMS)</h2>
+      <h2>Cores (4 canais do AMS)</h2>
       <div class="parts">
-        <button type="button" class="part" data-part="corpo_branco" aria-pressed="true"><span class="chip body"></span><span class="name">Corpo (casca oca)</span><span class="vol">29,6 cm³</span></button>
-        <button type="button" class="part" data-part="rodape_escuro" aria-pressed="true"><span class="chip band"></span><span class="name">Rodapé</span><span class="vol">6,6 cm³</span></button>
-        <button type="button" class="part" data-part="tampa_escura" aria-pressed="true"><span class="chip band"></span><span class="name">Tampa (peça separada)</span><span class="vol">8,2 cm³</span></button>
-        <button type="button" class="part" data-part="barra_luz_laranja" aria-pressed="true"><span class="chip detail"></span><span class="name">Barra de luz</span><span class="vol">&lt; 0,1 cm³</span></button>
-        <button type="button" class="part" data-part="detalhes_cinza" aria-pressed="true"><span class="chip gray"></span><span class="name">Marca, alça e anel do botão</span><span class="vol">0,1 cm³</span></button>
-        <button type="button" class="part" data-part="botao_vermelho" aria-pressed="true"><span class="chip red"></span><span class="name">Botão de emergência</span><span class="vol">&lt; 0,1 cm³</span></button>
-        <button type="button" class="part" data-part="detalhes_azuis" aria-pressed="true"><span class="chip blue"></span><span class="name">Indicador e logo do rodapé</span><span class="vol">&lt; 0,1 cm³</span></button>
-        <button type="button" class="part" data-part="placa_base" aria-pressed="true"><span class="chip band"></span><span class="name">Placa de base (peça separada)</span><span class="vol">19,3 cm³</span></button>
-        <button type="button" class="part" data-part="texto_placa" aria-pressed="true"><span class="chip detail"></span><span class="name">Texto da placa</span><span class="vol">0,1 cm³</span></button>
+        <button type="button" class="part" data-part="branco" aria-pressed="true"><span class="chip body"></span><span class="name">1 · Branco: corpo</span><span class="vol">29,6 cm³</span></button>
+        <button type="button" class="part" data-part="cinza_escuro" aria-pressed="true"><span class="chip band"></span><span class="name">2 · Cinza escuro: rodapé, tampa, placa, marca, alça</span><span class="vol">34,3 cm³</span></button>
+        <button type="button" class="part" data-part="laranja" aria-pressed="true"><span class="chip detail"></span><span class="name">3 · Laranja: barra de luz, indicador, logo, texto da placa</span><span class="vol">0,1 cm³</span></button>
+        <button type="button" class="part" data-part="vermelho" aria-pressed="true"><span class="chip red"></span><span class="name">4 · Vermelho: botão de emergência</span><span class="vol">&lt; 0,1 cm³</span></button>
       </div>
-      <p class="note" style="margin-top:8px">Toque numa peça para ocultar. Oculte a tampa para ver o interior oco e a aba de encaixe.</p>
+      <p class="note" style="margin-top:8px">Toque numa cor para ocultar. Com só 3 canais, imprima o botão em laranja. Corpo, tampa e placa são três peças separadas no 3MF.</p>
     </section>
 
     <section>
@@ -295,11 +290,7 @@ __MESH_DATA__
   scene.add(rim);
 
   function mat(c) { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.05, flatShading: true }); }
-  const materials = {
-    corpo_branco: mat(0xf2f2f2), rodape_escuro: mat(0x2b2f33), tampa_escura: mat(0x2b2f33),
-    barra_luz_laranja: mat(0xff8a65), detalhes_cinza: mat(0x8a8f94), botao_vermelho: mat(0xd32f2f), detalhes_azuis: mat(0x4db6ac),
-    placa_base: mat(0x2b2f33), texto_placa: mat(0xff8a65)
-  };
+  const materials = { branco: mat(0xf2f2f2), cinza_escuro: mat(0x2b2f33), laranja: mat(0xff8a65), vermelho: mat(0xd32f2f) };
   const model = new THREE.Group();
   const parts = {};
   Object.keys(MESH_DATA).forEach(function (name) {

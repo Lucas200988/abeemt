@@ -210,6 +210,7 @@
         <button type="button" data-view="left" aria-pressed="false">Lateral esquerda</button>
         <button type="button" data-view="side" aria-pressed="false">Lateral direita</button>
         <button type="button" data-view="iso" aria-pressed="false">Perspectiva</button>
+        <button type="button" data-view="opener" aria-pressed="false">Abridor (atrás)</button>
       </div>
     </section>
 
@@ -217,10 +218,10 @@
       <h2>Peças (cores no AMS)</h2>
       <div class="parts">
         <button type="button" class="part" data-part="corpo_branco" aria-pressed="true">
-          <span class="chip body"></span><span class="name">Corpo do gabinete</span><span class="vol">42,2 cm³</span>
+          <span class="chip body"></span><span class="name">Corpo do gabinete</span><span class="vol">39,9 cm³</span>
         </button>
         <button type="button" class="part" data-part="faixas_escuras" aria-pressed="true">
-          <span class="chip band"></span><span class="name">Base, tampa e argola</span><span class="vol">5,4 cm³</span>
+          <span class="chip band"></span><span class="name">Base, tampa e argola</span><span class="vol">4,7 cm³</span>
         </button>
         <button type="button" class="part" data-part="detalhes_relevo" aria-pressed="true">
           <span class="chip detail"></span><span class="name">Textos, emblema, botão e alças</span><span class="vol">0,5 cm³</span>
@@ -231,6 +232,7 @@
         <dt>Frente</dt><dd>FÓRUM BESS 2026</dd>
         <dt>Lateral direita</dt><dd>FÓRUM BESS 2026</dd>
         <dt>Lateral esquerda</dt><dd>Raio · ABEE-MT · CUIABÁ</dd>
+        <dt>Atrás, embaixo</dt><dd>Abridor de garrafa</dd>
       </dl>
     </section>
 
@@ -242,7 +244,8 @@
         <dt>Profundidade</dt><dd>34,8 mm</dd>
         <dt>Relevo dos textos</dt><dd>0,8 mm</dd>
         <dt>Furo da argola</dt><dd>Ø 4,4 mm</dd>
-        <dt>Peso estimado em PLA</dt><dd>≈ 18 g</dd>
+        <dt>Boca do abridor</dt><dd>10 × 9 mm</dd>
+        <dt>Peso estimado em PLA</dt><dd>≈ 17 g</dd>
       </dl>
     </section>
 
@@ -250,7 +253,7 @@
       <label class="toggle"><input type="checkbox" id="bed" checked> Mostrar mesa de impressão</label>
     </section>
 
-    <p class="note foot">A peça imprime em pé, apoiada na base, como está sobre a mesa aqui. Sem suportes. Camada de 0,12 a 0,16 mm deixa os textos mais nítidos. Preenchimento de 15% já basta.</p>
+    <p class="note foot">A peça imprime em pé, apoiada na base, como está sobre a mesa aqui. Sem suportes: o teto do abridor é inclinado a 45°. Camada de 0,12 a 0,16 mm deixa os textos mais nítidos. Para o abridor aguentar, use 4 paredes e 30% de preenchimento, em PETG ou PLA.</p>
   </aside>
 </div>
 
@@ -352,6 +355,7 @@ __MESH_DATA__
     back: { theta: Math.PI, phi: Math.PI / 2 },
     side: { theta: Math.PI / 2, phi: Math.PI / 2 },
     left: { theta: -Math.PI / 2, phi: Math.PI / 2 },
+    opener: { theta: Math.PI + 0.55, phi: 1.45 },
     iso: { theta: 0.65, phi: 1.2 }
   };
   let tween = null;

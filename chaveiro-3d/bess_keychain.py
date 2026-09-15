@@ -7,6 +7,7 @@ botão de emergência à direita, base escura e tampa escura fina.
 
 Eixos: X = largura, Y = altura, Z = profundidade (frente em +Z). Unidades: mm.
 Impressão: em pé, apoiado na base. Sem suportes.
+Abridor de garrafa embutido no canto traseiro inferior (boca de 10 mm, gancho de 2,5 mm).
 """
 import numpy as np
 import trimesh
@@ -129,13 +130,28 @@ while y <= gy1:
     row += 1
 body = body.difference(trimesh.util.concatenate(holes))
 
+# ---------- abridor de garrafa (canto traseiro inferior) ----------
+# Boca aberta atrás e embaixo, atravessando toda a largura (a tampa tem 27 mm, o gabinete 26).
+# Uso: encosta a borda superior da boca no topo da tampa (apoio), o degrau do fundo entra
+# sob a borda da tampa (gancho) e levanta-se a frente do chaveiro como alavanca.
+OPEN_H, OPEN_D, HOOK_D, HOOK_H = 10.0, 9.0, 2.5, 3.0
+opener = rbox(W + 2, OPEN_H, OPEN_D - HOOK_D, -1, 0, 0)                       # boca
+opener = opener.union(rbox(W + 2, OPEN_H - HOOK_H, HOOK_D + 0.01, -1, HOOK_H, OPEN_D - HOOK_D))  # acima do degrau
+# teto inclinado a 45° para imprimir sem suporte (perfil no plano YZ, extrudado ao longo de X)
+wedge2d = Polygon([(0, OPEN_H - 0.01), (OPEN_D, OPEN_H - 0.01), (OPEN_D, OPEN_H + OPEN_D)])
+wedge = extrude_polygon(wedge2d, W + 2)
+wedge.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
+wedge.apply_translation([W + 1, 0, 0])
+opener = opener.union(wedge)
+body = body.difference(opener)
+
 # ---------- texto em relevo nas laterais ----------
 side_texts = [
-    text_side("FÓRUM BESS", 5.2, 35.5, D / 2, "right", max_width=D - 4),
-    text_side("2026", 10.0, 20.0, D / 2, "right", max_width=D - 6),
-    emblem_side(12.0, 39.5, D / 2, "left"),
-    text_side("ABEE-MT", 4.8, 25.5, D / 2, "left", max_width=D - 6),
-    text_side("CUIABÁ", 4.8, 16.5, D / 2, "left", max_width=D - 6),
+    text_side("FÓRUM BESS", 5.2, 43.0, D / 2, "right", max_width=D - 4),
+    text_side("2026", 10.0, 31.0, D / 2, "right", max_width=D - 6),
+    emblem_side(12.0, 44.0, D / 2, "left"),
+    text_side("ABEE-MT", 4.8, 33.0, D / 2, "left", max_width=D - 6),
+    text_side("CUIABÁ", 4.8, 25.0, D / 2, "left", max_width=D - 6),
 ]
 side_text_mesh = trimesh.util.concatenate(side_texts)
 
@@ -147,7 +163,7 @@ ring = cylinder(radius=ring_r_out, height=ring_t, sections=48)
 ring = ring.difference(cylinder(radius=ring_r_in, height=ring_t + 2, sections=48))
 ring.apply_translation([W / 2, H + ring_r_out - 1.5, D / 2])   # plano XY, virada para a frente
 top_band = top_band.union(ring)
-bands = top_band.union(base_band)
+bands = top_band.union(base_band).difference(opener)
 
 # ---------- detalhes em relevo na frente (cor de destaque) ----------
 details = [side_text_mesh]

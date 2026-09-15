@@ -20,6 +20,7 @@ from matplotlib.font_manager import FontProperties
 W, H, D = 26.0, 54.0, 34.0       # largura, altura, profundidade do gabinete
 TOP_BAND, BASE_BAND = 2.0, 4.0   # faixas escuras (topo e base)
 RELIEF = 0.8                     # relevo dos detalhes da frente
+SINK = 0.05                      # quanto cada relevo penetra na parede, para a união ser real
 GROOVE = 0.4                     # sulcos (contorno da porta, grade)
 FONT = FontProperties(fname="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 
@@ -66,7 +67,7 @@ def text_flat(txt, cap_height, height, max_width=None, fatten=0.15):
 
 def text_front(txt, cap, cx, cy, max_width=None):
     m = text_flat(txt, cap, RELIEF, max_width)
-    m.apply_translation([cx, cy, D])
+    m.apply_translation([cx, cy, D - SINK])
     return m
 
 
@@ -74,10 +75,10 @@ def to_side(m, side, cy, cz):
     """Leva uma malha extrudada em Z (0..h, centrada em XY) para a lateral direita (x=W) ou esquerda (x=0)."""
     if side == "right":
         m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))   # X->-Z, Z->+X
-        m.apply_translation([W, cy, cz])
+        m.apply_translation([W - SINK, cy, cz])
     else:
         m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
-        m.apply_translation([0, cy, cz])
+        m.apply_translation([SINK, cy, cz])
     return m
 
 
@@ -143,7 +144,7 @@ side_text_mesh = trimesh.util.concatenate(side_texts)
 # ---------- abridor de garrafa embutido na face de trás ----------
 # Como nos abridores de disco: furo na parede traseira (3 mm) e cavidade por dentro para a
 # aba da tampa entrar. Segura-se o gabinete pelo topo; a borda de baixo do furo apoia no topo
-# da tampa (fulcro), a saliência da borda de cima engancha sob a aba, e levanta-se o topo.
+# da tampa (fulcro), a borda reta de cima engancha sob a aba, e levanta-se o topo.
 WALL = 3.0                                  # espessura da parede atrás do furo
 HOLE_X0, HOLE_X1 = 2.5, W - 2.5             # furo com 21 mm de largura (corda da tampa a ~5 mm)
 HOLE_Y0, HOLE_Y1 = 10.0, 24.0               # furo com 14 mm de altura
@@ -153,7 +154,7 @@ CAV_D = 8.0                                 # profundidade da cavidade atrás da
 from shapely.geometry import Point, box as sbox
 # furo (plano XY da parede): retângulo com cantos arredondados + saliência de gancho no topo
 hole2d = sbox(HOLE_X0, HOLE_Y0, HOLE_X1, HOLE_Y1).buffer(-3, join_style=1).buffer(3, join_style=1)
-hole2d = hole2d.difference(Point(W / 2, HOLE_Y1 + 1.0).buffer(4.0, 32))   # gancho (aponta para baixo)
+# a borda reta de cima do furo é o gancho (uma saliência ali ficaria no ar durante a impressão)
 hole = extrude_polygon(hole2d, WALL + 0.02)
 hole.apply_translation([0, 0, -0.01])
 # cavidade com teto inclinado a 45° para imprimir sem suporte (perfil no plano YZ)
@@ -179,10 +180,10 @@ details.append(text_front("FÓRUM", 4.5, W / 2, 47.0, max_width=W - 6))       # 
 details.append(text_front("BESS", 4.5, W / 2, 41.0, max_width=W - 6))
 details.append(text_front("2026", 7.0, W / 2, 33.0, max_width=W - 8))         # ano na porta superior
 btn = cylinder(radius=1.1, height=RELIEF, sections=24)
-btn.apply_translation([W - 4.4, 26.5, D + RELIEF / 2])
+btn.apply_translation([W - 4.4, 26.5, D - SINK + RELIEF / 2])
 details.append(btn)                                                          # botão de emergência
-details.append(rbox(1.2, 5.0, RELIEF, 3.2, 25.0, D))                         # alça da porta superior
-details.append(rbox(1.2, 6.0, RELIEF, 3.2, 10.0, D))                         # alça da porta inferior
+details.append(rbox(1.2, 5.0, RELIEF, 3.2, 25.0, D - SINK))                         # alça da porta superior
+details.append(rbox(1.2, 6.0, RELIEF, 3.2, 10.0, D - SINK))                         # alça da porta inferior
 details_mesh = trimesh.util.concatenate(details)
 
 # ---------- exportação ----------

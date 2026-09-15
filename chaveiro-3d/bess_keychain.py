@@ -198,36 +198,39 @@ print(f"{'stl_uma_cor':18s} watertight={single.is_watertight}  volume={single.vo
 print("dimensões (mm):", np.round(single.extents, 1))
 single.export("chaveiro_forum_bess_2026.stl")
 
-scene = trimesh.Scene()
-for name, m in parts.items():
-    scene.add_geometry(m, node_name=name, geom_name=name)
-scene.export("chaveiro_forum_bess_2026_multicor.3mf")
+# 3MF básico (núcleo da especificação, sem extensões): três malhas e um objeto que as reúne
+# como componentes. É o formato que o Bambu Studio importa como um objeto com três partes.
+import zipfile
+from xml.sax.saxutils import escape
 
-# Reestrutura o 3MF: um único objeto "chaveiro" composto pelas três malhas
-import zipfile, re, shutil
-src = "chaveiro_forum_bess_2026_multicor.3mf"
-tmp = src + ".tmp"
-with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
-    for item in zin.infolist():
-        data = zin.read(item.filename)
-        if item.filename.endswith("3dmodel.model"):
-            xml = data.decode("utf-8")
-            ids = re.findall(r'<object id="(\d+)"[^>]*type="model"', xml)
-            if not ids:
-                ids = re.findall(r'<object id="(\d+)"', xml)
-            import uuid
-            new_id = str(max(int(i) for i in ids) + 1)
-            comps = "".join(f'<component objectid="{i}" p:UUID="{uuid.uuid4()}" />' for i in ids)
-            assembly = (f'<object id="{new_id}" name="chaveiro_forum_bess_2026" type="model" p:UUID="{uuid.uuid4()}">'
-                        f'<components>{comps}</components></object>')
-            xml = xml.replace("</resources>", assembly + "</resources>")
-            xml = re.sub(r"<build[^>]*>.*?</build>",
-                         f'<build p:UUID="{uuid.uuid4()}"><item objectid="{new_id}" p:UUID="{uuid.uuid4()}" /></build>',
-                         xml, flags=re.S)
-            assert f'objectid="{new_id}"' in xml
-            data = xml.encode("utf-8")
-        zout.writestr(item, data)
-shutil.move(tmp, src)
+def mesh_xml(obj_id, name, m):
+    v = "".join(f'<vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>' for x, y, z in m.vertices)
+    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
+    return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
+            f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
+
+objs = "".join(mesh_xml(i + 1, name, m) for i, (name, m) in enumerate(parts.items()))
+comps = "".join(f'<component objectid="{i + 1}"/>' for i in range(len(parts)))
+assembly_id = len(parts) + 1
+model_xml = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
+    '<metadata name="Title">Chaveiro Fórum BESS 2026</metadata>'
+    f'<resources>{objs}'
+    f'<object id="{assembly_id}" name="chaveiro_forum_bess_2026" type="model"><components>{comps}</components></object>'
+    f'</resources><build><item objectid="{assembly_id}"/></build></model>'
+)
+content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
+rels = ('<?xml version="1.0" encoding="UTF-8"?>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+with zipfile.ZipFile("chaveiro_forum_bess_2026_multicor.3mf", "w", zipfile.ZIP_DEFLATED) as zf:
+    zf.writestr("[Content_Types].xml", content_types)
+    zf.writestr("_rels/.rels", rels)
+    zf.writestr("3D/3dmodel.model", model_xml)
 
 import json
 out = {}

@@ -69,18 +69,35 @@ def text_front(txt, cap, cx, cy, max_width=None):
     return m
 
 
-def text_side(txt, cap, cy, cz, side, max_width=None):
-    """Texto em relevo na lateral. side='right' (x=W) ou 'left' (x=0)."""
-    m = text_flat(txt, cap, RELIEF, max_width)
+def to_side(m, side, cy, cz):
+    """Leva uma malha extrudada em Z (0..h, centrada em XY) para a lateral direita (x=W) ou esquerda (x=0)."""
     if side == "right":
-        rot = trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])   # X->-Z, Z->+X
-        m.apply_transform(rot)
+        m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))   # X->-Z, Z->+X
         m.apply_translation([W, cy, cz])
     else:
-        rot = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])  # X->+Z, Z->-X
-        m.apply_transform(rot)
+        m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
         m.apply_translation([0, cy, cz])
     return m
+
+
+def text_side(txt, cap, cy, cz, side, max_width=None):
+    """Texto em relevo na lateral."""
+    return to_side(text_flat(txt, cap, RELIEF, max_width), side, cy, cz)
+
+
+def emblem_side(height, cy, cz, side):
+    """Emblema simples: raio dentro de um anel (referência ao logo da ABEE-MT)."""
+    from shapely.geometry import Point
+    from shapely import affinity
+    bolt = Polygon([(0.55, 1.0), (0.10, 0.42), (0.42, 0.42), (0.30, 0.0),
+                    (0.90, 0.58), (0.58, 0.58), (0.70, 1.0)])
+    assert bolt.is_valid
+    bolt = affinity.scale(bolt, height, height, origin=(0, 0))
+    bolt = affinity.translate(bolt, -0.5 * height, -0.5 * height)
+    r_out = height * 0.72
+    ring = Point(0, 0).buffer(r_out, 64).difference(Point(0, 0).buffer(r_out - 0.9, 64))
+    parts = [extrude_polygon(bolt.buffer(0.05, join_style=2), RELIEF), extrude_polygon(ring, RELIEF)]
+    return to_side(trimesh.util.concatenate(parts), side, cy, cz)
 
 
 # ---------- corpo principal (branco) ----------
@@ -113,11 +130,13 @@ while y <= gy1:
 body = body.difference(trimesh.util.concatenate(holes))
 
 # ---------- texto em relevo nas laterais ----------
-side_y_top, side_y_year = 35.5, 20.0
-side_texts = []
-for side in ("right", "left"):
-    side_texts.append(text_side("FÓRUM BESS", 5.2, side_y_top, D / 2, side, max_width=D - 4))
-    side_texts.append(text_side("2026", 10.0, side_y_year, D / 2, side, max_width=D - 6))
+side_texts = [
+    text_side("FÓRUM BESS", 5.2, 35.5, D / 2, "right", max_width=D - 4),
+    text_side("2026", 10.0, 20.0, D / 2, "right", max_width=D - 6),
+    emblem_side(12.0, 39.5, D / 2, "left"),
+    text_side("ABEE-MT", 4.8, 25.5, D / 2, "left", max_width=D - 6),
+    text_side("CUIABÁ", 4.8, 16.5, D / 2, "left", max_width=D - 6),
+]
 side_text_mesh = trimesh.util.concatenate(side_texts)
 
 # ---------- faixas escuras (topo e base) + argola ----------

@@ -7,7 +7,7 @@ botão de emergência à direita, base escura e tampa escura fina.
 
 Eixos: X = largura, Y = altura, Z = profundidade (frente em +Z). Unidades: mm.
 Impressão: em pé, apoiado na base. Sem suportes.
-Abridor de garrafa embutido no canto traseiro inferior (boca de 10 mm, gancho de 2,5 mm).
+Abridor de garrafa embutido na face de trás: furo de 21 x 14 mm na parede e cavidade interna de 8 mm.
 """
 import numpy as np
 import trimesh
@@ -130,30 +130,38 @@ while y <= gy1:
     row += 1
 body = body.difference(trimesh.util.concatenate(holes))
 
-# ---------- abridor de garrafa (canto traseiro inferior) ----------
-# Boca aberta atrás e embaixo, atravessando toda a largura (a tampa tem 27 mm, o gabinete 26).
-# Uso: encosta a borda superior da boca no topo da tampa (apoio), o degrau do fundo entra
-# sob a borda da tampa (gancho) e levanta-se a frente do chaveiro como alavanca.
-OPEN_H, OPEN_D, HOOK_D, HOOK_H = 10.0, 9.0, 2.5, 3.0
-opener = rbox(W + 2, OPEN_H, OPEN_D - HOOK_D, -1, 0, 0)                       # boca
-opener = opener.union(rbox(W + 2, OPEN_H - HOOK_H, HOOK_D + 0.01, -1, HOOK_H, OPEN_D - HOOK_D))  # acima do degrau
-# teto inclinado a 45° para imprimir sem suporte (perfil no plano YZ, extrudado ao longo de X)
-wedge2d = Polygon([(0, OPEN_H - 0.01), (OPEN_D, OPEN_H - 0.01), (OPEN_D, OPEN_H + OPEN_D)])
-wedge = extrude_polygon(wedge2d, W + 2)
-wedge.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
-wedge.apply_translation([W + 1, 0, 0])
-opener = opener.union(wedge)
-body = body.difference(opener)
-
 # ---------- texto em relevo nas laterais ----------
 side_texts = [
-    text_side("FÓRUM BESS", 5.2, 43.0, D / 2, "right", max_width=D - 4),
-    text_side("2026", 10.0, 31.0, D / 2, "right", max_width=D - 6),
-    emblem_side(12.0, 44.0, D / 2, "left"),
-    text_side("ABEE-MT", 4.8, 33.0, D / 2, "left", max_width=D - 6),
-    text_side("CUIABÁ", 4.8, 25.0, D / 2, "left", max_width=D - 6),
+    text_side("FÓRUM BESS", 5.2, 36.0, D / 2, "right", max_width=D - 4),
+    text_side("2026", 10.0, 21.0, D / 2, "right", max_width=D - 6),
+    emblem_side(12.0, 40.0, D / 2, "left"),
+    text_side("ABEE-MT", 4.8, 26.0, D / 2, "left", max_width=D - 6),
+    text_side("CUIABÁ", 4.8, 17.0, D / 2, "left", max_width=D - 6),
 ]
 side_text_mesh = trimesh.util.concatenate(side_texts)
+
+# ---------- abridor de garrafa embutido na face de trás ----------
+# Como nos abridores de disco: furo na parede traseira (3 mm) e cavidade por dentro para a
+# aba da tampa entrar. Segura-se o gabinete pelo topo; a borda de baixo do furo apoia no topo
+# da tampa (fulcro), a saliência da borda de cima engancha sob a aba, e levanta-se o topo.
+WALL = 3.0                                  # espessura da parede atrás do furo
+HOLE_X0, HOLE_X1 = 2.5, W - 2.5             # furo com 21 mm de largura (corda da tampa a ~5 mm)
+HOLE_Y0, HOLE_Y1 = 10.0, 24.0               # furo com 14 mm de altura
+CAV_X0, CAV_X1 = 2.0, W - 2.0               # cavidade interna 22 mm de largura
+CAV_Y0, CAV_Y1 = 8.0, 30.0                  # cavidade sobe 6 mm acima do furo: é onde a aba engancha
+CAV_D = 8.0                                 # profundidade da cavidade atrás da parede
+from shapely.geometry import Point, box as sbox
+# furo (plano XY da parede): retângulo com cantos arredondados + saliência de gancho no topo
+hole2d = sbox(HOLE_X0, HOLE_Y0, HOLE_X1, HOLE_Y1).buffer(-3, join_style=1).buffer(3, join_style=1)
+hole2d = hole2d.difference(Point(W / 2, HOLE_Y1 + 1.0).buffer(4.0, 32))   # gancho (aponta para baixo)
+hole = extrude_polygon(hole2d, WALL + 0.02)
+hole.apply_translation([0, 0, -0.01])
+# cavidade com teto inclinado a 45° para imprimir sem suporte (perfil no plano YZ)
+cav2d = Polygon([(WALL, CAV_Y0), (WALL + CAV_D, CAV_Y0), (WALL + CAV_D, CAV_Y1 + CAV_D), (WALL, CAV_Y1)])
+cavity = extrude_polygon(cav2d, CAV_X1 - CAV_X0)
+cavity.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
+cavity.apply_translation([CAV_X1, 0, 0])
+body = body.difference(hole).difference(cavity)
 
 # ---------- faixas escuras (topo e base) + argola ----------
 top_band = rbox(W, TOP_BAND, D, 0, H - TOP_BAND, 0)
@@ -163,7 +171,7 @@ ring = cylinder(radius=ring_r_out, height=ring_t, sections=48)
 ring = ring.difference(cylinder(radius=ring_r_in, height=ring_t + 2, sections=48))
 ring.apply_translation([W / 2, H + ring_r_out - 1.5, D / 2])   # plano XY, virada para a frente
 top_band = top_band.union(ring)
-bands = top_band.union(base_band).difference(opener)
+bands = top_band.union(base_band)
 
 # ---------- detalhes em relevo na frente (cor de destaque) ----------
 details = [side_text_mesh]

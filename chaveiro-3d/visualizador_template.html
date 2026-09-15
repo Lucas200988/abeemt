@@ -232,11 +232,10 @@
     <section>
       <h2>Dimensões</h2>
       <dl class="dims">
-        <dt>Largura</dt><dd>26,0 mm</dd>
+        <dt>Largura (com o relevo lateral)</dt><dd>27,6 mm</dd>
         <dt>Altura com argola</dt><dd>61,5 mm</dd>
         <dt>Profundidade</dt><dd>34,8 mm</dd>
-        <dt>Texto da frente (relevo)</dt><dd>0,8 mm</dd>
-        <dt>Texto lateral (embutido)</dt><dd>0,8 mm</dd>
+        <dt>Relevo dos textos</dt><dd>0,8 mm</dd>
         <dt>Furo da argola</dt><dd>Ø 4,4 mm</dd>
         <dt>Peso estimado em PLA</dt><dd>≈ 18 g</dd>
       </dl>
@@ -271,7 +270,7 @@ __MESH_DATA__
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 1000);
 
   // Center of the model (X width, Y height, Z depth; front faces +Z)
-  const center = new THREE.Vector3(13, 29.5, 17);
+  const center = new THREE.Vector3(13.8, 29.5, 17);
 
   // Lighting: soft sky + a key light from the front-top-left, plus a rim from behind
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.55));
@@ -473,6 +472,7 @@ __MESH_DATA__
   }
   goTo(views.iso);
   state.theta = views.iso.theta; state.phi = views.iso.phi; tween = null; state.auto = !reduced;
+  state.theta = views.side.theta; state.phi = views.side.phi;
   viewButtons.forEach(function (o) { o.setAttribute('aria-pressed', String(o.dataset.view === 'iso')); });
   requestAnimationFrame(frame);
 })();

@@ -19,7 +19,6 @@ from matplotlib.font_manager import FontProperties
 W, H, D = 26.0, 54.0, 34.0       # largura, altura, profundidade do gabinete
 TOP_BAND, BASE_BAND = 2.0, 4.0   # faixas escuras (topo e base)
 RELIEF = 0.8                     # relevo dos detalhes da frente
-INLAY = 0.8                      # profundidade do texto embutido nas laterais
 GROOVE = 0.4                     # sulcos (contorno da porta, grade)
 FONT = FontProperties(fname="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 
@@ -46,16 +45,19 @@ def text_shape(txt):
     return shape
 
 
-def text_flat(txt, cap_height, height, max_width=None):
-    """Texto extrudado em Z (0..height), centrado na origem em XY."""
+def text_flat(txt, cap_height, height, max_width=None, fatten=0.15):
+    """Texto extrudado em Z (0..height), centrado na origem em XY.
+    Engorda os traços em `fatten` mm por lado para nunca ficar mais fino que o bico."""
+    from shapely import affinity
     shape = text_shape(txt)
     minx, miny, maxx, maxy = shape.bounds
     scale = cap_height / (maxy - miny)
     if max_width and (maxx - minx) * scale > max_width:
         scale = max_width / (maxx - minx)
+    shape = affinity.scale(shape, scale, scale, origin=(0, 0))
+    shape = shape.buffer(fatten, join_style=1).simplify(0.02)
     geoms = list(shape.geoms) if hasattr(shape, "geoms") else [shape]
     m = trimesh.util.concatenate([extrude_polygon(g, height) for g in geoms])
-    m.apply_scale([scale, scale, 1.0])
     b = m.bounds
     m.apply_translation([-(b[0][0] + b[1][0]) / 2, -(b[0][1] + b[1][1]) / 2, 0])
     return m
@@ -68,16 +70,16 @@ def text_front(txt, cap, cx, cy, max_width=None):
 
 
 def text_side(txt, cap, cy, cz, side, max_width=None):
-    """Texto embutido na lateral. side='right' (x=W) ou 'left' (x=0)."""
-    m = text_flat(txt, cap, INLAY, max_width)
+    """Texto em relevo na lateral. side='right' (x=W) ou 'left' (x=0)."""
+    m = text_flat(txt, cap, RELIEF, max_width)
     if side == "right":
         rot = trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0])   # X->-Z, Z->+X
         m.apply_transform(rot)
-        m.apply_translation([W - INLAY, cy, cz])
+        m.apply_translation([W, cy, cz])
     else:
         rot = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])  # X->+Z, Z->-X
         m.apply_transform(rot)
-        m.apply_translation([INLAY, cy, cz])
+        m.apply_translation([0, cy, cz])
     return m
 
 
@@ -110,19 +112,13 @@ while y <= gy1:
     row += 1
 body = body.difference(trimesh.util.concatenate(holes))
 
-# Linha de junção dos painéis laterais (sulco vertical, como nos gabinetes reais)
-for x in (0.0, W - GROOVE):
-    seam = rbox(GROOVE, H - TOP_BAND - BASE_BAND - 4, 0.6, x, BASE_BAND + 2, D * 0.42)
-    body = body.difference(seam)
-
-# ---------- texto embutido nas laterais ----------
+# ---------- texto em relevo nas laterais ----------
 side_y_top, side_y_year = 35.5, 20.0
 side_texts = []
 for side in ("right", "left"):
-    side_texts.append(text_side("FÓRUM BESS", 4.6, side_y_top, D / 2, side, max_width=D - 4))
+    side_texts.append(text_side("FÓRUM BESS", 5.2, side_y_top, D / 2, side, max_width=D - 4))
     side_texts.append(text_side("2026", 10.0, side_y_year, D / 2, side, max_width=D - 6))
 side_text_mesh = trimesh.util.concatenate(side_texts)
-body = body.difference(side_text_mesh)   # bolso do inlay (fica gravado no STL de uma cor)
 
 # ---------- faixas escuras (topo e base) + argola ----------
 top_band = rbox(W, TOP_BAND, D, 0, H - TOP_BAND, 0)
@@ -136,12 +132,13 @@ bands = top_band.union(base_band)
 
 # ---------- detalhes em relevo na frente (cor de destaque) ----------
 details = [side_text_mesh]
-details.append(text_front("FÓRUM BESS", 3.6, W / 2, 47.5, max_width=W - 6))   # no lugar do logo
-details.append(text_front("2026", 7.5, W / 2, 38.0, max_width=W - 8))         # ano na porta superior
+details.append(text_front("FÓRUM", 4.5, W / 2, 47.0, max_width=W - 6))       # no lugar do logo
+details.append(text_front("BESS", 4.5, W / 2, 41.0, max_width=W - 6))
+details.append(text_front("2026", 7.0, W / 2, 33.0, max_width=W - 8))         # ano na porta superior
 btn = cylinder(radius=1.1, height=RELIEF, sections=24)
-btn.apply_translation([W - 4.4, 29.0, D + RELIEF / 2])
+btn.apply_translation([W - 4.4, 26.5, D + RELIEF / 2])
 details.append(btn)                                                          # botão de emergência
-details.append(rbox(1.2, 6.0, RELIEF, 3.2, 26.0, D))                         # alça da porta superior
+details.append(rbox(1.2, 5.0, RELIEF, 3.2, 25.0, D))                         # alça da porta superior
 details.append(rbox(1.2, 6.0, RELIEF, 3.2, 10.0, D))                         # alça da porta inferior
 details_mesh = trimesh.util.concatenate(details)
 
@@ -152,7 +149,7 @@ for name, m in parts.items():
     m.fix_normals()
     print(f"{name:18s} watertight={m.is_watertight}  volume={m.volume:.0f} mm³")
 
-single = body.union(bands).union(details_mesh.difference(side_text_mesh))  # laterais gravadas
+single = body.union(bands).union(details_mesh)
 single.merge_vertices()
 print(f"{'stl_uma_cor':18s} watertight={single.is_watertight}  volume={single.volume:.0f} mm³")
 print("dimensões (mm):", np.round(single.extents, 1))
@@ -162,6 +159,32 @@ scene = trimesh.Scene()
 for name, m in parts.items():
     scene.add_geometry(m, node_name=name, geom_name=name)
 scene.export("chaveiro_forum_bess_2026_multicor.3mf")
+
+# Reestrutura o 3MF: um único objeto "chaveiro" composto pelas três malhas
+import zipfile, re, shutil
+src = "chaveiro_forum_bess_2026_multicor.3mf"
+tmp = src + ".tmp"
+with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+    for item in zin.infolist():
+        data = zin.read(item.filename)
+        if item.filename.endswith("3dmodel.model"):
+            xml = data.decode("utf-8")
+            ids = re.findall(r'<object id="(\d+)"[^>]*type="model"', xml)
+            if not ids:
+                ids = re.findall(r'<object id="(\d+)"', xml)
+            import uuid
+            new_id = str(max(int(i) for i in ids) + 1)
+            comps = "".join(f'<component objectid="{i}" p:UUID="{uuid.uuid4()}" />' for i in ids)
+            assembly = (f'<object id="{new_id}" name="chaveiro_forum_bess_2026" type="model" p:UUID="{uuid.uuid4()}">'
+                        f'<components>{comps}</components></object>')
+            xml = xml.replace("</resources>", assembly + "</resources>")
+            xml = re.sub(r"<build[^>]*>.*?</build>",
+                         f'<build p:UUID="{uuid.uuid4()}"><item objectid="{new_id}" p:UUID="{uuid.uuid4()}" /></build>',
+                         xml, flags=re.S)
+            assert f'objectid="{new_id}"' in xml
+            data = xml.encode("utf-8")
+        zout.writestr(item, data)
+shutil.move(tmp, src)
 
 import json
 out = {}

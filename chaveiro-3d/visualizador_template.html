@@ -218,10 +218,10 @@
       <h2>Peças (cores no AMS)</h2>
       <div class="parts">
         <button type="button" class="part" data-part="corpo_branco" aria-pressed="true">
-          <span class="chip body"></span><span class="name">Corpo do gabinete</span><span class="vol">39,0 cm³</span>
+          <span class="chip body"></span><span class="name">Corpo do gabinete</span><span class="vol">37,7 cm³</span>
         </button>
         <button type="button" class="part" data-part="faixas_escuras" aria-pressed="true">
-          <span class="chip band"></span><span class="name">Base, tampa e argola</span><span class="vol">5,4 cm³</span>
+          <span class="chip band"></span><span class="name">Base, tampa e argola</span><span class="vol">5,3 cm³</span>
         </button>
         <button type="button" class="part" data-part="detalhes_relevo" aria-pressed="true">
           <span class="chip detail"></span><span class="name">Textos, emblema, botão e alças</span><span class="vol">0,5 cm³</span>
@@ -232,7 +232,7 @@
         <dt>Frente</dt><dd>FÓRUM BESS 2026</dd>
         <dt>Lateral direita</dt><dd>FÓRUM BESS 2026</dd>
         <dt>Lateral esquerda</dt><dd>Raio · ABEE-MT · CUIABÁ</dd>
-        <dt>Atrás</dt><dd>Abridor embutido</dd>
+        <dt>Atrás</dt><dd>Abridor com moeda</dd>
       </dl>
     </section>
 
@@ -244,8 +244,9 @@
         <dt>Profundidade</dt><dd>34,8 mm</dd>
         <dt>Relevo dos textos</dt><dd>0,8 mm</dd>
         <dt>Furo da argola</dt><dd>Ø 4,4 mm</dd>
-        <dt>Boca do abridor</dt><dd>21 × 7,5 mm</dd>
-        <dt>Parede em volta da boca</dt><dd>1,6 mm</dd>
+        <dt>Boca do abridor</dt><dd>21 × 7,5 mm úteis</dd>
+        <dt>Gancho</dt><dd>moeda de 10 centavos</dd>
+        <dt>Fenda da moeda</dt><dd>Ø 20,4 × 2,45 mm</dd>
         <dt>Cavidade atrás da boca</dt><dd>8 mm</dd>
         <dt>Peso estimado em PLA</dt><dd>≈ 17 g</dd>
       </dl>
@@ -255,7 +256,7 @@
       <label class="toggle"><input type="checkbox" id="bed" checked> Mostrar mesa de impressão</label>
     </section>
 
-    <p class="note foot">A peça imprime em pé, apoiada na base, como está sobre a mesa aqui. Sem suportes: o teto da cavidade do abridor é inclinado a 45° e a borda de cima da boca é uma ponte de 21 mm. Abridor tipo parede: a tampa entra de lado 3 a 5 mm, a borda de baixo engancha sob a aba e a de cima apoia no topo; incline o gabinete para fora segurando pelo topo. Camada de 0,12 a 0,16 mm deixa os textos mais nítidos. Para o abridor aguentar, use 4 paredes e 30% de preenchimento, em PETG ou PLA.</p>
+    <p class="note foot">A peça imprime em pé, apoiada na base, como está sobre a mesa aqui. Sem suportes: o teto da cavidade do abridor é inclinado a 45° e a borda de cima da boca é uma ponte de 21 mm. Abridor: uma moeda de 10 centavos atual (20 × 2,23 mm) entra pela fenda na base e fica colada atrás da parede, com a borda sobrando 2 mm na boca. A tampa entra de lado 3 a 5 mm, a moeda engancha sob a aba e a borda de cima apoia no topo; segure pela base e puxe para longe da garrafa. Camada de 0,12 a 0,16 mm deixa os textos mais nítidos. Para o abridor aguentar, use 4 paredes e 30% de preenchimento, em PETG ou PLA.</p>
   </aside>
 </div>
 
@@ -357,7 +358,7 @@ __MESH_DATA__
     back: { theta: Math.PI, phi: Math.PI / 2 },
     side: { theta: Math.PI / 2, phi: Math.PI / 2 },
     left: { theta: -Math.PI / 2, phi: Math.PI / 2 },
-    opener: { theta: Math.PI + 0.3, phi: 1.5 },
+    opener: { theta: Math.PI + 0.3, phi: 1.45 },
     iso: { theta: 0.65, phi: 1.2 }
   };
   let tween = null;

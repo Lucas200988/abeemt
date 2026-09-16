@@ -7,7 +7,8 @@ botão de emergência à direita, base escura e tampa escura fina.
 
 Eixos: X = largura, Y = altura, Z = profundidade (frente em +Z). Unidades: mm.
 Impressão: em pé, apoiado na base. Sem suportes.
-Abridor de garrafa embutido na face de trás: boca de 21 x 7,5 mm numa parede de 1,6 mm, cavidade de 8 mm atrás.
+Abridor de garrafa embutido na face de trás: boca de 21 mm de largura, gancho = borda de uma moeda de
+10 centavos encaixada por baixo, cavidade de 8 mm atrás da parede.
 """
 import numpy as np
 import trimesh
@@ -141,17 +142,24 @@ side_texts = [
 ]
 side_text_mesh = trimesh.util.concatenate(side_texts)
 
-# ---------- abridor de garrafa embutido na face de trás ----------
-# Lógica de abridor de parede: a tampa (26,6 mm) é mais larga que a boca, então ela entra só
-# de lado, uns 3 a 5 mm. Com a parede de 1,6 mm, a aba engancha com 3,1 mm de penetração,
-# onde a corda da tampa mede 17,6 mm (a boca tem 21). A borda de baixo da boca é o gancho sob a
-# aba; a borda de cima apoia no topo da tampa. Segura-se o gabinete pelo topo e inclina-se para fora.
-WALL = 1.6                                  # espessura da parede em volta da boca
+# ---------- abridor de garrafa embutido na face de trás, com gancho de moeda ----------
+# A borda de PLA como gancho esmagou no teste. Agora o gancho é a borda de uma moeda de
+# 10 centavos atual, 2ª família (20,0 mm de diâmetro, 2,23 mm de espessura, aço revestido de bronze),
+# encaixada numa fenda atrás da parede,
+# logo abaixo da boca, sobrando 2 mm para dentro da boca. A moeda entra por uma fenda na base
+# e é colada. A borda de cima da boca apoia no topo da tampa (só compressão). Uso: boca na
+# tampa, segurar pela base e puxar a base para longe da garrafa.
+WALL = 1.6                                  # parede em volta da boca (não faz mais o gancho)
+COIN_D, COIN_T = 20.0, 2.23                 # moeda de 10 centavos (2ª família, 1998 em diante)
+COIN_CLEAR_D, COIN_CLEAR_T = 0.4, 0.22      # folgas da fenda (fenda 20,4 x 2,45 mm)
+COIN_PROTRUDE = 2.0                         # quanto a borda da moeda entra na boca
 HOLE_X0, HOLE_X1 = 2.5, W - 2.5             # boca com 21 mm de largura
-HOLE_Y0, HOLE_Y1 = 12.0, 19.5               # boca com 7,5 mm de altura (tampa tem 6,3)
+HOLE_Y0 = 30.0                              # borda de baixo da boca na parede
+COIN_CY = HOLE_Y0 + COIN_PROTRUDE - COIN_D / 2      # centro da moeda (y = 21,8)
+HOLE_Y1 = HOLE_Y0 + COIN_PROTRUDE + 7.5     # boca útil de 7,5 mm acima da borda da moeda (tampa tem 6,3)
 CAV_X0, CAV_X1 = 2.0, W - 2.0               # cavidade interna 22 mm de largura
-CAV_Y0, CAV_Y1 = HOLE_Y0 - 2.0, HOLE_Y1 + 4.0   # folga para a aba embaixo e para o topo da tampa em cima
-CAV_D = 8.0                                 # profundidade da cavidade atrás da parede (tampa entra até 5 mm)
+CAV_Y0, CAV_Y1 = HOLE_Y0 - 2.0, HOLE_Y1 + 4.0
+CAV_D = 8.0                                 # profundidade da cavidade atrás da parede
 from shapely.geometry import Point, box as sbox
 hole2d = sbox(HOLE_X0, HOLE_Y0, HOLE_X1, HOLE_Y1).buffer(-2, join_style=1).buffer(2, join_style=1)
 hole = extrude_polygon(hole2d, WALL + 0.02)
@@ -161,7 +169,14 @@ cav2d = Polygon([(WALL, CAV_Y0), (WALL + CAV_D, CAV_Y0), (WALL + CAV_D, CAV_Y1 +
 cavity = extrude_polygon(cav2d, CAV_X1 - CAV_X0)
 cavity.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0]))  # X->+Z, Z->-X
 cavity.apply_translation([CAV_X1, 0, 0])
-body = body.difference(hole).difference(cavity)
+# fenda da moeda: disco + canal reto até a base (a moeda sobe por baixo); fica logo atrás da parede
+slot_r = (COIN_D + COIN_CLEAR_D) / 2
+slot_t = COIN_T + COIN_CLEAR_T
+slot2d = Point(W / 2, COIN_CY).buffer(slot_r, 64).union(sbox(W / 2 - slot_r, -1.0, W / 2 + slot_r, COIN_CY))
+coin_slot = extrude_polygon(slot2d, slot_t)
+coin_slot.apply_translation([0, 0, WALL + 0.1])
+assert W / 2 - slot_r >= 2.5, "parede lateral da fenda fina demais"
+body = body.difference(hole).difference(cavity).difference(coin_slot)
 
 # ---------- faixas escuras (topo e base) + argola ----------
 top_band = rbox(W, TOP_BAND, D, 0, H - TOP_BAND, 0)
@@ -171,7 +186,7 @@ ring = cylinder(radius=ring_r_out, height=ring_t, sections=48)
 ring = ring.difference(cylinder(radius=ring_r_in, height=ring_t + 2, sections=48))
 ring.apply_translation([W / 2, H + ring_r_out - 1.5, D / 2])   # plano XY, virada para a frente
 top_band = top_band.union(ring)
-bands = top_band.union(base_band)
+bands = top_band.union(base_band).difference(coin_slot)
 
 # ---------- detalhes em relevo na frente (cor de destaque) ----------
 details = [side_text_mesh]

@@ -1,0 +1,36 @@
+{
+  "name": "@bora/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "dotenv -e ../../.env -- prisma generate && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "dev": "tsc -p tsconfig.json --watch",
+    "prisma": "dotenv -e ../../.env -- prisma",
+    "generate": "dotenv -e ../../.env -- prisma generate",
+    "migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "migrate:reset": "dotenv -e ../../.env -- prisma migrate reset --force",
+    "studio": "dotenv -e ../../.env -- prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.1"
+  },
+  "devDependencies": {
+    "@bora/config": "workspace:*",
+    "@node-rs/argon2": "^2.0.2",
+    "dotenv-cli": "^11.0.0",
+    "prisma": "^6.19.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

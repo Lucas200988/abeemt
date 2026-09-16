@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Borá Carregar</string>
+
+  <!-- Pareamento -->
+  <string name="pareamento_titulo">Parear maquininha</string>
+  <string name="pareamento_instrucao">Digite o código de pareamento gerado no painel (Terminais → Gerar código).</string>
+  <string name="pareamento_hint">Código (8 letras/números)</string>
+  <string name="pareamento_botao">Parear</string>
+  <string name="pareamento_em_andamento">Pareando…</string>
+
+  <!-- Pronta -->
+  <string name="pronta_titulo">Conecte o cabo ao veículo</string>
+  <string name="pronta_subtitulo">Depois toque em iniciar para pagar e carregar</string>
+  <string name="pronta_botao">Iniciar recarga</string>
+  <string name="pronta_preco_kwh">R$ %1$s por kWh</string>
+  <string name="pronta_taxa_conexao">+ R$ %1$s de conexão</string>
+  <string name="pronta_reserva">Reserva no cartão: R$ %1$s — você só paga o que consumir</string>
+  <string name="pronta_indisponivel">Carregador indisponível no momento</string>
+
+  <!-- Cobrança -->
+  <string name="cobranca_titulo">Aproxime ou insira o cartão</string>
+  <string name="cobranca_subtitulo">Reservando R$ %1$s — a cobrança final será só do consumo</string>
+  <string name="cobranca_cancelar">Cancelar</string>
+
+  <!-- Registrando -->
+  <string name="registrando_titulo">Pagamento aprovado</string>
+  <string name="registrando_subtitulo">Liberando o carregador…</string>
+
+  <!-- Carregando -->
+  <string name="carregando_titulo">Carregando</string>
+  <string name="carregando_energia">%1$s kWh</string>
+  <string name="carregando_valor">R$ %1$s</string>
+  <string name="carregando_duracao">%1$s</string>
+  <string name="carregando_botao_encerrar">Encerrar recarga</string>
+  <string name="carregando_encerrando">Encerrando…</string>
+
+  <!-- Encerrada -->
+  <string name="encerrada_titulo">Recarga encerrada</string>
+  <string name="encerrada_resumo_energia">Energia: %1$s kWh</string>
+  <string name="encerrada_resumo_valor">Valor: R$ %1$s</string>
+  <string name="encerrada_aviso_captura">A cobrança no cartão é feita após a leitura final do medidor.</string>
+  <string name="encerrada_botao_nova">Nova recarga</string>
+
+  <!-- Erro -->
+  <string name="erro_titulo">Algo deu errado</string>
+  <string name="erro_botao_tentar">Tentar de novo</string>
+  <string name="erro_rede">Sem conexão com o servidor. Verifique a internet do equipamento.</string>
+  <string name="erro_pagamento_recusado">Pagamento recusado. Nada foi cobrado.</string>
+  <string name="erro_pareamento">Código inválido ou expirado. Gere outro no painel.</string>
+</resources>

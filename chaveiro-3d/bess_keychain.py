@@ -261,5 +261,9 @@ import json
 out = {}
 for name, m in parts.items():
     out[name] = {"v": np.round(m.vertices, 3).flatten().tolist(), "f": m.faces.flatten().tolist()}
+# moeda na posição de uso (só para o visualizador; não vai para o STL nem para o 3MF)
+coin = cylinder(radius=COIN_D / 2, height=COIN_T, sections=64)
+coin.apply_translation([W / 2, COIN_CY, WALL + 0.1 + COIN_CLEAR_T / 2 + COIN_T / 2])
+out["moeda"] = {"v": np.round(coin.vertices, 3).flatten().tolist(), "f": coin.faces.flatten().tolist()}
 open("mesh_data.js", "w").write("const MESH_DATA=" + json.dumps(out, separators=(",", ":")) + ";")
 print("arquivos gravados")

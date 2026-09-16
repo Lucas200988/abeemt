@@ -170,6 +170,7 @@
   .part .chip.body { background: var(--chip-body); }
   .part .chip.band { background: var(--chip-band); }
   .part .chip.detail { background: var(--chip-detail); }
+  .part .chip.coin { background: #b87333; }
   .part .name { flex: 1; }
   .part .vol { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
   .part[aria-pressed="false"] { opacity: 0.45; }
@@ -211,6 +212,7 @@
         <button type="button" data-view="side" aria-pressed="false">Lateral direita</button>
         <button type="button" data-view="iso" aria-pressed="false">Perspectiva</button>
         <button type="button" data-view="opener" aria-pressed="false">Abridor (atrás)</button>
+        <button type="button" data-view="coin" aria-pressed="false">Moeda (raio-X)</button>
       </div>
     </section>
 
@@ -225,6 +227,9 @@
         </button>
         <button type="button" class="part" data-part="detalhes_relevo" aria-pressed="true">
           <span class="chip detail"></span><span class="name">Textos, emblema, botão e alças</span><span class="vol">0,5 cm³</span>
+        </button>
+        <button type="button" class="part" data-part="moeda" aria-pressed="true">
+          <span class="chip coin"></span><span class="name">Moeda de 10 centavos (não imprime)</span><span class="vol">Ø 20 mm</span>
         </button>
       </div>
       <p class="note" style="margin-top:8px">Toque numa peça para ocultar e ver o que está por baixo.</p>
@@ -254,6 +259,7 @@
 
     <section>
       <label class="toggle"><input type="checkbox" id="bed" checked> Mostrar mesa de impressão</label>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="xray"> Corpo transparente (ver a moeda e a cavidade)</label>
     </section>
 
     <p class="note foot">A peça imprime em pé, apoiada na base, como está sobre a mesa aqui. Sem suportes: o teto da cavidade do abridor é inclinado a 45° e a borda de cima da boca é uma ponte de 21 mm. Abridor: uma moeda de 10 centavos atual (20 × 2,23 mm) entra pela fenda na base e fica colada atrás da parede, com a borda sobrando 2 mm na boca. A tampa entra de lado 3 a 5 mm, a moeda engancha sob a aba e a borda de cima apoia no topo; segure pela base e puxe para longe da garrafa. Camada de 0,12 a 0,16 mm deixa os textos mais nítidos. Para o abridor aguentar, use 4 paredes e 30% de preenchimento, em PETG ou PLA.</p>
@@ -302,7 +308,8 @@ __MESH_DATA__
   const materials = {
     corpo_branco: new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.55, metalness: 0.05, flatShading: true }),
     faixas_escuras: new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.6, metalness: 0.1, flatShading: true }),
-    detalhes_relevo: new THREE.MeshStandardMaterial({ color: 0xff8a65, roughness: 0.5, metalness: 0.05, flatShading: true })
+    detalhes_relevo: new THREE.MeshStandardMaterial({ color: 0xff8a65, roughness: 0.5, metalness: 0.05, flatShading: true }),
+    moeda: new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.35, metalness: 0.7, flatShading: true })
   };
   const model = new THREE.Group();
   const parts = {};
@@ -359,6 +366,7 @@ __MESH_DATA__
     side: { theta: Math.PI / 2, phi: Math.PI / 2 },
     left: { theta: -Math.PI / 2, phi: Math.PI / 2 },
     opener: { theta: Math.PI + 0.3, phi: 1.45 },
+    coin: { theta: Math.PI + 0.7, phi: 1.35 },
     iso: { theta: 0.65, phi: 1.2 }
   };
   let tween = null;
@@ -442,6 +450,7 @@ __MESH_DATA__
     b.addEventListener('click', function () {
       viewButtons.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
       goTo(views[b.dataset.view]);
+      if (b.dataset.view === 'coin') { xray.checked = true; setXray(true); }
     });
   });
   document.querySelectorAll('[data-part]').forEach(function (b) {
@@ -451,6 +460,15 @@ __MESH_DATA__
       parts[b.dataset.part].visible = on;
     });
   });
+  const xray = document.getElementById('xray');
+  function setXray(on) {
+    ['corpo_branco', 'faixas_escuras'].forEach(function (n) {
+      const m = parts[n].material;
+      m.transparent = on; m.opacity = on ? 0.28 : 1; m.depthWrite = !on; m.needsUpdate = true;
+    });
+    parts.moeda.renderOrder = on ? 2 : 0;
+  }
+  xray.addEventListener('change', function () { setXray(xray.checked); });
   const bedToggle = document.getElementById('bed');
   bedToggle.addEventListener('change', function () { bed.visible = bedToggle.checked; });
 

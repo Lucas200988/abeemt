@@ -234,28 +234,39 @@ def mesh_xml(obj_id, name, m):
     return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
             f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
-objs = "".join(mesh_xml(i + 1, name, m) for i, (name, m) in enumerate(export_parts.items()))
-comps = "".join(f'<component objectid="{i + 1}"/>' for i in range(len(parts)))
-assembly_id = len(parts) + 1
-model_xml = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-    '<metadata name="Title">Chaveiro Fórum BESS 2026</metadata>'
-    f'<resources>{objs}'
-    f'<object id="{assembly_id}" name="chaveiro_forum_bess_2026" type="model"><components>{comps}</components></object>'
-    f'</resources><build><item objectid="{assembly_id}"/></build></model>'
-)
-content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
-    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-    '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
-rels = ('<?xml version="1.0" encoding="UTF-8"?>'
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    '<Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-with zipfile.ZipFile("chaveiro_forum_bess_2026_multicor.3mf", "w", zipfile.ZIP_DEFLATED) as zf:
-    zf.writestr("[Content_Types].xml", content_types)
-    zf.writestr("_rels/.rels", rels)
-    zf.writestr("3D/3dmodel.model", model_xml)
+def write_3mf(filename, part_dict, title):
+    """3MF básico: um objeto com uma parte por entrada de part_dict (malhas já com Z para cima)."""
+    objs = "".join(mesh_xml(i + 1, name, m) for i, (name, m) in enumerate(part_dict.items()))
+    comps = "".join(f'<component objectid="{i + 1}"/>' for i in range(len(part_dict)))
+    assembly_id = len(part_dict) + 1
+    model_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
+        f'<metadata name="Title">{escape(title)}</metadata>'
+        f'<resources>{objs}'
+        f'<object id="{assembly_id}" name="chaveiro_forum_bess_2026" type="model"><components>{comps}</components></object>'
+        f'</resources><build><item objectid="{assembly_id}"/></build></model>'
+    )
+    content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
+    rels = ('<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+    with zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels)
+        zf.writestr("3D/3dmodel.model", model_xml)
+
+# 3 cores: corpo, faixas, detalhes (troca de filamento em quase todas as camadas)
+write_3mf("chaveiro_forum_bess_2026_multicor.3mf", export_parts, "Chaveiro Fórum BESS 2026")
+# 2 cores: textos e detalhes na cor do corpo -> só duas trocas de filamento (base e topo)
+two_color = {
+    "1_branco_corpo_e_textos": trimesh.util.concatenate([export_parts["corpo_branco"], export_parts["detalhes_relevo"]]),
+    "2_cinza_escuro_faixas": export_parts["faixas_escuras"],
+}
+write_3mf("chaveiro_forum_bess_2026_2cores.3mf", two_color, "Chaveiro Fórum BESS 2026 (2 cores)")
 
 import json
 out = {}

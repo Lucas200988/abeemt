@@ -1,0 +1,6 @@
+# Intermediários gerados pelos scripts de modelagem 3D.
+# Os geradores (.py) e os arquivos de impressão (.stl, .3mf) são versionados;
+# estes são recriados a cada execução.
+mesh_data*.js
+ccr_shape.pkl
+__pycache__/

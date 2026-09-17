@@ -230,15 +230,19 @@ plate = profile_prism(rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0),
 # simplify tira o vértice colinear que o buffer deixa na parede do rebaixo
 # (ele virava uma face de área zero na malha exportada)
 plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1).simplify(0.001), -0.8, 0.01))
+# Menos palavras, letras maiores: o que deixava a escrita ilegível era a altura
+# de letra apertada por muitas linhas, não o relevo. A faixa de trás passou de
+# três linhas de 3,2/3,4 mm para uma única linha bem maior.
 plate_marks = trimesh.util.concatenate([
     # faixa da frente: o homenageado
-    lying_text("CCR MONTAGENS INDUSTRIAIS", 3.2, 40.0, 76),
-    lying_text("FÓRUM BESS 2026", 3.4, 47.5, 76),
-    # faixa de trás: quem homenageia
-    lying_emblem(9.0, -21.0),
-    lying_text("HOMENAGEM DA ABEE-MT", 3.4, -13.0, 76, back=True),
-    lying_text("ENGENHEIROS ELETRICISTAS", 3.2, -8.0, 76, back=True),
-    lying_text("DE MATO GROSSO", 3.2, -3.2, 76, back=True),
+    lying_text("CCR MONTAGENS INDUSTRIAIS", 4.0, 38.5, 72),
+    lying_text("FÓRUM BESS 2026", 5.2, 47.0, 72),
+    # faixa de trás: quem homenageia. Duas linhas curtas em vez de uma longa:
+    # numa linha só, "HOMENAGEM ABEE-MT" bate no limite de largura da placa e a
+    # letra cai para 4,7 mm; quebrada em duas, sobe para 6 mm.
+    lying_emblem(9.0, -21.3),
+    lying_text("ABEE-MT", 6.5, -12.05, 72, back=True),
+    lying_text("HOMENAGEM", 5.5, -4.55, 72, back=True),
 ])
 
 # ---------- exportação ----------

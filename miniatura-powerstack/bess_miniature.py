@@ -147,7 +147,10 @@ cap = cap_plate.union(cap_lip)
 bar_w, bar_h, bar_d = W - 12.0, 0.8, 0.5
 bar_cut = rbox(bar_w, bar_h, bar_d + 0.01, 6.0, BODY_TOP + 0.85, D - bar_d)
 cap = cap.difference(bar_cut)
-light_bar = rbox(bar_w, bar_h, bar_d, 6.0, BODY_TOP + 0.85, D - bar_d)
+# a tira cresce SINK para cada lado e para dentro: encostada no canal ela teria
+# faces exatamente coincidentes com a tampa, que é o que gera "região flutuante"
+light_bar = rbox(bar_w + 2 * SINK, bar_h + 2 * SINK, bar_d + SINK,
+                 6.0 - SINK, BODY_TOP + 0.85 - SINK, D - bar_d - SINK)
 
 # ---------- detalhes em relevo na frente ----------
 gray, red, blue = [], [], []
@@ -173,7 +176,9 @@ details_blue = trimesh.util.concatenate(blue)
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
 plate2d = rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0)
 plate = profile_prism(plate2d, -PLATE_T, 0)
-seat = profile_prism(outer2d.buffer(0.2, join_style=1), -0.6, 0.01)
+# simplify tira o vértice colinear que o buffer deixa na parede do rebaixo
+# (ele virava uma face de área zero na malha exportada)
+seat = profile_prism(outer2d.buffer(0.2, join_style=1).simplify(0.001), -0.6, 0.01)
 plate = plate.difference(seat)
 plate_text = text_flat("FÓRUM BESS 2026 ABEE-MT", 3.5, 1.5, max_width=76)
 plate_text.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))  # deita no plano XZ, relevo em +Y

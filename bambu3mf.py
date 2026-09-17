@@ -90,7 +90,23 @@ def place_in_rows(objects, rows, gap=12.0):
     return objects
 
 
+def _clean(mesh):
+    """Solda vértices coincidentes e joga fora faces de área zero.
+
+    Booleanos e cantos arredondados deixam algumas faces degeneradas. Fatiador
+    costuma consertar em silêncio, mas gravar limpo é mais barato que contar
+    com o conserto."""
+    m = mesh.copy()
+    m.merge_vertices()
+    m.update_faces(m.nondegenerate_faces())
+    m.update_faces(m.unique_faces())
+    m.remove_unreferenced_vertices()
+    assert m.is_watertight, "malha deixou de ser fechada na limpeza"
+    return m
+
+
 def _mesh_xml(obj_id, name, mesh, pindex, precision):
+    mesh = _clean(mesh)
     v = "".join(f'<vertex x="{x:.{precision}f}" y="{y:.{precision}f}" z="{z:.{precision}f}"/>'
                 for x, y, z in mesh.vertices)
     t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>'

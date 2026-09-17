@@ -227,7 +227,9 @@ detail_dark = trimesh.util.concatenate(dark)
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
 plate = profile_prism(rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0), -PLATE_T, 0)
-plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1), -0.8, 0.01))
+# simplify tira o vértice colinear que o buffer deixa na parede do rebaixo
+# (ele virava uma face de área zero na malha exportada)
+plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1).simplify(0.001), -0.8, 0.01))
 plate_marks = trimesh.util.concatenate([
     # faixa da frente: o homenageado
     lying_text("CCR MONTAGENS INDUSTRIAIS", 3.2, 40.0, 76),

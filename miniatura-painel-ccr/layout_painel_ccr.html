@@ -1,0 +1,323 @@
+<title>Maquete Painel CCR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#EDF1F5; --card:#FFFFFF; --ink:#13202B; --ink2:#51606D; --ink3:#7C8B99;
+    --rule:#C7D1DA; --rule2:#DFE6EC; --accent:#1F6FB2; --alert:#C2352F;
+    --mat-white:#E7EAE9; --mat-dark:#3B4147; --mat-blue:#2B7FC4; --mat-red:#C9312E; --mat-orange:#E8712B;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0C151D; --card:#121E28; --ink:#E4ECF3; --ink2:#AEBECB; --ink3:#7D8F9D;
+      --rule:#273947; --rule2:#1B2A36; --accent:#63AEE8; --alert:#E8736D;
+      --mat-white:#E7EAE9; --mat-dark:#585F66; --mat-blue:#4CA0E0; --mat-red:#D4544F; --mat-orange:#E8894C;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0C151D; --card:#121E28; --ink:#E4ECF3; --ink2:#AEBECB; --ink3:#7D8F9D;
+    --rule:#273947; --rule2:#1B2A36; --accent:#63AEE8; --alert:#E8736D;
+    --mat-white:#E7EAE9; --mat-dark:#585F66; --mat-blue:#4CA0E0; --mat-red:#D4544F; --mat-orange:#E8894C;
+    color-scheme:dark;
+  }
+
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.55;}
+  .sheet{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:32px 56px;
+         display:flex;flex-direction:column;gap:38px;}
+
+  .eyebrow{font-family:"Barlow Condensed",sans-serif;font-size:14px;font-weight:600;letter-spacing:.14em;
+           text-transform:uppercase;color:var(--accent);margin:0 0 6px;}
+  h1{font-family:"Barlow Condensed",sans-serif;font-size:clamp(30px,5vw,44px);font-weight:700;
+     letter-spacing:.005em;line-height:1.02;margin:0;text-wrap:balance;}
+  h2{font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.16em;
+     text-transform:uppercase;color:var(--ink2);margin:0 0 14px;
+     padding-bottom:7px;border-bottom:1px solid var(--rule);}
+  h3{font-family:"Barlow Condensed",sans-serif;font-size:16px;font-weight:600;letter-spacing:.06em;
+     text-transform:uppercase;margin:0 0 4px;}
+  p{margin:0;}
+  .lede{color:var(--ink2);max-width:62ch;margin-top:10px;}
+
+  .specs{display:flex;flex-wrap:wrap;gap:0;margin:22px 0 0;border-top:1px solid var(--rule);}
+  .specs div{flex:1 1 150px;padding:11px 16px 11px 0;border-bottom:1px solid var(--rule2);}
+  .specs dt{font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.12em;
+            text-transform:uppercase;color:var(--ink3);margin:0;}
+  .specs dd{margin:1px 0 0;font-family:"IBM Plex Mono",monospace;font-size:15px;font-variant-numeric:tabular-nums;}
+
+  .views{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;}
+  figure{margin:0;background:var(--card);border:1px solid var(--rule);border-radius:3px;
+         padding:14px 16px 10px;flex:1 1 210px;}
+  figure svg{display:block;width:100%;height:auto;margin-inline:auto;}
+  figcaption{font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.12em;
+             text-transform:uppercase;color:var(--ink2);margin-top:8px;
+             padding-top:7px;border-top:1px solid var(--rule2);}
+
+  .key{list-style:none;margin:20px 0 0;padding:0;display:grid;
+       grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:7px 22px;}
+  .key li{display:flex;gap:9px;align-items:baseline;font-size:14px;color:var(--ink2);}
+  .key b{flex:none;width:19px;height:19px;border-radius:50%;background:var(--accent);color:var(--card);
+         font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;
+         display:grid;place-items:center;align-self:flex-start;margin-top:2px;}
+
+  .plate-wrap{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;}
+  .plate-wrap figure{flex:1 1 300px;}
+  .wording{flex:1 1 280px;display:flex;flex-direction:column;gap:18px;}
+  .face{border-left:2px solid var(--accent);padding-left:14px;}
+  .face .lbl{font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.14em;
+             text-transform:uppercase;color:var(--ink3);}
+  .face ul{margin:5px 0 0;padding:0;list-style:none;}
+  .face li{display:flex;justify-content:space-between;gap:14px;padding:3px 0;
+           border-bottom:1px dotted var(--rule);font-size:14px;}
+  .face li span:last-child{font-family:"IBM Plex Mono",monospace;color:var(--ink3);font-size:12.5px;
+           white-space:nowrap;font-variant-numeric:tabular-nums;}
+
+  .opts{display:flex;flex-wrap:wrap;gap:18px;}
+  .opt{flex:1 1 300px;background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:16px 18px 18px;}
+  .opt.pick{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
+  .opt .tag{font-family:"Barlow Condensed",sans-serif;font-size:12px;letter-spacing:.12em;
+            text-transform:uppercase;color:var(--ink3);}
+  .opt.pick .tag{color:var(--accent);}
+  .swatches{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .swatches li{display:flex;gap:10px;align-items:baseline;font-size:13.5px;color:var(--ink2);}
+  .swatches i{flex:none;width:15px;height:15px;border-radius:2px;border:1px solid rgba(0,0,0,.22);align-self:flex-start;margin-top:2px;}
+  .tile{margin-top:14px;border:1px solid var(--rule2);border-radius:2px;overflow:hidden;}
+  .tile svg{display:block;width:100%;height:auto;}
+
+  .asks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .asks li{display:flex;gap:12px;font-size:15px;color:var(--ink2);}
+  .asks b{flex:none;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--alert);
+          border:1px solid var(--alert);border-radius:2px;padding:1px 6px;height:fit-content;margin-top:2px;}
+  .done b{color:var(--accent);border-color:var(--accent);}
+
+  /* desenhos */
+  svg .w{fill:var(--mat-white);} svg .d{fill:var(--mat-dark);color:var(--mat-dark);}
+  svg .b{fill:var(--mat-blue);color:var(--mat-blue);}
+  svg .r{fill:var(--mat-red);} svg .o{fill:var(--mat-orange);color:var(--mat-orange);}
+  svg .e{fill:none;stroke:var(--ink);stroke-width:.4;}
+  svg .t{fill:none;stroke:var(--ink3);stroke-width:.25;}
+  svg .dim{fill:none;stroke:var(--accent);stroke-width:.2;}
+  svg .dimt{fill:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:3.4px;}
+  svg .cal{fill:var(--accent);}
+  svg .calt{fill:var(--card);font-family:"IBM Plex Mono",monospace;font-size:2.7px;}
+  svg .pt{font-family:"DejaVu Sans",Verdana,sans-serif;font-weight:700;}
+</style>
+
+<div class="sheet">
+
+  <header>
+    <p class="eyebrow">Layout para aprovação · revisão A</p>
+    <h1>Maquete Painel Elétrico CCR</h1>
+    <p class="lede">Homenagem da ABEE-MT à CCR Montagens Industriais, patrocinadora do Fórum BESS 2026.
+      Peça de mesa sob cúpula de acrílico, na mesma construção da maquete do BESS: corpo oco, tampa
+      separada e placa de base. Confira o layout antes de eu fechar os arquivos de impressão.</p>
+    <dl class="specs">
+      <div><dt>Escala</dt><dd>1:20</dd></div>
+      <div><dt>Painel real</dt><dd>800 × 2000 × 600</dd></div>
+      <div><dt>Maquete</dt><dd>40 × 100 × 30</dd></div>
+      <div><dt>Placa de base</dt><dd>84 × 84 × 3</dd></div>
+      <div><dt>Altura montada</dt><dd>103 mm</dd></div>
+      <div><dt>Cúpula (interno)</dt><dd>90 × 90 × 110</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Elevações · cotas em milímetros</h2>
+    <div class="views">
+
+      <figure>
+        <svg viewBox="-16 -6 64 124" style="max-width:237px" role="img" aria-label="Vista frontal do painel">
+          <rect class="w" x="0" y="0" width="40" height="100" rx="0.8"/>
+          <rect class="d" x="0" y="0" width="40" height="3"/>
+          <rect class="d" x="0" y="95" width="40" height="5"/>
+          <rect class="t" x="2" y="5" width="36" height="88.5"/>
+          <g class="b"><path transform="translate(6,10.7)" d="M1.95,0.26 L1.37,0.58 L0.7,1.18 L0.26,1.95 L0.0,2.91 L0.0,3.55 L0.26,4.7 L0.64,5.4 L1.5,6.2 L2.65,6.58 L8.28,6.58 L8.53,6.46 L8.95,6.04 L9.08,5.4 L8.82,4.83 L8.47,4.54 L3.04,4.47 L2.59,4.28 L2.3,3.93 L2.17,3.1 L2.37,2.59 L2.91,2.17 L8.34,2.11 L9.01,1.44 L9.08,0.93 L8.95,0.54 L8.15,0.0 L2.97,0.0 L1.95,0.26 Z M10.96,0.64 L10.36,1.25 L9.97,1.89 L9.72,2.72 L9.72,3.8 L9.97,4.76 L10.42,5.53 L11.09,6.14 L12.31,6.58 L17.93,6.58 L18.25,6.46 L18.73,5.85 L18.73,5.21 L18.25,4.6 L18.0,4.47 L12.69,4.47 L12.08,4.06 L11.89,3.68 L11.89,2.97 L12.15,2.46 L12.56,2.17 L18.0,2.11 L18.44,1.85 L18.73,1.37 L18.6,0.48 L17.87,0.0 L12.69,0.0 L11.67,0.26 L10.96,0.64 Z M21.32,0.64 L20.33,1.5 L19.95,2.08 L19.56,3.04 L19.37,4.12 L19.43,5.79 L19.91,6.46 L20.81,6.58 L21.35,6.23 L21.61,5.59 L21.67,3.8 L21.99,3.1 L22.6,2.49 L23.81,2.11 L27.2,2.11 L27.58,1.92 L28.0,1.31 L27.94,0.61 L27.65,0.26 L27.14,0.0 L23.43,0.0 L22.34,0.19 L21.32,0.64 Z"/></g>
+          <rect class="t" x="8" y="25" width="24" height="13"/>
+          <rect class="b" x="8.8" y="25.8" width="22.4" height="11.4"/>
+          <circle class="d" cx="9" cy="47" r="1.8"/><circle class="r" cx="9" cy="47" r="1.25"/>
+          <circle class="d" cx="14" cy="47" r="1.8"/><circle class="t" cx="14" cy="47" r="1.25"/>
+          <circle class="d" cx="19" cy="47" r="1.8"/><circle class="t" cx="19" cy="47" r="1.25"/>
+          <circle class="d" cx="25" cy="47" r="1.6"/>
+          <circle class="d" cx="32" cy="47" r="3.2"/><circle class="r" cx="32" cy="47" r="2.6"/>
+          <rect class="t" x="33" y="54" width="4.5" height="16"/>
+          <rect class="d" x="34.2" y="55.5" width="2.1" height="13"/>
+          <g class="t"><path d="M6 73H30M6 75.6H30M6 78.2H30M6 80.8H30M6 83.4H30M6 86H30M6 88.6H30"/></g>
+          <rect class="d" x="1.4" y="11" width="2.4" height="6"/>
+          <rect class="d" x="1.4" y="45" width="2.4" height="6"/>
+          <rect class="d" x="1.4" y="81" width="2.4" height="6"/>
+          <rect class="e" x="0" y="0" width="40" height="100" rx="0.8"/>
+          <g class="dim">
+            <path d="M-9 0H-5M-9 100H-5M-7 0V100"/>
+            <path d="M0 106V110M40 106V110M0 108H40"/>
+          </g>
+          <text class="dimt" x="-8.2" y="50" transform="rotate(-90,-8.2,50)" text-anchor="middle">100</text>
+          <text class="dimt" x="20" y="113.6" text-anchor="middle">40</text>
+          <g class="dim"><path d="M34 14H43M32 31H43M35.5 47H43M37.5 62H43M30 81H43M3.8 14H-3M7 47H-3M0 97.5H-3M0 1.5H-3"/></g>
+          <g><circle class="cal" cx="44.6" cy="14" r="1.9"/><text class="calt" x="44.6" y="14.9" text-anchor="middle">1</text></g>
+          <g><circle class="cal" cx="44.6" cy="31" r="1.9"/><text class="calt" x="44.6" y="31.9" text-anchor="middle">2</text></g>
+          <g><circle class="cal" cx="44.6" cy="47" r="1.9"/><text class="calt" x="44.6" y="47.9" text-anchor="middle">4</text></g>
+          <g><circle class="cal" cx="44.6" cy="62" r="1.9"/><text class="calt" x="44.6" y="62.9" text-anchor="middle">5</text></g>
+          <g><circle class="cal" cx="44.6" cy="81" r="1.9"/><text class="calt" x="44.6" y="81.9" text-anchor="middle">6</text></g>
+          <g><circle class="cal" cx="-4.6" cy="14" r="1.9"/><text class="calt" x="-4.6" y="14.9" text-anchor="middle">7</text></g>
+          <g><circle class="cal" cx="-4.6" cy="47" r="1.9"/><text class="calt" x="-4.6" y="47.9" text-anchor="middle">3</text></g>
+          <g><circle class="cal" cx="-4.6" cy="97.5" r="1.9"/><text class="calt" x="-4.6" y="98.4" text-anchor="middle">8</text></g>
+          <g><circle class="cal" cx="-4.6" cy="1.5" r="1.9"/><text class="calt" x="-4.6" y="2.4" text-anchor="middle">9</text></g>
+        </svg>
+        <figcaption>Frente</figcaption>
+      </figure>
+
+      <figure>
+        <svg viewBox="-12 -6 54 124" style="max-width:200px" role="img" aria-label="Vista lateral do painel">
+          <rect class="w" x="0" y="0" width="30" height="100" rx="0.8"/>
+          <rect class="d" x="0" y="0" width="30" height="3"/>
+          <rect class="d" x="0" y="95" width="30" height="5"/>
+          <g class="t"><path d="M13.5 8V92"/></g>
+          <rect class="e" x="0" y="0" width="30" height="100" rx="0.8"/>
+          <g class="dim"><path d="M0 106V110M30 106V110M0 108H30"/></g>
+          <text class="dimt" x="15" y="113.6" text-anchor="middle">30</text>
+          <g class="dim"><path d="M13.5 50H36"/></g>
+          <g><circle class="cal" cx="37.6" cy="50" r="1.9"/><text class="calt" x="37.6" y="50.9" text-anchor="middle">10</text></g>
+        </svg>
+        <figcaption>Lateral</figcaption>
+      </figure>
+
+      <figure>
+        <svg viewBox="-8 -6 60 124" style="max-width:222px" role="img" aria-label="Vista traseira do painel">
+          <rect class="w" x="0" y="0" width="40" height="100" rx="0.8"/>
+          <rect class="d" x="0" y="0" width="40" height="3"/>
+          <rect class="d" x="0" y="95" width="40" height="5"/>
+          <rect class="t" x="3" y="6" width="34" height="86"/>
+          <g class="t"><circle cx="6" cy="9" r="0.7"/><circle cx="34" cy="9" r="0.7"/><circle cx="6" cy="89" r="0.7"/><circle cx="34" cy="89" r="0.7"/></g>
+          <rect class="e" x="0" y="0" width="40" height="100" rx="0.8"/>
+          <g class="dim"><path d="M20 48H45M34 89H45"/></g>
+          <g><circle class="cal" cx="46.6" cy="48" r="1.9"/><text class="calt" x="46.6" y="48.9" text-anchor="middle">11</text></g>
+          <g><circle class="cal" cx="46.6" cy="89" r="1.9"/><text class="calt" x="46.6" y="89.9" text-anchor="middle">12</text></g>
+        </svg>
+        <figcaption>Fundo</figcaption>
+      </figure>
+
+    </div>
+
+    <ol class="key">
+      <li><b>1</b><span>Símbolo ccr em relevo, 28 mm de largura, vetorizado do arquivo oficial</span></li>
+      <li><b>2</b><span>Visor da IHM, bolso de 24 × 13 mm com placa embutida</span></li>
+      <li><b>3</b><span>Três sinaleiros com aro e chave seletora</span></li>
+      <li><b>4</b><span>Botão de emergência tipo cogumelo, Ø 5,2 mm</span></li>
+      <li><b>5</b><span>Maçaneta escamoteável embutida, com alavanca</span></li>
+      <li><b>6</b><span>Venezianas de ventilação, sete aletas</span></li>
+      <li><b>7</b><span>Três dobradiças na aresta da porta</span></li>
+      <li><b>8</b><span>Rodapé de 5 mm, equivale aos 100 mm reais</span></li>
+      <li><b>9</b><span>Teto: peça separada, encaixa por aba interna de 4 mm</span></li>
+      <li><b>10</b><span>Emenda dos painéis laterais</span></li>
+      <li><b>11</b><span>Contorno da chapa de fecho traseira</span></li>
+      <li><b>12</b><span>Parafusos de fixação nos quatro cantos</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Placa de base · planta</h2>
+    <div class="plate-wrap">
+      <figure>
+        <svg viewBox="-6 -6 100 106" role="img" aria-label="Planta da placa de base com os textos">
+          <rect class="d" x="0" y="0" width="84" height="84" rx="4"/>
+          <rect class="w" x="22" y="27" width="40" height="30"/>
+          <rect class="t" x="22" y="27" width="40" height="30"/>
+          <g class="o">
+            <circle cx="42" cy="6.8" r="4.0" fill="none" stroke="currentColor" stroke-width="0.8"/>
+            <path d="M42.3 4.0 L39.6 7.48 L41.52 7.48 L40.8 10.0 L44.4 6.52 L42.48 6.52 L43.2 4.0 Z"/>
+            <text class="pt" x="42" y="16.0" text-anchor="middle" font-size="4.4">HOMENAGEM DA ABEE-MT</text>
+            <text class="pt" x="42" y="20.8" text-anchor="middle" font-size="2.74">ENGENHEIROS ELETRICISTAS DE MATO GROSSO</text>
+            <text class="pt" x="42" y="25.0" text-anchor="middle" font-size="2.74">FÓRUM BESS 2026</text>
+            <text class="pt" x="42" y="68.5" text-anchor="middle" font-size="4.11">CCR MONTAGENS INDUSTRIAIS</text>
+            <text class="pt" x="42" y="75.5" text-anchor="middle" font-size="3.01">PAINÉIS ELÉTRICOS E AUTOMAÇÃO</text>
+          </g>
+          <g class="dim"><path d="M0 88V92M84 88V92M0 90H84M88 27H92M88 57H92M90 27V57"/></g>
+          <text class="dimt" x="42" y="95.6" text-anchor="middle">84</text>
+          <text class="dimt" x="89.2" y="42" transform="rotate(-90,89.2,42)" text-anchor="middle">30</text>
+        </svg>
+        <figcaption>Vista de cima · painel assentado no rebaixo central</figcaption>
+      </figure>
+
+      <div class="wording">
+        <div class="face">
+          <p class="lbl">Faixa da frente · o homenageado</p>
+          <ul>
+            <li><span>CCR MONTAGENS INDUSTRIAIS</span><span>alt. 3,0</span></li>
+            <li><span>PAINÉIS ELÉTRICOS E AUTOMAÇÃO</span><span>alt. 2,2</span></li>
+          </ul>
+        </div>
+        <div class="face">
+          <p class="lbl">Faixa de trás · quem homenageia</p>
+          <ul>
+            <li><span>Emblema da ABEE-MT</span><span>Ø 9,0</span></li>
+            <li><span>HOMENAGEM DA ABEE-MT</span><span>alt. 3,2</span></li>
+            <li><span>ENGENHEIROS ELETRICISTAS DE MATO GROSSO</span><span>alt. 2,0</span></li>
+            <li><span>FÓRUM BESS 2026</span><span>alt. 2,0</span></li>
+          </ul>
+        </div>
+        <p style="font-size:13.5px;color:var(--ink3)">O texto está desenhado na fonte que vai para a impressão,
+          então a largura na planta é a largura real. A faixa de trás se lê girando a peça.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Filamentos · quatro canais do AMS</h2>
+    <div class="opts">
+
+      <div class="opt pick">
+        <p class="tag">Opção A · recomendada</p>
+        <h3>Os mesmos quatro rolos do BESS</h3>
+        <p style="font-size:13.5px;color:var(--ink2);margin-top:4px">Uma compra só atende as duas maquetes.
+          O símbolo da CCR sai em grafite sobre a porta branca, e o laranja do Fórum fica nos textos da placa.</p>
+        <ul class="swatches">
+          <li><i style="background:#E7EAE9"></i><span><b>Branco</b> · corpo do painel</span></li>
+          <li><i style="background:#3B4147"></i><span><b>Grafite</b> · rodapé, teto, placa, ferragens e o símbolo ccr</span></li>
+          <li><i style="background:#E8712B"></i><span><b>Laranja</b> · emblema e textos da placa</span></li>
+          <li><i style="background:#C9312E"></i><span><b>Vermelho</b> · botão de emergência e sinaleiro</span></li>
+        </ul>
+        <div class="tile">
+          <svg viewBox="0 0 40 20" role="img" aria-label="Porta com o símbolo em grafite">
+            <rect class="w" x="0" y="0" width="40" height="20"/>
+            <g class="d"><path transform="translate(7.4,6.6) scale(0.9)" d="M1.95,0.26 L1.37,0.58 L0.7,1.18 L0.26,1.95 L0.0,2.91 L0.0,3.55 L0.26,4.7 L0.64,5.4 L1.5,6.2 L2.65,6.58 L8.28,6.58 L8.53,6.46 L8.95,6.04 L9.08,5.4 L8.82,4.83 L8.47,4.54 L3.04,4.47 L2.59,4.28 L2.3,3.93 L2.17,3.1 L2.37,2.59 L2.91,2.17 L8.34,2.11 L9.01,1.44 L9.08,0.93 L8.95,0.54 L8.15,0.0 L2.97,0.0 L1.95,0.26 Z M10.96,0.64 L10.36,1.25 L9.97,1.89 L9.72,2.72 L9.72,3.8 L9.97,4.76 L10.42,5.53 L11.09,6.14 L12.31,6.58 L17.93,6.58 L18.25,6.46 L18.73,5.85 L18.73,5.21 L18.25,4.6 L18.0,4.47 L12.69,4.47 L12.08,4.06 L11.89,3.68 L11.89,2.97 L12.15,2.46 L12.56,2.17 L18.0,2.11 L18.44,1.85 L18.73,1.37 L18.6,0.48 L17.87,0.0 L12.69,0.0 L11.67,0.26 L10.96,0.64 Z M21.32,0.64 L20.33,1.5 L19.95,2.08 L19.56,3.04 L19.37,4.12 L19.43,5.79 L19.91,6.46 L20.81,6.58 L21.35,6.23 L21.61,5.59 L21.67,3.8 L21.99,3.1 L22.6,2.49 L23.81,2.11 L27.2,2.11 L27.58,1.92 L28.0,1.31 L27.94,0.61 L27.65,0.26 L27.14,0.0 L23.43,0.0 L22.34,0.19 L21.32,0.64 Z"/></g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="tag">Opção B</p>
+        <h3>Um rolo azul a mais</h3>
+        <p style="font-size:13.5px;color:var(--ink2);margin-top:4px">Fiel à marca da CCR. São cinco rolos no total
+          e uma troca no AMS entre uma maquete e outra, já que o painel não usa laranja.</p>
+        <ul class="swatches">
+          <li><i style="background:#E7EAE9"></i><span><b>Branco</b> · corpo do painel</span></li>
+          <li><i style="background:#3B4147"></i><span><b>Grafite</b> · rodapé, teto, placa e ferragens</span></li>
+          <li><i style="background:#2B7FC4"></i><span><b>Azul CCR</b> · símbolo, visor e textos da placa</span></li>
+          <li><i style="background:#C9312E"></i><span><b>Vermelho</b> · botão de emergência e sinaleiro</span></li>
+        </ul>
+        <div class="tile">
+          <svg viewBox="0 0 40 20" role="img" aria-label="Porta com o símbolo em azul">
+            <rect class="w" x="0" y="0" width="40" height="20"/>
+            <g class="b"><path transform="translate(7.4,6.6) scale(0.9)" d="M1.95,0.26 L1.37,0.58 L0.7,1.18 L0.26,1.95 L0.0,2.91 L0.0,3.55 L0.26,4.7 L0.64,5.4 L1.5,6.2 L2.65,6.58 L8.28,6.58 L8.53,6.46 L8.95,6.04 L9.08,5.4 L8.82,4.83 L8.47,4.54 L3.04,4.47 L2.59,4.28 L2.3,3.93 L2.17,3.1 L2.37,2.59 L2.91,2.17 L8.34,2.11 L9.01,1.44 L9.08,0.93 L8.95,0.54 L8.15,0.0 L2.97,0.0 L1.95,0.26 Z M10.96,0.64 L10.36,1.25 L9.97,1.89 L9.72,2.72 L9.72,3.8 L9.97,4.76 L10.42,5.53 L11.09,6.14 L12.31,6.58 L17.93,6.58 L18.25,6.46 L18.73,5.85 L18.73,5.21 L18.25,4.6 L18.0,4.47 L12.69,4.47 L12.08,4.06 L11.89,3.68 L11.89,2.97 L12.15,2.46 L12.56,2.17 L18.0,2.11 L18.44,1.85 L18.73,1.37 L18.6,0.48 L17.87,0.0 L12.69,0.0 L11.67,0.26 L10.96,0.64 Z M21.32,0.64 L20.33,1.5 L19.95,2.08 L19.56,3.04 L19.37,4.12 L19.43,5.79 L19.91,6.46 L20.81,6.58 L21.35,6.23 L21.61,5.59 L21.67,3.8 L21.99,3.1 L22.6,2.49 L23.81,2.11 L27.2,2.11 L27.58,1.92 L28.0,1.31 L27.94,0.61 L27.65,0.26 L27.14,0.0 L23.43,0.0 L22.34,0.19 L21.32,0.64 Z"/></g>
+          </svg>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Nesta revisão</h2>
+    <ul class="asks done">
+      <li><b>OK</b><span>A placa passa a dizer <strong>CCR Montagens Industriais</strong>, e não CCR Engenharia.</span></li>
+      <li><b>OK</b><span>A ABEE-MT entra na faixa de trás, com emblema e a frase de homenagem.</span></li>
+      <li><b>OK</b><span>O corpo passa de cinza claro para o mesmo branco da maquete do BESS.</span></li>
+    </ul>
+    <ul class="asks" style="margin-top:16px">
+      <li><b>?</b><span>Fechar a cor do símbolo da CCR: grafite na opção A ou azul na opção B.</span></li>
+      <li><b>?</b><span>Confirmar a frase da homenagem. Posso trocar por outra redação sua.</span></li>
+      <li><b>?</b><span>Conferir com a CCR se o painel de referência bate com o que eles montam. Usei o padrão de mercado de 800 × 2000 × 600 mm.</span></li>
+    </ul>
+  </section>
+
+</div>

@@ -52,7 +52,7 @@ def profile_prism(shape2d, y0, y1):
     return m
 
 
-def text_flat(txt, cap_height, height, max_width=None, fatten=0.15):
+def text_flat(txt, cap_height, height, max_width=None, fatten=0.20):
     tp = TextPath((0, 0), txt, size=10, prop=FONT)
     polys = [Polygon(p) for p in tp.to_polygons() if len(p) >= 3]
     polys.sort(key=lambda p: p.area, reverse=True)
@@ -151,7 +151,7 @@ light_bar = rbox(bar_w, bar_h, bar_d, 6.0, BODY_TOP + 0.85, D - bar_d)
 
 # ---------- detalhes em relevo na frente ----------
 gray, red, blue = [], [], []
-gray.append(on_front(text_flat("SUNGROW", 3.0, RELIEF, max_width=30), W / 2, 89.5))        # marca
+gray.append(on_front(text_flat("SUNGROW", 3.4, RELIEF, max_width=32), W / 2, 89.5))        # marca
 blue.append(rbox(8.0, 0.8, 0.5, W / 2 - 4, 85.5, D - SINK))                                 # indicador
 gray.append(rbox(1.3, 16.0, 1.2, 4.4, 40.0, D - SINK))                                       # alça
 ring = cylinder(radius=1.8, height=0.6, sections=32).difference(cylinder(radius=1.1, height=0.8, sections=32))
@@ -175,10 +175,10 @@ plate2d = rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0)
 plate = profile_prism(plate2d, -PLATE_T, 0)
 seat = profile_prism(outer2d.buffer(0.2, join_style=1), -0.6, 0.01)
 plate = plate.difference(seat)
-plate_text = text_flat("FÓRUM BESS 2026 · ABEE-MT", 3.0, 0.6, max_width=PLATE_S - 10)
+plate_text = text_flat("FÓRUM BESS 2026 ABEE-MT", 3.5, 0.8, max_width=76)
 plate_text.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))  # deita no plano XZ, relevo em +Y
 plate_text.apply_translation([W / 2, -0.05, D + (pz0 + PLATE_S - D) / 2])
-plate_text2 = text_flat("PowerStack 255CS · 1:25", 2.4, 0.6, max_width=PLATE_S - 10)
+plate_text2 = text_flat("POWERSTACK 255CS 1:25", 3.6, 0.8, max_width=76)
 plate_text2.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
 plate_text2.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]))     # lê-se por trás
 plate_text2.apply_translation([W / 2, -0.05, pz0 / 2])

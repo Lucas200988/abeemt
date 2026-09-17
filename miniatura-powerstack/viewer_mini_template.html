@@ -1,4 +1,4 @@
-<title>Miniatura Painel CCR</title>
+<title>Miniatura PowerStack 1:25</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
 <style>
   :root {
@@ -169,7 +169,7 @@
   }
   .part .chip.body { background: var(--chip-body); }
   .part .chip.band { background: var(--chip-band); }
-  .part .chip.detail { background: #E8712B; }
+  .part .chip.detail { background: var(--chip-detail); }
   .part .chip.gray { background: #8a8f94; }
   .part .chip.red { background: #d32f2f; }
   .part .chip.blue { background: #4db6ac; }
@@ -202,8 +202,8 @@
   <aside class="panel">
     <div>
       <p class="eyebrow">Miniatura · impressão 3D</p>
-      <h1>Painel Elétrico CCR em 1:20</h1>
-      <p class="note" style="margin-top:6px">Homenagem da ABEE-MT à CCR Montagens Industriais. Quadro auto-sustentado de 800 × 2000 × 600 mm com rodapé de 100 mm, em 40 × 100 × 30 mm. Porta limpa, três peças, para cúpula de 90 × 90 × 110 mm.</p>
+      <h1>Sungrow PowerStack 255CS em 1:25</h1>
+      <p class="note" style="margin-top:6px">Gabinete real de 1150 × 2450 × 1610 mm (ST255CS-2H, 125 kW / 257 kWh). Miniatura de 46 × 98 × 64 mm, oca, em três peças, para cúpula de acrílico de 90 × 90 × 110 mm.</p>
     </div>
 
     <section>
@@ -217,28 +217,29 @@
     </section>
 
     <section>
-      <h2>Cores (três filamentos, os mesmos do BESS)</h2>
+      <h2>Cores (4 canais do AMS)</h2>
       <div class="parts">
-        <button type="button" class="part" data-part="branco" aria-pressed="true"><span class="chip body"></span><span class="name">1 · Branco: corpo do painel</span><span class="vol">19,2 cm³</span></button>
-        <button type="button" class="part" data-part="grafite" aria-pressed="true"><span class="chip band"></span><span class="name">2 · Grafite: rodapé, teto, placa, ferragens e o símbolo ccr</span><span class="vol">27,7 cm³</span></button>
-        <button type="button" class="part" data-part="laranja" aria-pressed="true"><span class="chip detail"></span><span class="name">3 · Laranja: emblema da ABEE-MT e textos da placa</span><span class="vol">0,6 cm³</span></button>
+        <button type="button" class="part" data-part="branco" aria-pressed="true"><span class="chip body"></span><span class="name">1 · Branco: corpo</span><span class="vol">29,6 cm³</span></button>
+        <button type="button" class="part" data-part="cinza_escuro" aria-pressed="true"><span class="chip band"></span><span class="name">2 · Cinza escuro: rodapé, tampa, placa, marca, alça</span><span class="vol">34,3 cm³</span></button>
+        <button type="button" class="part" data-part="laranja" aria-pressed="true"><span class="chip detail"></span><span class="name">3 · Laranja: barra de luz, indicador, logo, texto da placa</span><span class="vol">0,1 cm³</span></button>
+        <button type="button" class="part" data-part="vermelho" aria-pressed="true"><span class="chip red"></span><span class="name">4 · Vermelho: botão de emergência</span><span class="vol">&lt; 0,1 cm³</span></button>
       </div>
-      <p class="note" style="margin-top:8px">Toque numa cor para ocultar. Corpo, tampa e placa são três peças separadas no 3MF. Oculte o grafite para ver o interior oco.</p>
+      <p class="note" style="margin-top:8px">Toque numa cor para ocultar. Com só 3 canais, imprima o botão em laranja. Corpo, tampa e placa são três peças separadas no 3MF.</p>
     </section>
 
     <section>
       <h2>Dimensões</h2>
       <dl class="dims">
-        <dt>Painel</dt><dd>40 × 100 × 30 mm</dd>
+        <dt>Gabinete</dt><dd>46 × 98 × 64 mm</dd>
         <dt>Placa de base</dt><dd>84 × 84 × 3 mm</dd>
-        <dt>Altura total na placa</dt><dd>103 mm</dd>
+        <dt>Altura total na placa</dt><dd>101 mm</dd>
         <dt>Cúpula (interno)</dt><dd>90 × 90 × 110 mm</dd>
-        <dt>Escala</dt><dd>1:20</dd>
+        <dt>Escala</dt><dd>1:25</dd>
         <dt>Parede da casca</dt><dd>1,6 mm</dd>
-        <dt>Aba da tampa</dt><dd>4 mm, folga 0,25</dd>
-        <dt>Símbolo ccr</dt><dd>28 × 6,6 mm, em grafite</dd>
-        <dt>Textos da placa</dt><dd>3,2 a 3,4 mm de altura</dd>
-        <dt>Filamento estimado</dt><dd>≈ 60 g no total</dd>
+        <dt>Aba da tampa</dt><dd>3 mm, folga 0,25</dd>
+        <dt>Grade hexagonal</dt><dd>Ø 1,2 mm, 0,5 mm de fundo</dd>
+        <dt>Textos da placa</dt><dd>3,5 e 3,6 mm de altura</dd>
+        <dt>Filamento estimado</dt><dd>≈ 70 g no total</dd>
       </dl>
     </section>
 
@@ -246,7 +247,7 @@
       <label class="toggle"><input type="checkbox" id="bed" checked> Mostrar grade de referência (10 mm)</label>
     </section>
 
-    <p class="note foot">Corpo imprime em pé, aberto em cima, sem suporte. Tampa imprime de cabeça para baixo e encaixa na aba. Placa imprime deitada. Camada de 0,12 mm para o símbolo ccr e os textos da placa saírem nítidos; 4 paredes já são a espessura toda da casca.</p>
+    <p class="note foot">Corpo imprime em pé, aberto em cima, sem suporte. Tampa imprime de cabeça para baixo e encaixa na aba. Placa imprime deitada. Camada de 0,12 mm para os detalhes ficarem nítidos; 4 paredes já são a espessura toda da casca.</p>
   </aside>
 </div>
 
@@ -271,7 +272,7 @@ __MESH_DATA__
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 5000);
 
   // Center of the model (X width, Y height, Z depth; front faces +Z)
-  const center = new THREE.Vector3(20, 50, 15);
+  const center = new THREE.Vector3(23, 47, 32.2);
 
   // Lighting: soft sky + a key light from the front-top-left, plus a rim from behind
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.55));
@@ -290,7 +291,7 @@ __MESH_DATA__
   scene.add(rim);
 
   function mat(c) { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.05, flatShading: true }); }
-  const materials = { branco: mat(0xEDEFEE), grafite: mat(0x33373b), laranja: mat(0xE8712B) };
+  const materials = { branco: mat(0xf2f2f2), cinza_escuro: mat(0x2b2f33), laranja: mat(0xff8a65), vermelho: mat(0xd32f2f) };
   const model = new THREE.Group();
   const parts = {};
   Object.keys(MESH_DATA).forEach(function (name) {

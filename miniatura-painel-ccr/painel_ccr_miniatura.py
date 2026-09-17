@@ -93,7 +93,7 @@ def ccr_mesh(width, height_relief):
     return m
 
 
-def text_flat(txt, cap_height, height, max_width=None, fatten=0.15):
+def text_flat(txt, cap_height, height, max_width=None, fatten=0.20):
     tp = TextPath((0, 0), txt, size=10, prop=FONT)
     polys = sorted((Polygon(p) for p in tp.to_polygons() if len(p) >= 3),
                    key=lambda p: p.area, reverse=True)
@@ -123,7 +123,7 @@ def on_front(m, cx, cy):
     return m
 
 
-def lying_emblem(diam, cz, height=0.6):
+def lying_emblem(diam, cz, height=0.8):
     """Emblema da ABEE-MT deitado na placa: raio dentro de um anel."""
     r_out = diam / 2
     ring = Point(0, 0).buffer(r_out, 64).difference(Point(0, 0).buffer(r_out - 0.9, 64))
@@ -139,7 +139,7 @@ def lying_emblem(diam, cz, height=0.6):
     return m
 
 
-def lying_text(txt, cap, cz, max_width, height=0.6, back=False):
+def lying_text(txt, cap, cz, max_width, height=0.8, back=False):
     """Texto deitado na placa de base, relevo para cima."""
     m = text_flat(txt, cap, height, max_width=max_width)
     m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
@@ -230,13 +230,13 @@ plate = profile_prism(rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0),
 plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1), -0.8, 0.01))
 plate_marks = trimesh.util.concatenate([
     # faixa da frente: o homenageado
-    lying_text("CCR MONTAGENS INDUSTRIAIS", 3.0, 40.0, 74),
-    lying_text("PAINÉIS ELÉTRICOS E AUTOMAÇÃO", 2.2, 47.4, 74),
+    lying_text("CCR MONTAGENS INDUSTRIAIS", 3.2, 40.0, 76),
+    lying_text("FÓRUM BESS 2026", 3.4, 47.5, 76),
     # faixa de trás: quem homenageia
-    lying_emblem(9.0, -20.2),
-    lying_text("HOMENAGEM DA ABEE-MT", 3.2, -12.6, 74, back=True),
-    lying_text("ENGENHEIROS ELETRICISTAS DE MATO GROSSO", 2.0, -7.2, 74, back=True),
-    lying_text("FÓRUM BESS 2026", 2.0, -3.0, 74, back=True),
+    lying_emblem(9.0, -21.0),
+    lying_text("HOMENAGEM DA ABEE-MT", 3.4, -13.0, 76, back=True),
+    lying_text("ENGENHEIROS ELETRICISTAS", 3.2, -8.0, 76, back=True),
+    lying_text("DE MATO GROSSO", 3.2, -3.2, 76, back=True),
 ])
 
 # ---------- exportação ----------

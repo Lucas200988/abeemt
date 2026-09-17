@@ -236,22 +236,35 @@ import zipfile
 from xml.sax.saxutils import escape
 
 
-def mesh_xml(obj_id, name, m):
+# cor de cada parte gravada no próprio arquivo: o Bambu Studio lê displaycolor
+# da seção basematerials e casa cada parte com um filamento do AMS.
+COLOR_HEX = {"cinza_claro": "#EDEFEE", "cinza_escuro": "#33373B",
+             "laranja": "#E8712B", "vermelho": "#C9312E"}
+
+
+def mesh_xml(obj_id, name, m, pindex):
     v = "".join(f'<vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>' for x, y, z in m.vertices)
-    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
-    return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
+    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>' for a, b, c in m.faces)
+    return (f'<object id="{obj_id}" name="{escape(name)}" type="model" '
+            f'pid="1" pindex="{pindex}">'
             f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
 
-def write_3mf(filename, part_dict, title):
-    objs = "".join(mesh_xml(i + 1, n, m) for i, (n, m) in enumerate(part_dict.items()))
-    comps = "".join(f'<component objectid="{i + 1}"/>' for i in range(len(part_dict)))
-    aid = len(part_dict) + 1
+def write_3mf(filename, part_dict, title, colors):
+    """`colors` dá a cor de cada parte, na mesma ordem de part_dict."""
+    assert len(colors) == len(part_dict)
+    basematerials = ('<basematerials id="1">'
+                     + "".join(f'<base name="{escape(c)}" displaycolor="{COLOR_HEX[c]}FF"/>'
+                               for c in colors)
+                     + '</basematerials>')
+    objs = "".join(mesh_xml(i + 2, n, m, i) for i, (n, m) in enumerate(part_dict.items()))
+    comps = "".join(f'<component objectid="{i + 2}"/>' for i in range(len(part_dict)))
+    aid = len(part_dict) + 2
     model = ('<?xml version="1.0" encoding="UTF-8"?>'
              '<model unit="millimeter" xml:lang="en-US" '
              'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
              f'<metadata name="Title">{escape(title)}</metadata>'
-             f'<resources>{objs}'
+             f'<resources>{basematerials}{objs}'
              f'<object id="{aid}" name="chaveiro_painel_ccr" type="model">'
              f'<components>{comps}</components></object>'
              f'</resources><build><item objectid="{aid}"/></build></model>')
@@ -269,13 +282,16 @@ def write_3mf(filename, part_dict, title):
         zf.writestr("3D/3dmodel.model", model)
 
 
-write_3mf("chaveiro_painel_ccr_4cores.3mf", export_parts, "Chaveiro Painel CCR")
+# mesmas 4 cores de filamento das maquetes, para comprar um jogo só
+write_3mf("chaveiro_painel_ccr_4cores.3mf", export_parts, "Chaveiro Painel CCR",
+          ["cinza_claro", "cinza_escuro", "laranja", "vermelho"])
 two = {
     "1_cinza_claro_corpo_e_detalhes": trimesh.util.concatenate(
         [export_parts["1_cinza_claro_corpo"], export_parts["3_azul_ccr"], export_parts["4_vermelho"]]),
     "2_cinza_escuro": export_parts["2_cinza_escuro"],
 }
-write_3mf("chaveiro_painel_ccr_2cores.3mf", two, "Chaveiro Painel CCR (2 cores)")
+write_3mf("chaveiro_painel_ccr_2cores.3mf", two, "Chaveiro Painel CCR (2 cores)",
+          ["cinza_claro", "cinza_escuro"])
 
 import json
 out = {}

@@ -289,13 +289,24 @@ COLOR_GROUPS = {
     "painel_tampa": {"2_grafite": ["tampa_grafite"]},
     "placa_base":   {"2_grafite": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
 }
+# paleta gravada no arquivo: o Bambu Studio lê displaycolor e casa com os filamentos do AMS
+PALETTE = [("1_branco", "Branco", "#EDEFEE"),
+           ("2_grafite", "Grafite", "#33373B"),
+           ("3_laranja", "Laranja", "#E8712B")]
+MAT_ID = 1
+PINDEX = {key: i for i, (key, _, _) in enumerate(PALETTE)}
+basematerials = (f'<basematerials id="{MAT_ID}">'
+                 + "".join(f'<base name="{escape(n)}" displaycolor="{hexc}FF"/>'
+                           for _, n, hexc in PALETTE)
+                 + '</basematerials>')
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 
-def mesh_xml(obj_id, name, m):
+def mesh_xml(obj_id, name, m, pindex):
     v = "".join(f'<vertex x="{x:.3f}" y="{y:.3f}" z="{z:.3f}"/>' for x, y, z in m.vertices)
-    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in m.faces)
-    return (f'<object id="{obj_id}" name="{escape(name)}" type="model">'
+    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>' for a, b, c in m.faces)
+    return (f'<object id="{obj_id}" name="{escape(name)}" type="model" '
+            f'pid="{MAT_ID}" pindex="{pindex}">'
             f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
 
@@ -313,12 +324,12 @@ OBJ_XFORM = {"painel_corpo": (0, 0, 0),
              "painel_tampa": (W + 25, -cb[0][1], -cb[0][2]),
              "placa_base": (-(PLATE_S + 25), 0, PLATE_T)}
 
-objs, next_id, assemblies, items = "", 1, "", ""
+objs, next_id, assemblies, items = "", MAT_ID + 1, "", ""
 for obj, groups in COLOR_GROUPS.items():
     comp_ids = []
     for color, names in groups.items():
         m = trimesh.util.concatenate([placed(n, obj) for n in names])
-        objs += mesh_xml(next_id, f"{obj}__{color}", m)
+        objs += mesh_xml(next_id, f"{obj}__{color}", m, PINDEX[color])
         comp_ids.append(next_id)
         next_id += 1
     tx, ty, tz = OBJ_XFORM[obj]
@@ -334,7 +345,8 @@ model_xml = ('<?xml version="1.0" encoding="UTF-8"?>'
              '<model unit="millimeter" xml:lang="en-US" '
              'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
              '<metadata name="Title">Miniatura Painel CCR 1:20</metadata>'
-             f'<resources>{objs}{assemblies}</resources><build>{items}</build></model>')
+             f'<resources>{basematerials}{objs}{assemblies}</resources>'
+             f'<build>{items}</build></model>')
 content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
                  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
                  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'

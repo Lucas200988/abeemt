@@ -10,7 +10,7 @@ Porta limpa: só o símbolo da CCR. Três filamentos, os mesmos da maquete do BE
 Peças (impressão sem suporte):
   corpo  - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime em pé
   tampa  - teto com aba de encaixe; imprime de cabeça para baixo
-  placa  - base de 84 x 84 x 3 mm com rebaixo e textos; imprime deitada
+  placa  - base de 84 x 84 x 3 mm; textos com 1,5 mm de relevo para ler mesmo em uma cor
 
 Eixos de construção: X = largura, Y = altura, Z = profundidade (frente em +Z).
 Exporta com Z para cima.
@@ -123,7 +123,7 @@ def on_front(m, cx, cy):
     return m
 
 
-def lying_emblem(diam, cz, height=0.8):
+def lying_emblem(diam, cz, height=1.5):
     """Emblema da ABEE-MT deitado na placa: raio dentro de um anel."""
     r_out = diam / 2
     ring = Point(0, 0).buffer(r_out, 64).difference(Point(0, 0).buffer(r_out - 0.9, 64))
@@ -139,7 +139,7 @@ def lying_emblem(diam, cz, height=0.8):
     return m
 
 
-def lying_text(txt, cap, cz, max_width, height=0.8, back=False):
+def lying_text(txt, cap, cz, max_width, height=1.5, back=False):
     """Texto deitado na placa de base, relevo para cima."""
     m = text_flat(txt, cap, height, max_width=max_width)
     m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))

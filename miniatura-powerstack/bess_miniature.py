@@ -175,10 +175,10 @@ plate2d = rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0)
 plate = profile_prism(plate2d, -PLATE_T, 0)
 seat = profile_prism(outer2d.buffer(0.2, join_style=1), -0.6, 0.01)
 plate = plate.difference(seat)
-plate_text = text_flat("FÓRUM BESS 2026 ABEE-MT", 3.5, 0.8, max_width=76)
+plate_text = text_flat("FÓRUM BESS 2026 ABEE-MT", 3.5, 1.5, max_width=76)
 plate_text.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))  # deita no plano XZ, relevo em +Y
 plate_text.apply_translation([W / 2, -0.05, D + (pz0 + PLATE_S - D) / 2])
-plate_text2 = text_flat("POWERSTACK 255CS 1:25", 3.6, 0.8, max_width=76)
+plate_text2 = text_flat("POWERSTACK 255CS 1:25", 3.6, 1.5, max_width=76)
 plate_text2.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
 plate_text2.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]))     # lê-se por trás
 plate_text2.apply_translation([W / 2, -0.05, pz0 / 2])

@@ -279,9 +279,10 @@ print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_st
       f"  medidas={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_painel_ccr_placa.stl")
 
-# ---------- 3MF: três objetos, cada um agrupado em 4 cores ----------
-import zipfile
-from xml.sax.saxutils import escape
+# ---------- 3MF: três objetos, cada peça já no seu filamento ----------
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf
 
 COLOR_GROUPS = {
     "painel_corpo": {"1_branco": ["corpo_branco"],
@@ -289,25 +290,11 @@ COLOR_GROUPS = {
     "painel_tampa": {"2_grafite": ["tampa_grafite"]},
     "placa_base":   {"2_grafite": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
 }
-# paleta gravada no arquivo: o Bambu Studio lê displaycolor e casa com os filamentos do AMS
+# a ordem define o slot de filamento: branco = 1, grafite = 2, laranja = 3
 PALETTE = [("1_branco", "Branco", "#EDEFEE"),
            ("2_grafite", "Grafite", "#33373B"),
            ("3_laranja", "Laranja", "#E8712B")]
-MAT_ID = 1
-PINDEX = {key: i for i, (key, _, _) in enumerate(PALETTE)}
-basematerials = (f'<basematerials id="{MAT_ID}">'
-                 + "".join(f'<base name="{escape(n)}" displaycolor="{hexc}FF"/>'
-                           for _, n, hexc in PALETTE)
-                 + '</basematerials>')
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
-
-
-def mesh_xml(obj_id, name, m, pindex):
-    v = "".join(f'<vertex x="{x:.3f}" y="{y:.3f}" z="{z:.3f}"/>' for x, y, z in m.vertices)
-    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>' for a, b, c in m.faces)
-    return (f'<object id="{obj_id}" name="{escape(name)}" type="model" '
-            f'pid="{MAT_ID}" pindex="{pindex}">'
-            f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
 
 def placed(name, obj):
@@ -320,45 +307,23 @@ def placed(name, obj):
 
 cb = trimesh.util.concatenate([placed(n, "painel_tampa")
                                for g in COLOR_GROUPS["painel_tampa"].values() for n in g]).bounds
+# deslocamento de cada objeto na mesa, embutido nos vértices (sem matriz no 3MF)
 OBJ_XFORM = {"painel_corpo": (0, 0, 0),
              "painel_tampa": (W + 25, -cb[0][1], -cb[0][2]),
              "placa_base": (-(PLATE_S + 25), 0, PLATE_T)}
 
-objs, next_id, assemblies, items = "", MAT_ID + 1, "", ""
+objects = []
 for obj, groups in COLOR_GROUPS.items():
-    comp_ids = []
+    color_parts = []
     for color, names in groups.items():
         m = trimesh.util.concatenate([placed(n, obj) for n in names])
-        objs += mesh_xml(next_id, f"{obj}__{color}", m, PINDEX[color])
-        comp_ids.append(next_id)
-        next_id += 1
-    tx, ty, tz = OBJ_XFORM[obj]
-    comps = "".join(
-        f'<component objectid="{i}" transform="1 0 0 0 1 0 0 0 1 {tx:.3f} {ty:.3f} {tz:.3f}"/>'
-        for i in comp_ids)
-    assemblies += (f'<object id="{next_id}" name="{obj}" type="model">'
-                   f'<components>{comps}</components></object>')
-    items += f'<item objectid="{next_id}"/>'
-    next_id += 1
+        m.apply_translation(OBJ_XFORM[obj])
+        color_parts.append((color, m))
+    objects.append((obj, color_parts))
 
-model_xml = ('<?xml version="1.0" encoding="UTF-8"?>'
-             '<model unit="millimeter" xml:lang="en-US" '
-             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-             '<metadata name="Title">Miniatura Painel CCR 1:20</metadata>'
-             f'<resources>{basematerials}{objs}{assemblies}</resources>'
-             f'<build>{items}</build></model>')
-content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
-                 '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-                 '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-                 '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
-rels = ('<?xml version="1.0" encoding="UTF-8"?>'
-        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
-        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-with zipfile.ZipFile("miniatura_painel_ccr_multicor.3mf", "w", zipfile.ZIP_DEFLATED) as zf:
-    zf.writestr("[Content_Types].xml", content_types)
-    zf.writestr("_rels/.rels", rels)
-    zf.writestr("3D/3dmodel.model", model_xml)
+slots = write_3mf("miniatura_painel_ccr_multicor.3mf", "Miniatura Painel CCR 1:20",
+                  objects, PALETTE)
+print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 
 # ---------- dados para o visualizador (Y para cima, montado) ----------
 import json

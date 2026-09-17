@@ -227,11 +227,12 @@ plate_stl.merge_vertices()
 print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_stl.volume:8.0f} mm³  extents={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_powerstack_placa.stl")
 
-# 3MF multicor: três objetos, cada um com partes agrupadas em 4 cores (AMS de 4 canais)
-#   1_branco: corpo | 2_cinza_escuro: rodapé, marca, alça, anel, tampa, placa
-#   3_laranja: barra de luz, indicador, logo do rodapé, texto da placa | 4_vermelho: botão
-import zipfile
-from xml.sax.saxutils import escape
+# 3MF: três objetos, cada peça já no seu filamento (4 slots)
+#   1 branco: corpo | 2 grafite: rodapé, marca, alça, anel, tampa, placa
+#   3 laranja: barra de luz, indicador, logo do rodapé, texto da placa | 4 vermelho: botão
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf
 
 COLOR_GROUPS = {
     "powerstack_corpo": {"1_branco": ["corpo_branco"], "2_cinza_escuro": ["rodape_escuro", "detalhes_cinza"],
@@ -239,26 +240,13 @@ COLOR_GROUPS = {
     "powerstack_tampa": {"2_cinza_escuro": ["tampa_escura"], "3_laranja": ["barra_luz_laranja"]},
     "placa_base":       {"2_cinza_escuro": ["placa_base"], "3_laranja": ["texto_placa"]},
 }
-OBJ_XFORM = {"powerstack_corpo": (0, 0, 0), "powerstack_tampa": None, "placa_base": (-(PLATE_S + 20), 0, PLATE_T)}
-# paleta gravada no arquivo: o Bambu Studio lê displaycolor e casa com os filamentos do AMS
+# a ordem define o slot de filamento
 PALETTE = [("1_branco", "Branco", "#EDEFEE"),
            ("2_cinza_escuro", "Grafite", "#33373B"),
            ("3_laranja", "Laranja", "#E8712B"),
            ("4_vermelho", "Vermelho", "#C9312E")]
-MAT_ID = 1
-PINDEX = {key: i for i, (key, _, _) in enumerate(PALETTE)}
-basematerials = (f'<basematerials id="{MAT_ID}">'
-                 + "".join(f'<base name="{escape(n)}" displaycolor="{hexc}FF"/>'
-                           for _, n, hexc in PALETTE)
-                 + '</basematerials>')
+OBJ_XFORM = {"powerstack_corpo": (0, 0, 0), "powerstack_tampa": None, "placa_base": (-(PLATE_S + 20), 0, PLATE_T)}
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
-
-def mesh_xml(obj_id, name, m, pindex):
-    v = "".join(f'<vertex x="{x:.3f}" y="{y:.3f}" z="{z:.3f}"/>' for x, y, z in m.vertices)
-    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>' for a, b, c in m.faces)
-    return (f'<object id="{obj_id}" name="{escape(name)}" type="model" '
-            f'pid="{MAT_ID}" pindex="{pindex}">'
-            f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
 
 def placed(name, obj):
     e = parts[name].copy()
@@ -272,37 +260,19 @@ cap_meshes = [placed(n, "powerstack_tampa") for g in COLOR_GROUPS["powerstack_ta
 cb = trimesh.util.concatenate(cap_meshes).bounds
 OBJ_XFORM["powerstack_tampa"] = (W + 20, -cb[0][1], -cb[0][2])
 
-objs, next_id, assemblies, items = "", MAT_ID + 1, "", ""
+# deslocamento de cada objeto embutido nos vértices (sem matriz no 3MF)
+objects = []
 for obj, groups in COLOR_GROUPS.items():
-    comp_ids = []
+    color_parts = []
     for color, names in groups.items():
         m = trimesh.util.concatenate([placed(n, obj) for n in names])
-        objs += mesh_xml(next_id, f"{obj}__{color}", m, PINDEX[color])
-        comp_ids.append(next_id)
-        next_id += 1
-    tx, ty, tz = OBJ_XFORM[obj]
-    comps = "".join(f'<component objectid="{i}" transform="1 0 0 0 1 0 0 0 1 {tx:.3f} {ty:.3f} {tz:.3f}"/>' for i in comp_ids)
-    assemblies += f'<object id="{next_id}" name="{obj}" type="model"><components>{comps}</components></object>'
-    items += f'<item objectid="{next_id}"/>'
-    next_id += 1
+        m.apply_translation(OBJ_XFORM[obj])
+        color_parts.append((color, m))
+    objects.append((obj, color_parts))
 
-model_xml = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-    '<metadata name="Title">Miniatura Sungrow PowerStack 1:25</metadata>'
-    f'<resources>{basematerials}{objs}{assemblies}</resources><build>{items}</build></model>'
-)
-content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
-    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-    '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
-rels = ('<?xml version="1.0" encoding="UTF-8"?>'
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    '<Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-with zipfile.ZipFile("miniatura_powerstack_multicor.3mf", "w", zipfile.ZIP_DEFLATED) as zf:
-    zf.writestr("[Content_Types].xml", content_types)
-    zf.writestr("_rels/.rels", rels)
-    zf.writestr("3D/3dmodel.model", model_xml)
+slots = write_3mf("miniatura_powerstack_multicor.3mf", "Miniatura Sungrow PowerStack 1:25",
+                  objects, PALETTE)
+print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 
 # dados para o visualizador (Y para cima, montado), agrupados nas 4 cores
 import json

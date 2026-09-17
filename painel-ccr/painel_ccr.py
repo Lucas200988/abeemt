@@ -236,50 +236,22 @@ import zipfile
 from xml.sax.saxutils import escape
 
 
-# cor de cada parte gravada no próprio arquivo: o Bambu Studio lê displaycolor
-# da seção basematerials e casa cada parte com um filamento do AMS.
-COLOR_HEX = {"cinza_claro": "#EDEFEE", "cinza_escuro": "#33373B",
-             "laranja": "#E8712B", "vermelho": "#C9312E"}
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bambu3mf
 
-
-def mesh_xml(obj_id, name, m, pindex):
-    v = "".join(f'<vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>' for x, y, z in m.vertices)
-    t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>' for a, b, c in m.faces)
-    return (f'<object id="{obj_id}" name="{escape(name)}" type="model" '
-            f'pid="1" pindex="{pindex}">'
-            f'<mesh><vertices>{v}</vertices><triangles>{t}</triangles></mesh></object>')
+# a ordem define o slot de filamento; mesmas 4 cores das maquetes
+PALETTE = [("cinza_claro", "Branco", "#EDEFEE"),
+           ("cinza_escuro", "Grafite", "#33373B"),
+           ("laranja", "Laranja", "#E8712B"),
+           ("vermelho", "Vermelho", "#C9312E")]
 
 
 def write_3mf(filename, part_dict, title, colors):
-    """`colors` dá a cor de cada parte, na mesma ordem de part_dict."""
+    """`colors` dá a cor de cada peça, na mesma ordem de part_dict."""
     assert len(colors) == len(part_dict)
-    basematerials = ('<basematerials id="1">'
-                     + "".join(f'<base name="{escape(c)}" displaycolor="{COLOR_HEX[c]}FF"/>'
-                               for c in colors)
-                     + '</basematerials>')
-    objs = "".join(mesh_xml(i + 2, n, m, i) for i, (n, m) in enumerate(part_dict.items()))
-    comps = "".join(f'<component objectid="{i + 2}"/>' for i in range(len(part_dict)))
-    aid = len(part_dict) + 2
-    model = ('<?xml version="1.0" encoding="UTF-8"?>'
-             '<model unit="millimeter" xml:lang="en-US" '
-             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-             f'<metadata name="Title">{escape(title)}</metadata>'
-             f'<resources>{basematerials}{objs}'
-             f'<object id="{aid}" name="chaveiro_painel_ccr" type="model">'
-             f'<components>{comps}</components></object>'
-             f'</resources><build><item objectid="{aid}"/></build></model>')
-    ct = ('<?xml version="1.0" encoding="UTF-8"?>'
-          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-          '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
-    rels = ('<?xml version="1.0" encoding="UTF-8"?>'
-            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
-            'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-    with zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("[Content_Types].xml", ct)
-        zf.writestr("_rels/.rels", rels)
-        zf.writestr("3D/3dmodel.model", model)
+    objects = [("chaveiro_painel_ccr", list(zip(colors, part_dict.values())))]
+    return bambu3mf.write_3mf(filename, title, objects, PALETTE, precision=4)
 
 
 # mesmas 4 cores de filamento das maquetes, para comprar um jogo só

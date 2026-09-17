@@ -282,7 +282,7 @@ plate_stl.export("miniatura_painel_ccr_placa.stl")
 # ---------- 3MF: três objetos, cada peça já no seu filamento ----------
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf
+from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
     "painel_corpo": {"1_branco": ["corpo_branco"],
@@ -305,21 +305,16 @@ def placed(name, obj):
     return e
 
 
-cb = trimesh.util.concatenate([placed(n, "painel_tampa")
-                               for g in COLOR_GROUPS["painel_tampa"].values() for n in g]).bounds
-# deslocamento de cada objeto na mesa, embutido nos vértices (sem matriz no 3MF)
-OBJ_XFORM = {"painel_corpo": (0, 0, 0),
-             "painel_tampa": (W + 25, -cb[0][1], -cb[0][2]),
-             "placa_base": (-(PLATE_S + 25), 0, PLATE_T)}
-
 objects = []
 for obj, groups in COLOR_GROUPS.items():
     color_parts = []
     for color, names in groups.items():
-        m = trimesh.util.concatenate([placed(n, obj) for n in names])
-        m.apply_translation(OBJ_XFORM[obj])
-        color_parts.append((color, m))
+        color_parts.append((color, trimesh.util.concatenate([placed(n, obj) for n in names])))
     objects.append((obj, color_parts))
+
+# placa numa fileira, corpo e tampa na outra: mesa compacta, longe da faixa
+# reservada ao bico esquerdo nas impressoras de dois bicos
+place_in_rows(objects, [["painel_corpo", "painel_tampa"], ["placa_base"]])
 
 slots = write_3mf("miniatura_painel_ccr_multicor.3mf", "Miniatura Painel CCR 1:20",
                   objects, PALETTE)

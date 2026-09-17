@@ -35,6 +35,8 @@ matriz de transformação.
 import zipfile
 from xml.sax.saxutils import escape
 
+import numpy as np
+
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 MATERIAL_NS = "http://schemas.microsoft.com/3dmanufacturing/material/2015/02"
 COLOR_GROUP_ID = 1
@@ -50,6 +52,42 @@ RELS = ('<?xml version="1.0" encoding="UTF-8"?>'
         '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
         'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>'
         '</Relationships>')
+
+
+def place_in_rows(objects, rows, gap=12.0):
+    """Arruma os objetos em fileiras compactas, centradas na origem.
+
+    Sem isso, as peças espalhadas em X ocupam uma faixa larga da mesa, e nas
+    impressoras de dois bicos (H2C, H2D) a peça mais à esquerda cai na "Left
+    nozzle only area" — a faixa que só o bico esquerdo alcança, onde não dá
+    para fazer multicor. Deslocamento embutido nos vértices: cada objeto fica
+    centrado na sua fileira e apoiado em z = 0.
+
+    rows -- lista de listas de nomes de objeto, uma por fileira.
+    """
+    by_name = dict(objects)
+    assert {n for r in rows for n in r} == set(by_name), "fileiras não cobrem os objetos"
+
+    def bounds(name):
+        v = np.vstack([m.vertices for _, m in by_name[name]])
+        return v.min(0), v.max(0)
+
+    dims = {n: (b[1] - b[0]) for r in rows for n in r for b in [bounds(n)]}
+    depths = [max(dims[n][1] for n in r) for r in rows]
+    total_depth = sum(depths) + gap * (len(rows) - 1)
+
+    y = total_depth / 2
+    for row, depth in zip(rows, depths):
+        widths = [dims[n][0] for n in row]
+        x = -(sum(widths) + gap * (len(row) - 1)) / 2
+        for name, w in zip(row, widths):
+            lo, hi = bounds(name)
+            shift = [x - lo[0], y - depth / 2 - (lo[1] + hi[1]) / 2, -lo[2]]
+            for _, m in by_name[name]:
+                m.apply_translation(shift)
+            x += w + gap
+        y -= depth + gap
+    return objects
 
 
 def _mesh_xml(obj_id, name, mesh, pindex, precision):

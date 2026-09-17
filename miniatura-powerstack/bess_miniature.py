@@ -232,7 +232,7 @@ plate_stl.export("miniatura_powerstack_placa.stl")
 #   3 laranja: barra de luz, indicador, logo do rodapé, texto da placa | 4 vermelho: botão
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf
+from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
     "powerstack_corpo": {"1_branco": ["corpo_branco"], "2_cinza_escuro": ["rodape_escuro", "detalhes_cinza"],
@@ -245,7 +245,6 @@ PALETTE = [("1_branco", "Branco", "#EDEFEE"),
            ("2_cinza_escuro", "Grafite", "#33373B"),
            ("3_laranja", "Laranja", "#E8712B"),
            ("4_vermelho", "Vermelho", "#C9312E")]
-OBJ_XFORM = {"powerstack_corpo": (0, 0, 0), "powerstack_tampa": None, "placa_base": (-(PLATE_S + 20), 0, PLATE_T)}
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 def placed(name, obj):
@@ -255,20 +254,16 @@ def placed(name, obj):
         e.apply_transform(flip)
     return e
 
-# tampa virada: leva para a mesa e afasta em X
-cap_meshes = [placed(n, "powerstack_tampa") for g in COLOR_GROUPS["powerstack_tampa"].values() for n in g]
-cb = trimesh.util.concatenate(cap_meshes).bounds
-OBJ_XFORM["powerstack_tampa"] = (W + 20, -cb[0][1], -cb[0][2])
-
-# deslocamento de cada objeto embutido nos vértices (sem matriz no 3MF)
 objects = []
 for obj, groups in COLOR_GROUPS.items():
     color_parts = []
     for color, names in groups.items():
-        m = trimesh.util.concatenate([placed(n, obj) for n in names])
-        m.apply_translation(OBJ_XFORM[obj])
-        color_parts.append((color, m))
+        color_parts.append((color, trimesh.util.concatenate([placed(n, obj) for n in names])))
     objects.append((obj, color_parts))
+
+# placa numa fileira, corpo e tampa na outra: mesa compacta, longe da faixa
+# reservada ao bico esquerdo nas impressoras de dois bicos
+place_in_rows(objects, [["powerstack_corpo", "powerstack_tampa"], ["placa_base"]])
 
 slots = write_3mf("miniatura_powerstack_multicor.3mf", "Miniatura Sungrow PowerStack 1:25",
                   objects, PALETTE)

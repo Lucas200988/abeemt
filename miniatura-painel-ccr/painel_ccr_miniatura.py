@@ -5,6 +5,8 @@ Referência real: quadro auto-sustentado de 800 (L) x 2000 (A) x 600 (P) mm com 
 Em 1:20 -> 40 x 100 x 30 mm. Com a placa de base de 3 mm, o conjunto tem 103 mm de altura,
 praticamente a mesma da miniatura do PowerStack, para as duas formarem par.
 
+Porta limpa: só o símbolo da CCR. Três filamentos, os mesmos da maquete do BESS.
+
 Peças (impressão sem suporte):
   corpo  - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime em pé
   tampa  - teto com aba de encaixe; imprime de cabeça para baixo
@@ -121,6 +123,22 @@ def on_front(m, cx, cy):
     return m
 
 
+def lying_emblem(diam, cz, height=0.6):
+    """Emblema da ABEE-MT deitado na placa: raio dentro de um anel."""
+    r_out = diam / 2
+    ring = Point(0, 0).buffer(r_out, 64).difference(Point(0, 0).buffer(r_out - 0.9, 64))
+    h = diam * 0.72
+    bolt = Polygon([(0.55, 1.0), (0.10, 0.42), (0.42, 0.42), (0.30, 0.0),
+                    (0.90, 0.58), (0.58, 0.58), (0.70, 1.0)])
+    bolt = affinity.translate(affinity.scale(bolt, h, h, origin=(0, 0)), -0.5 * h, -0.5 * h)
+    shape = unary_union([ring, bolt.buffer(0.05, join_style=2)])
+    geoms = list(shape.geoms) if hasattr(shape, "geoms") else [shape]
+    m = trimesh.util.concatenate([extrude_polygon(g, height) for g in geoms])
+    m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
+    m.apply_translation([W / 2, -0.05, cz])
+    return m
+
+
 def lying_text(txt, cap, cz, max_width, height=0.6, back=False):
     """Texto deitado na placa de base, relevo para cima."""
     m = text_flat(txt, cap, height, max_width=max_width)
@@ -142,10 +160,6 @@ door_o = rbox(DX1 - DX0, DY1 - DY0, GROOVE, DX0, DY0, D - GROOVE)
 door_i = rbox(DX1 - DX0 - 2 * GROOVE, DY1 - DY0 - 2 * GROOVE, GROOVE + 1,
               DX0 + GROOVE, DY0 + GROOVE, D - GROOVE - 0.5)
 body = body.difference(door_o.difference(door_i))
-
-# Visor do amperímetro / IHM: bolso na porta
-VIS_X0, VIS_X1, VIS_Y0, VIS_Y1 = 8.0, 32.0, 62.0, 75.0
-body = body.difference(rbox(VIS_X1 - VIS_X0, VIS_Y1 - VIS_Y0, 0.8, VIS_X0, VIS_Y0, D - 0.8))
 
 # Maçaneta escamoteável: bolso vertical à direita
 HAN_X0, HAN_Y0, HAN_W, HAN_H = W - 7.0, 30.0, 4.5, 16.0
@@ -195,67 +209,44 @@ for ex in (5.0, W - 5.0):
         eye.apply_translation([ex, H - 0.5, ez])
         cap = cap.difference(eye)
 
-# ---------- detalhes ----------
-blue, dark, red = [], [], []
+# ---------- detalhes da porta (porta limpa: só o símbolo e as ferragens) ----------
+dark = []
 
-# símbolo ccr na porta
-blue.append(on_front(ccr_mesh(width=28.0, height_relief=RELIEF + SINK), W / 2, 86.0))
-
-# placa do visor
-blue.append(rbox(VIS_X1 - VIS_X0 - 1.6, VIS_Y1 - VIS_Y0 - 1.6, 1.0,
-                 VIS_X0 + 0.8, VIS_Y0 + 0.8, D - 0.8))
+# símbolo ccr em grafite, centrado na metade de cima da porta
+dark.append(on_front(ccr_mesh(width=28.0, height_relief=RELIEF + SINK), W / 2, 80.0))
 
 # alavanca da maçaneta
 dark.append(rbox(2.0, HAN_H - 3.0, 0.8, HAN_X0 + 1.25, HAN_Y0 + 1.5, D - 0.9))
 
 # dobradiças na aresta esquerda
 for cy in (16.0, 52.0, 86.0):
-    h = rbox(2.4, 6.0, 1.2, 1.4, cy - 3.0, D - SINK)
-    dark.append(h)
+    dark.append(rbox(2.4, 6.0, 1.2, 1.4, cy - 3.0, D - SINK))
 
-# sinaleiros com aro, chave seletora e botão de emergência
-for i, cx in enumerate((9.0, 14.0, 19.0)):
-    bez = cylinder(radius=1.8, height=0.6, sections=28).difference(
-        cylinder(radius=1.25, height=1.0, sections=28))
-    bez.apply_translation([cx, 53.0, D - SINK + 0.3])
-    dark.append(bez)
-    lamp = cylinder(radius=1.25, height=0.9, sections=28)
-    lamp.apply_translation([cx, 53.0, D - SINK + 0.45])
-    (red if i == 0 else dark).append(lamp)
-sel = cylinder(radius=1.6, height=1.2, sections=28)
-sel.apply_translation([25.0, 53.0, D - SINK + 0.6])
-dark.append(sel)
-stop_base = cylinder(radius=3.2, height=0.6, sections=36)
-stop_base.apply_translation([W - 8.0, 53.0, D - SINK + 0.3])
-dark.append(stop_base)
-stop = cylinder(radius=2.6, height=1.8, sections=36)
-stop.apply_translation([W - 8.0, 53.0, D - SINK + 0.9])
-red.append(stop)
-
-detail_blue = trimesh.util.concatenate(blue)
 detail_dark = trimesh.util.concatenate(dark)
-detail_red = trimesh.util.concatenate(red)
 
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
 plate = profile_prism(rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0), -PLATE_T, 0)
 plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1), -0.8, 0.01))
-plate_txt = trimesh.util.concatenate([
-    lying_text("CCR ENGENHARIA", 5.0, D + 8.0, PLATE_S - 12),
-    lying_text("PAINÉIS ELÉTRICOS · AUTOMAÇÃO E CONTROLE", 2.6, D + 16.5, PLATE_S - 12),
-    lying_text("FÓRUM BESS 2026 · ABEE-MT", 2.6, pz0 + 9.0, PLATE_S - 12, back=True),
+plate_marks = trimesh.util.concatenate([
+    # faixa da frente: o homenageado
+    lying_text("CCR MONTAGENS INDUSTRIAIS", 3.0, 40.0, 74),
+    lying_text("PAINÉIS ELÉTRICOS E AUTOMAÇÃO", 2.2, 47.4, 74),
+    # faixa de trás: quem homenageia
+    lying_emblem(9.0, -20.2),
+    lying_text("HOMENAGEM DA ABEE-MT", 3.2, -12.6, 74, back=True),
+    lying_text("ENGENHEIROS ELETRICISTAS DE MATO GROSSO", 2.0, -7.2, 74, back=True),
+    lying_text("FÓRUM BESS 2026", 2.0, -3.0, 74, back=True),
 ])
 
 # ---------- exportação ----------
 parts = {
-    "corpo_cinza_claro": body_light,
-    "rodape_escuro": plinth,
-    "tampa_escura": cap,
-    "detalhes_escuros": detail_dark,
-    "detalhes_azuis": detail_blue,
-    "botao_vermelho": detail_red,
+    "corpo_branco": body_light,
+    "rodape_grafite": plinth,
+    "tampa_grafite": cap,
+    "detalhes_grafite": detail_dark,
     "placa_base": plate,
-    "texto_placa": plate_txt,
+    "emblema_e_textos": plate_marks,
 }
 for name, m in parts.items():
     m.merge_vertices()
@@ -264,7 +255,7 @@ for name, m in parts.items():
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
-body_stl = body_light.union(plinth).union(detail_dark).union(detail_blue).union(detail_red)
+body_stl = body_light.union(plinth).union(detail_dark)
 body_stl.apply_transform(TO_Z_UP)
 body_stl.merge_vertices()
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
@@ -280,7 +271,7 @@ print(f"{'stl_tampa':20s} watertight={cap_stl.is_watertight}  volume={cap_stl.vo
       f"  medidas={np.round(cap_stl.extents, 1)}")
 cap_stl.export("miniatura_painel_ccr_tampa.stl")
 
-plate_stl = plate.union(plate_txt)
+plate_stl = plate.union(plate_marks)
 plate_stl.apply_transform(TO_Z_UP)
 plate_stl.apply_translation([0, 0, -plate_stl.bounds[0][2]])
 plate_stl.merge_vertices()
@@ -293,12 +284,10 @@ import zipfile
 from xml.sax.saxutils import escape
 
 COLOR_GROUPS = {
-    "painel_corpo": {"1_cinza_claro": ["corpo_cinza_claro"],
-                     "2_cinza_escuro": ["rodape_escuro", "detalhes_escuros"],
-                     "3_azul_ccr": ["detalhes_azuis"],
-                     "4_vermelho": ["botao_vermelho"]},
-    "painel_tampa": {"2_cinza_escuro": ["tampa_escura"]},
-    "placa_base":   {"2_cinza_escuro": ["placa_base"], "3_azul_ccr": ["texto_placa"]},
+    "painel_corpo": {"1_branco": ["corpo_branco"],
+                     "2_grafite": ["rodape_grafite", "detalhes_grafite"]},
+    "painel_tampa": {"2_grafite": ["tampa_grafite"]},
+    "placa_base":   {"2_grafite": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
 }
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
@@ -362,10 +351,9 @@ with zipfile.ZipFile("miniatura_painel_ccr_multicor.3mf", "w", zipfile.ZIP_DEFLA
 # ---------- dados para o visualizador (Y para cima, montado) ----------
 import json
 VIEW_GROUPS = {
-    "cinza_claro": ["corpo_cinza_claro"],
-    "cinza_escuro": ["rodape_escuro", "tampa_escura", "detalhes_escuros", "placa_base"],
-    "azul_ccr": ["detalhes_azuis", "texto_placa"],
-    "vermelho": ["botao_vermelho"],
+    "branco": ["corpo_branco"],
+    "grafite": ["rodape_grafite", "tampa_grafite", "detalhes_grafite", "placa_base"],
+    "laranja": ["emblema_e_textos"],
 }
 out = {}
 for color, names in VIEW_GROUPS.items():

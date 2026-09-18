@@ -1,7 +1,12 @@
 """Miniatura de mesa do BESS da WEG em escala 1:25, para cúpula de acrílico de 90 x 90 x 110 mm.
 
-Referência real: gabinete de 1040 (L) x 2200 (A) x 1500 (P) mm, do datasheet do BSCW400
-T100 B215. Em 1:25 -> 41,6 x 88 x 60 mm. Com a placa de 3 mm, 91 mm de altura.
+A peça representa o BESS da WEG em formato de armário, sem reproduzir um modelo
+específico: a placa diz "WEG BESS" e não traz número de modelo. As proporções vêm do
+datasheet do BSCW400 T100 B215 (1040 x 2200 x 1500 mm, L x A x P), que é um gabinete
+WEG real; a pesquisa indica que esse código pode ser o armário de conversão e não o de
+baterias, e como a maquete não se apresenta como ele, isso não gera contradição.
+
+Em 1:25 -> 41,6 x 88 x 60 mm. Com a placa de 3 mm, 91 mm de altura.
 
 A escala é a mesma da miniatura do Sungrow PowerStack de propósito: as duas ficam
 diretamente comparáveis em tamanho, que é a graça de ter as duas na mesa.

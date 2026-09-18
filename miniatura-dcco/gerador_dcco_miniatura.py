@@ -7,19 +7,26 @@ cabine, então a carenagem foi desenhada com 1250 mm, largura típica de cabine 
 faixa de potência. Em 1:50 -> 72,4 x 25,0 x 36,7 mm; com a placa de 3 mm, 39,7 mm.
 
 Carenagem verde com chassi preto, como o gerador real. Três filamentos: verde na cabine e
-no teto, preto no chassi, no logo da DCCO, nas maçanetas e na placa, branco nas letras e no
-emblema da placa. A linha entre chassi e cabine é a própria troca de cor.
+no teto, preto no chassi, no crachá do logo e na placa, branco nas letras e no emblema da
+placa. A linha entre chassi e cabine é a própria troca de cor.
 
 Costado, da esquerda para a direita: grade do radiador, porta de acesso com visor do painel
-de controle, painel fixo com o logo da DCCO, segunda porta de acesso, maçanetas. Chassi com
+de controle, painel fixo com o crachá da DCCO, segunda porta de acesso, maçanetas. Chassi com
 bolsos de empilhadeira. O teto imprime de cabeça para baixo, então tudo nele é corte e nunca
 saliência: a saída do escapamento é um rebaixo com furo, e as nervuras são ranhuras.
 
+Nenhuma segunda cor em parede vertical, que foi o que estragou o logo do contêiner da WEG
+na impressão: em parede vertical cada camada do logo é uma ilha solta depositada logo depois
+de uma troca de filamento. O logo saiu do costado e virou crachá à parte, impresso deitado e
+colado no rebaixo; as maçanetas passaram para a cor da própria carenagem, que é como as
+dobradiças do painel da CCR — quem as desenha é a sombra, não a cor.
+
 Peças (impressão sem suporte):
-  corpo - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime apoiado no chassi
-  teto  - tampa com aba de encaixe; imprime de cabeça para baixo
-  placa - base de 84 x 84 x 3 mm; o gerador é comprido e estreito, então as faixas livres
-          ficam na frente e no fundo, com 29,5 mm cada
+  corpo  - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime apoiado no chassi
+  teto   - tampa com aba de encaixe; imprime de cabeça para baixo
+  cracha - 20 x 10 x 1,5 mm; imprime deitado, logo para cima, e vai colado no painel fixo
+  placa  - base de 84 x 84 x 3 mm; o gerador é comprido e estreito, então as faixas livres
+           ficam na frente e no fundo, com 29,5 mm cada
 
 Eixos de construção: X = comprimento, Y = altura, Z = profundidade (costado do logo em +Z).
 Exporta com Z para cima.
@@ -139,11 +146,6 @@ def text_flat(txt, cap_height, height, max_width=None, fatten=0.20):
     return m
 
 
-def on_front(m, cx, cy):
-    m.apply_translation([cx, cy, D - SINK])
-    return m
-
-
 def _lay_flat(m):
     m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
     return m
@@ -188,7 +190,11 @@ def louver(x0, x1, y0, y1, face, passo=1.9):
     while y <= y1 - 1.0:
         cortes.append(rbox(x1 - x0, 0.9, 0.56, x0, y, z))
         y += passo
-    o = rbox(x1 - x0 + 1.4, y1 - y0, GROOVE, x0 - 0.7, y0, z + 0.1)
+    # A moldura tem de romper a superfície externa, e a externa de cada costado está em
+    # lado oposto: no fundo, um rasgo começando em z = +0,09 ficava enterrado na parede e
+    # virava vazio fechado dentro dela, invisível por fora.
+    zo = z + 0.1 if face == "front" else z - 0.1
+    o = rbox(x1 - x0 + 1.4, y1 - y0, GROOVE, x0 - 0.7, y0, zo)
     i = rbox(x1 - x0 + 1.4 - 2 * GROOVE, y1 - y0 - 2 * GROOVE, GROOVE + 1,
              x0 - 0.7 + GROOVE, y0 + GROOVE, z - 0.45)
     return trimesh.util.concatenate(cortes + [o.difference(i)])
@@ -245,7 +251,10 @@ def cortes_teto():
     furo = cylinder(radius=1.3, height=2.4, sections=28)
     furo.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0]))
     furo.apply_translation([W - 16.0, H - 0.7, D / 2])
-    cortes.append(furo)
+    # Uniao, nao concatenacao: os dois cilindros do escapamento sao coaxiais e se
+    # sobrepoem, e subtrair a colagem dos dois deixava um vazio fechado de 10 mm3
+    # dentro do teto, no lugar do furo.
+    cortes.append(cortes.pop().union(furo))
     x = 6.0
     while x <= W - 6.0:
         if abs(x - (W - 16.0)) > 4.0:
@@ -256,16 +265,40 @@ def cortes_teto():
 
 cap = cap.difference(cortes_teto())
 
-# ---------- logo da DCCO no painel fixo ----------
-logo_preto = on_front(dcco_mesh(width=18.0, height_relief=RELIEF + SINK),
-                      (LOGO_X0 + LOGO_X1) / 2, (PANEL_Y0 + PANEL_Y1) / 2)
+# ---------- crachá do logo: peça separada, impressa deitada e colada ----------
+# O rebaixo é raso de propósito: 0,7 mm deixa 0,9 mm de parede sob ele e dispensa reforço
+# por dentro, que aqui esbarraria na aba do teto. O crachá fica 0,8 mm saliente, como o
+# emblema aplicado de um gerador de verdade, e o rebaixo serve de gabarito para a colagem.
+CR_X0, CR_X1 = 32.4, 52.4                                 # 0,75 mm de parede até cada porta
+CR_Y0, CR_Y1 = (PANEL_Y0 + PANEL_Y1) / 2 - 5.0, (PANEL_Y0 + PANEL_Y1) / 2 + 5.0
+CR_T, CR_BOLSO, CR_FOLGA = 1.5, 0.7, 0.25
+# o rebaixo fica todo acima da linha do chassi, então só a carenagem verde é recortada
+body_green = body_green.difference(
+    rbox(CR_X1 - CR_X0 + 2 * CR_FOLGA, CR_Y1 - CR_Y0 + 2 * CR_FOLGA, CR_BOLSO + 0.5,
+         CR_X0 - CR_FOLGA, CR_Y0 - CR_FOLGA, D - CR_BOLSO))
 
-# maçanetas das portas
+CZ0, CZ1 = D - CR_BOLSO, D - CR_BOLSO + CR_T
+cracha = rbox(CR_X1 - CR_X0, CR_Y1 - CR_Y0, CR_T, CR_X0, CR_Y0, CZ0)
+# logo embutido rente à face, como no painel da CCR: superfície lisa e três camadas de troca
+# 18 mm de largura, não 16: o traço mais fino do símbolo cresce com o desenho inteiro,
+# e a 16 mm ele caía para 0,79 mm. Engordar a curva em vez de crescer o desenho fecharia
+# as frestas do espiral, que é o que dá a forma do símbolo.
+CR_LOGO_W, CR_LOGO_PROF = 18.0, 0.6
+CR_CX, CR_CY = (CR_X0 + CR_X1) / 2, (CR_Y0 + CR_Y1) / 2
+bolso_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + 0.5)
+bolso_logo.apply_translation([CR_CX, CR_CY, CZ1 - CR_LOGO_PROF])
+cracha = cracha.difference(bolso_logo)
+cracha_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + SINK)
+cracha_logo.apply_translation([CR_CX, CR_CY, CZ1 - CR_LOGO_PROF - SINK])
+
+# Maçanetas na cor da própria carenagem: em parede vertical, uma barra preta de 1,2 mm
+# seria a mesma ilha solta do logo, camada após camada. Em relevo verde, quem as desenha
+# é a sombra, e não há troca de filamento nenhuma no costado.
 macanetas = trimesh.util.concatenate([
     rbox(1.2, 5.0, 1.0, DOOR1_X1 - 3.0, (PANEL_Y0 + PANEL_Y1) / 2 - 2.5, D - SINK),
     rbox(1.2, 5.0, 1.0, DOOR2_X1 - 3.0, (PANEL_Y0 + PANEL_Y1) / 2 - 2.5, D - SINK),
 ])
-detalhes_pretos = trimesh.util.concatenate([logo_preto, macanetas])
+body_green = body_green.union(macanetas)
 
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
@@ -285,7 +318,8 @@ plate_marks = trimesh.util.concatenate([
 parts = {
     "carenagem_verde": body_green,
     "chassi_preto": chassi_part,
-    "detalhes_pretos": detalhes_pretos,
+    "cracha_verde": cracha,
+    "cracha_logo_preto": cracha_logo,
     "teto_verde": cap,
     "placa_base": plate,
     "emblema_e_textos": plate_marks,
@@ -297,12 +331,20 @@ for name, m in parts.items():
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
-body_stl = body_green.union(chassi_part).union(logo_preto).union(macanetas)
+body_stl = body_green.union(chassi_part)
 body_stl.apply_transform(TO_Z_UP)
 body_stl.merge_vertices()
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
       f"  medidas={np.round(body_stl.extents, 1)}")
 body_stl.export("miniatura_dcco_corpo.stl")
+
+# o crachá sai deitado, com o logo para cima: não leva TO_Z_UP nenhum
+cracha_stl = cracha.union(cracha_logo)
+cracha_stl.apply_translation([0, 0, -cracha_stl.bounds[0][2]])
+cracha_stl.merge_vertices()
+print(f"{'stl_cracha':20s} watertight={cracha_stl.is_watertight}  volume={cracha_stl.volume:8.0f} mm³"
+      f"  medidas={np.round(cracha_stl.extents, 1)}")
+cracha_stl.export("miniatura_dcco_cracha.stl")
 
 cap_stl = cap.copy()
 cap_stl.apply_transform(TO_Z_UP)
@@ -326,10 +368,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
-    "gerador_corpo": {"1_verde": ["carenagem_verde"],
-                      "2_preto": ["chassi_preto", "detalhes_pretos"]},
-    "gerador_teto":  {"1_verde": ["teto_verde"]},
-    "placa_base":    {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
+    "gerador_corpo":  {"1_verde": ["carenagem_verde"], "2_preto": ["chassi_preto"]},
+    "gerador_cracha": {"1_verde": ["cracha_verde"], "2_preto": ["cracha_logo_preto"]},
+    "gerador_teto":   {"1_verde": ["teto_verde"]},
+    "placa_base":     {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
 }
 # O verde é a cor do gerador Cummins carenado. Não está no estoque atual (cinza, preto,
 # branco) — sem ele, o filamento 1 pode ser o cinza e a peça fica coerente, só não fica
@@ -342,6 +384,8 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 def placed(name, obj):
     e = parts[name].copy()
+    if obj == "gerador_cracha":
+        return e          # já está deitado, logo para cima: é o ponto da mudança
     e.apply_transform(TO_Z_UP)
     if obj == "gerador_teto":
         e.apply_transform(flip)
@@ -352,9 +396,11 @@ objects = []
 for obj, groups in COLOR_GROUPS.items():
     objects.append((obj, [(color, trimesh.util.concatenate([placed(n, obj) for n in names]))
                           for color, names in groups.items()]))
-place_in_rows(objects, [["gerador_corpo"], ["gerador_teto"], ["placa_base"]])
+place_in_rows(objects, [["gerador_corpo"], ["gerador_teto", "gerador_cracha"], ["placa_base"]])
 
+# precision=4: o contorno traçado do logo tem segmentos quase colineares, e arredondar o
+# bolso do crachá para 3 casas colapsa faces e abre a malha — a trava do bambu3mf pega isso.
 slots = write_3mf("miniatura_dcco_multicor.3mf", "Miniatura gerador Cummins carenado 1:50",
-                  objects, PALETTE)
+                  objects, PALETTE, precision=4)
 print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

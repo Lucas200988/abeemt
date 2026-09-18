@@ -16,9 +16,17 @@ painel alto de venezianas, painel com o logo weg + BESS, seis folhas de porta co
 vertical de fechamento, montante de canto. Cantoneiras ISO nos oito cantos, longarina de
 base com bolsos de empilhadeira e teto com nervuras transversais.
 
+O painel do logo é peça à parte, impressa deitada e colada no bolso do costado. Na
+primeira impressão o logo era relevo de segunda cor direto na parede vertical, e saiu
+ilegível: em parede vertical cada camada do logo é uma ilha solta depositada logo depois
+de uma troca de filamento, e em 1:80 essas ilhas têm menos de um milímetro. Deitada, a
+mesma arte vira mancha plana sobre superfície horizontal e a troca de cor acontece em
+três camadas no total.
+
 Peças (impressão sem suporte):
   corpo - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime apoiado na base
   teto  - tampa com aba de encaixe; imprime de cabeça para baixo
+  chapa - painel do logo, 19 x 20,4 x 1,6 mm; imprime deitado, arte para cima, e vai colado
   placa - base de 84 x 84 x 3 mm; o contêiner é comprido, então as faixas livres da placa
           ficam na frente e no fundo, com 26,8 mm cada — as maiores letras do conjunto
 
@@ -141,11 +149,6 @@ def text_flat(txt, cap_height, height, max_width=None, fatten=0.20):
     return m
 
 
-def on_front(m, cx, cy):
-    m.apply_translation([cx, cy, D - SINK])
-    return m
-
-
 def _lay_flat(m):
     m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
     return m
@@ -190,7 +193,11 @@ def louver_panel(x0, x1, y0, y1, face):
     while y <= y1 - 0.9:
         cortes.append(rbox(x1 - x0, 0.8, 0.51, x0, y, z))
         y += 1.8
-    moldura_o = rbox(x1 - x0 + 1.2, y1 - y0, GROOVE, x0 - 0.6, y0, z + 0.1)
+    # A moldura tem de romper a superfície externa, e a externa de cada costado está em
+    # lado oposto: no fundo, um rasgo começando em z = +0,09 ficava enterrado na parede e
+    # virava vazio fechado dentro dela, invisível por fora.
+    zo = z + 0.1 if face == "front" else z - 0.1
+    moldura_o = rbox(x1 - x0 + 1.2, y1 - y0, GROOVE, x0 - 0.6, y0, zo)
     moldura_i = rbox(x1 - x0 + 1.2 - 2 * GROOVE, y1 - y0 - 2 * GROOVE, GROOVE + 1,
                      x0 - 0.6 + GROOVE, y0 + GROOVE, z - 0.4)
     return trimesh.util.concatenate(cortes + [moldura_o.difference(moldura_i)])
@@ -206,9 +213,11 @@ def door_leaf(x0, x1, y0, y1, face):
 
 
 # Costado da frente: venezianas, painel do logo, seis folhas de porta
+# O vão do logo abriu de 14 para 19 mm: com o logo impresso deitado dá para usá-lo maior,
+# e traço maior é o segundo remédio para o que saiu ilegível na primeira impressão.
 LV_X0, LV_X1 = POST + 1.2, POST + 7.6
-LOGO_X0, LOGO_X1 = LV_X1 + 1.4, LV_X1 + 15.4
-DOOR_X0, DOOR_X1 = LOGO_X1 + 1.4, W - POST - 1.2
+LOGO_X0, LOGO_X1 = LV_X1 + 2.0, LV_X1 + 21.0
+DOOR_X0, DOOR_X1 = LOGO_X1 + 2.0, W - POST - 1.2
 cortes = [louver_panel(LV_X0, LV_X1, PANEL_Y0 + 1.0, PANEL_Y1 - 1.0, "front")]
 n_folhas = 6
 passo = (DOOR_X1 - DOOR_X0) / n_folhas
@@ -232,15 +241,20 @@ body = body.difference(
         rbox(1.0, PANEL_Y1 - PANEL_Y0 - 1.6 - 2 * GROOVE, 9.0 - 2 * GROOVE,
              0.3, PANEL_Y0 + 0.8 + GROOVE, D / 2 - 4.5 + GROOVE)))
 
-# Cantoneiras ISO: blocos salientes nos oito cantos
-castings = []
+# Cantoneiras ISO: blocos salientes nos oito cantos. A de cima tem 2,4 mm e a linha de
+# corte entre corpo e teto passa a 30,2, dentro dela; a fatia de baixo é do corpo e a de
+# cima é do teto. Mandar a cantoneira inteira para o teto fazia a tampa assentar 0,2 mm
+# alta, porque essa fatia disputava espaço com a parede do corpo.
+castings_corpo, castings_teto = [], []
 for cx in (0.0, W - POST):
     for cz in (0.0, D - POST):
-        for cy in (0.0, H - 2.4):
-            castings.append(rbox(POST, 2.4, POST, cx, cy, cz))
+        castings_corpo.append(rbox(POST, 2.4, POST, cx, 0.0, cz))
+        castings_corpo.append(rbox(POST, BODY_TOP - (H - 2.4), POST, cx, H - 2.4, cz))
+        castings_teto.append(rbox(POST, H - BODY_TOP, POST, cx, BODY_TOP, cz))
 # União direta, sem recortar pelo perfil: cantoneira ISO real é saliente mesmo, e
 # recortá-la pelo canto arredondado gerava slivers finos demais para gravar em 3 casas
-body = body.union(trimesh.util.concatenate([c for c in castings if c.bounds[0][1] < 1.0]))
+body = body.union(trimesh.util.concatenate(castings_corpo)).difference(
+    profile_prism(inner2d, FLOOR, BODY_TOP + 1))     # cantoneira não invade o vão da aba
 
 # ---------- teto: tampa com aba e nervuras transversais ----------
 cap_plate = profile_prism(outer2d, BODY_TOP, H)
@@ -253,13 +267,42 @@ while x <= W - POST - 2.0:
     ribs.append(rbox(0.5, 0.31, D - 2 * POST - 1.0, x, H - 0.3, POST + 0.5))
     x += 2.4
 cap = cap.difference(trimesh.util.concatenate(ribs))
-cap = cap.union(trimesh.util.concatenate([c for c in castings if c.bounds[0][1] > 1.0]))
+cap = cap.union(trimesh.util.concatenate(castings_teto))
 
-# ---------- logo weg + BESS no painel da frente ----------
-LOGO_CX = (LOGO_X0 + LOGO_X1) / 2
-logo = on_front(weg_mesh(width=12.0, height_relief=RELIEF + SINK), LOGO_CX, PANEL_Y1 - 8.0)
-bess = on_front(text_flat("BESS", 3.2, RELIEF + SINK, max_width=12.0), LOGO_CX, PANEL_Y1 - 14.0)
-logo_preto = trimesh.util.concatenate([logo, bess])
+# ---------- painel do logo: peça separada, impressa deitada e colada ----------
+# Nada de relevo de segunda cor em parede vertical. A arte fica embutida rente à face
+# da chapa, como no painel da CCR: o bolso na chapa é recortado com a própria silhueta
+# e a peça preta o preenche, então a superfície sai lisa e a troca de cor dura três
+# camadas. A fresta de 0,25 mm em volta da chapa lê como junta de painel, que o contêiner
+# de verdade tem em toda a volta.
+PLAQ_X0, PLAQ_X1 = LOGO_X0, LOGO_X1
+PLAQ_Y0, PLAQ_Y1 = 5.6, 26.0
+PLAQ_T, BOLSO_PROF, PLAQ_FOLGA = 1.6, 1.6, 0.25
+PLAQ_CX = (PLAQ_X0 + PLAQ_X1) / 2
+
+# Reforço atrás da chapa: o bolso consome a parede inteira de 1,6 mm, então o costado é
+# engrossado por dentro. Vai do piso até 26,8 para não fazer aba em balanço lá embaixo e
+# para não bater na aba do teto, que desce até y = 27,2.
+body = body.union(rbox(PLAQ_X1 - PLAQ_X0 + 3.0, 26.8, BOLSO_PROF,
+                       PLAQ_X0 - 1.5, 0.0, D - WALL - BOLSO_PROF))
+body = body.difference(rbox(PLAQ_X1 - PLAQ_X0 + 2 * PLAQ_FOLGA, PLAQ_Y1 - PLAQ_Y0 + 2 * PLAQ_FOLGA,
+                            BOLSO_PROF + 0.5, PLAQ_X0 - PLAQ_FOLGA, PLAQ_Y0 - PLAQ_FOLGA,
+                            D - BOLSO_PROF))
+
+CHZ0, CHZ1 = D - BOLSO_PROF, D - BOLSO_PROF + PLAQ_T      # chapa fica rente ao costado
+plaq = rbox(PLAQ_X1 - PLAQ_X0, PLAQ_Y1 - PLAQ_Y0, PLAQ_T, PLAQ_X0, PLAQ_Y0, CHZ0)
+
+LOGO_W, LOGO_PROF = 15.0, 0.6
+arte = []
+for cy, arte_mesh in ((19.05, lambda h: weg_mesh(width=LOGO_W, height_relief=h)),
+                      (9.65, lambda h: text_flat("BESS", 4.2, h, max_width=LOGO_W))):
+    bolso = arte_mesh(LOGO_PROF + 0.5)
+    bolso.apply_translation([PLAQ_CX, cy, CHZ1 - LOGO_PROF])
+    plaq = plaq.difference(bolso)
+    cheio = arte_mesh(LOGO_PROF + SINK)
+    cheio.apply_translation([PLAQ_CX, cy, CHZ1 - LOGO_PROF - SINK])
+    arte.append(cheio)
+logo_preto = trimesh.util.concatenate(arte)
 
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
@@ -282,7 +325,8 @@ plate_marks = trimesh.util.concatenate([
 # ---------- exportação ----------
 parts = {
     "corpo_cinza": body,
-    "logo_preto": logo_preto,
+    "chapa_cinza": plaq,
+    "chapa_logo_preto": logo_preto,
     "teto_cinza": cap,
     "placa_base": plate,
     "emblema_e_textos": plate_marks,
@@ -294,12 +338,20 @@ for name, m in parts.items():
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
-body_stl = body.union(logo_preto)
+body_stl = body.copy()
 body_stl.apply_transform(TO_Z_UP)
 body_stl.merge_vertices()
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
       f"  medidas={np.round(body_stl.extents, 1)}")
 body_stl.export("miniatura_weg_corpo.stl")
+
+# a chapa sai deitada, com a arte para cima: não leva TO_Z_UP nenhum
+chapa_stl = plaq.union(logo_preto)
+chapa_stl.apply_translation([0, 0, -chapa_stl.bounds[0][2]])
+chapa_stl.merge_vertices()
+print(f"{'stl_chapa':20s} watertight={chapa_stl.is_watertight}  volume={chapa_stl.volume:8.0f} mm³"
+      f"  medidas={np.round(chapa_stl.extents, 1)}")
+chapa_stl.export("miniatura_weg_chapa_logo.stl")
 
 cap_stl = cap.copy()
 cap_stl.apply_transform(TO_Z_UP)
@@ -323,9 +375,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
-    "weg_conteiner": {"1_cinza": ["corpo_cinza"], "2_preto": ["logo_preto"]},
-    "weg_teto":      {"1_cinza": ["teto_cinza"]},
-    "placa_base":    {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
+    "weg_conteiner":  {"1_cinza": ["corpo_cinza"]},
+    "weg_chapa_logo": {"1_cinza": ["chapa_cinza"], "2_preto": ["chapa_logo_preto"]},
+    "weg_teto":       {"1_cinza": ["teto_cinza"]},
+    "placa_base":     {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
 }
 # Só as três cores em estoque: cinza, preto e branco. O contêiner da WEG é uniforme,
 # por isso corpo e teto saem na mesma cor; a placa vai em preto com letra branca, que é
@@ -339,6 +392,8 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 def placed(name, obj):
     e = parts[name].copy()
+    if obj == "weg_chapa_logo":
+        return e          # já está deitada, arte para cima: é o ponto da mudança
     e.apply_transform(TO_Z_UP)
     if obj == "weg_teto":
         e.apply_transform(flip)
@@ -349,7 +404,7 @@ objects = []
 for obj, groups in COLOR_GROUPS.items():
     objects.append((obj, [(color, trimesh.util.concatenate([placed(n, obj) for n in names]))
                           for color, names in groups.items()]))
-place_in_rows(objects, [["weg_conteiner"], ["weg_teto"], ["placa_base"]])
+place_in_rows(objects, [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"], ["placa_base"]])
 
 slots = write_3mf("miniatura_weg_multicor.3mf", "Miniatura WEG BESS contêiner 1:80",
                   objects, PALETTE)

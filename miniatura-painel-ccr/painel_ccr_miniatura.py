@@ -213,14 +213,30 @@ for ex in (5.0, W - 5.0):
 dark = []
 
 # símbolo ccr em grafite, centrado na metade de cima da porta
-dark.append(on_front(ccr_mesh(width=28.0, height_relief=RELIEF + SINK), W / 2, 80.0))
+# Logo embutido, não saliente. Como relevo numa parede vertical, cada camada do
+# símbolo era uma ilha solta de 1 mm depositada logo depois de uma troca de
+# filamento, em quase 100 camadas seguidas — daí a letra sair esfarrapada. No
+# bolso, o escuro fica cercado pelo claro na mesma camada: o perímetro da porta
+# continua inteiro e a aresta do símbolo é definida pela parede do bolso.
+# O bolso também aceita um brasão impresso à parte e colado, se preferir.
+LOGO_W, LOGO_PROF, LOGO_CY = 28.0, 1.0, 80.0
+bolso = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + 0.5)
+bolso.apply_translation([W / 2, LOGO_CY, D - LOGO_PROF])
+body = body.difference(bolso)
+embutido = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + SINK)
+embutido.apply_translation([W / 2, LOGO_CY, D - LOGO_PROF - SINK])
+dark.append(embutido)
 
 # alavanca da maçaneta
 dark.append(rbox(2.0, HAN_H - 3.0, 0.8, HAN_X0 + 1.25, HAN_Y0 + 1.5, D - 0.9))
 
-# dobradiças na aresta esquerda
+# Dobradiças na cor do corpo, não em grafite. Salientes numa parede vertical e em
+# cor separada, cada uma virava uma ilha de 2,4 x 1,2 mm depositada logo depois de
+# uma troca de filamento — é o mesmo defeito do símbolo, e são elas os pentes
+# esfarrapados da peça impressa. Em relevo na própria cor, quem as desenha é a
+# sombra, e não sobra nenhuma ilha solta de segunda cor na porta.
 for cy in (16.0, 52.0, 86.0):
-    dark.append(rbox(2.4, 6.0, 1.2, 1.4, cy - 3.0, D - SINK))
+    body = body.union(rbox(2.4, 6.0, 1.2, 1.4, cy - 3.0, D - SINK))
 
 detail_dark = trimesh.util.concatenate(dark)
 

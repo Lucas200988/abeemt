@@ -258,6 +258,10 @@ plate_marks = trimesh.util.concatenate([
     lying_text("HOMENAGEM", 5.5, -4.55, 72, back=True),
 ])
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
+
 # ---------- exportação ----------
 parts = {
     "corpo_branco": body_light,
@@ -277,7 +281,7 @@ TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
 body_stl = body_light.union(plinth)
 body_stl.apply_transform(TO_Z_UP)
-body_stl.merge_vertices()
+body_stl = clean_mesh(body_stl)
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
       f"  medidas={np.round(body_stl.extents, 1)}")
 body_stl.export("miniatura_painel_ccr_corpo.stl")
@@ -285,7 +289,7 @@ body_stl.export("miniatura_painel_ccr_corpo.stl")
 # a porta sai deitada, com a face do símbolo para cima
 porta_stl = porta.union(porta_logo)
 porta_stl.apply_translation([0, 0, -porta_stl.bounds[0][2]])
-porta_stl.merge_vertices()
+porta_stl = clean_mesh(porta_stl)
 print(f"{'stl_porta':20s} watertight={porta_stl.is_watertight}  volume={porta_stl.volume:8.0f} mm³"
       f"  medidas={np.round(porta_stl.extents, 1)}")
 porta_stl.export("miniatura_painel_ccr_porta.stl")
@@ -294,7 +298,7 @@ cap_stl = cap.copy()
 cap_stl.apply_transform(TO_Z_UP)
 cap_stl.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
 cap_stl.apply_translation([0, -cap_stl.bounds[0][1], -cap_stl.bounds[0][2]])
-cap_stl.merge_vertices()
+cap_stl = clean_mesh(cap_stl)
 print(f"{'stl_tampa':20s} watertight={cap_stl.is_watertight}  volume={cap_stl.volume:8.0f} mm³"
       f"  medidas={np.round(cap_stl.extents, 1)}")
 cap_stl.export("miniatura_painel_ccr_tampa.stl")
@@ -302,15 +306,12 @@ cap_stl.export("miniatura_painel_ccr_tampa.stl")
 plate_stl = plate.union(plate_marks)
 plate_stl.apply_transform(TO_Z_UP)
 plate_stl.apply_translation([0, 0, -plate_stl.bounds[0][2]])
-plate_stl.merge_vertices()
+plate_stl = clean_mesh(plate_stl)
 print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_stl.volume:8.0f} mm³"
       f"  medidas={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_painel_ccr_placa.stl")
 
 # ---------- 3MF: três objetos, cada peça já no seu filamento ----------
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
     "painel_corpo": {"1_branco": ["corpo_branco"], "2_grafite": ["rodape_grafite"]},

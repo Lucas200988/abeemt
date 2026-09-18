@@ -322,6 +322,10 @@ plate_marks = trimesh.util.concatenate([
     lying_emblem(13.0, W / 2, PZ0 + 7.9),
 ])
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
+
 # ---------- exportação ----------
 parts = {
     "corpo_cinza": body,
@@ -340,7 +344,7 @@ TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
 body_stl = body.copy()
 body_stl.apply_transform(TO_Z_UP)
-body_stl.merge_vertices()
+body_stl = clean_mesh(body_stl)
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
       f"  medidas={np.round(body_stl.extents, 1)}")
 body_stl.export("miniatura_weg_corpo.stl")
@@ -348,7 +352,7 @@ body_stl.export("miniatura_weg_corpo.stl")
 # a chapa sai deitada, com a arte para cima: não leva TO_Z_UP nenhum
 chapa_stl = plaq.union(logo_preto)
 chapa_stl.apply_translation([0, 0, -chapa_stl.bounds[0][2]])
-chapa_stl.merge_vertices()
+chapa_stl = clean_mesh(chapa_stl)
 print(f"{'stl_chapa':20s} watertight={chapa_stl.is_watertight}  volume={chapa_stl.volume:8.0f} mm³"
       f"  medidas={np.round(chapa_stl.extents, 1)}")
 chapa_stl.export("miniatura_weg_chapa_logo.stl")
@@ -356,7 +360,7 @@ chapa_stl.export("miniatura_weg_chapa_logo.stl")
 cap_stl = cap.copy()
 cap_stl.apply_transform(TO_Z_UP)
 cap_stl.apply_translation([0, 0, -cap_stl.bounds[0][2]])
-cap_stl.merge_vertices()
+cap_stl = clean_mesh(cap_stl)
 print(f"{'stl_teto':20s} watertight={cap_stl.is_watertight}  volume={cap_stl.volume:8.0f} mm³"
       f"  medidas={np.round(cap_stl.extents, 1)}")
 cap_stl.export("miniatura_weg_teto.stl")
@@ -364,15 +368,12 @@ cap_stl.export("miniatura_weg_teto.stl")
 plate_stl = plate.union(plate_marks)
 plate_stl.apply_transform(TO_Z_UP)
 plate_stl.apply_translation([0, 0, -plate_stl.bounds[0][2]])
-plate_stl.merge_vertices()
+plate_stl = clean_mesh(plate_stl)
 print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_stl.volume:8.0f} mm³"
       f"  medidas={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_weg_placa.stl")
 
 # ---------- 3MF ----------
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
     "weg_conteiner":  {"1_cinza": ["corpo_cinza"]},

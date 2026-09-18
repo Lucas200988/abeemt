@@ -141,33 +141,38 @@ detalhes2d.append(affinity.translate(text_shape("FÓRUM BESS 2026", 6.0, max_wid
                                      W / 2, 16.5))
 detalhes2d.append(affinity.translate(text_shape("ENGENHARIA · ENERGIA · FUTURO", 3.2,
                                                 max_width=54.0), W / 2, 10.5))
-detalhes = na_frente(unary_union(detalhes2d), RELIEF + SINK)
+# Relevo na cor do próprio corpo, não em segunda cor: em parede vertical cada camada de
+# uma segunda cor é uma ilha solta depositada logo depois de uma troca de filamento, que
+# foi o que estragou o logo da CCR e o da WEG. Aqui o relevo sobe para 1,0 mm e quem
+# desenha os indicadores, o raio e os dizeres é a sombra. Peça de um filamento só.
+corpo = corpo.union(na_frente(unary_union(detalhes2d), 1.0 + SINK))
+
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
 
 # ---------- verificação e exportação ----------
-for nome, m in [("corpo", corpo), ("detalhes", detalhes)]:
+for nome, m in [("corpo", corpo)]:
     m.merge_vertices()
     m.fix_normals()
     print(f"{nome:10s} fechada={m.is_watertight}  volume={m.volume:9.1f} mm³  "
           f"massa={m.volume / 1000 * DENSIDADE:6.2f} g")
-total_g = (corpo.volume + detalhes.volume) / 1000 * DENSIDADE
+total_g = corpo.volume / 1000 * DENSIDADE
 print(f"{'peça':10s} {W:.0f} x {D:.0f} x {H:.0f} mm   massa da casca {total_g:.1f} g "
       f"(sem contar o preenchimento, que é vazio aqui)")
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
-uma_cor = corpo.union(detalhes)
+uma_cor = corpo.copy()
 uma_cor.apply_transform(TO_Z_UP)
 uma_cor.apply_translation([0, 0, -uma_cor.bounds[0][2]])
-uma_cor.merge_vertices()
+uma_cor = clean_mesh(uma_cor)
 print(f"{'stl':10s} fechada={uma_cor.is_watertight}  medidas={np.round(uma_cor.extents, 1)}")
 uma_cor.export("suporte_celular.stl")
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf, place_in_rows
 
-PALETTE = [("1_corpo", "Laranja", "#E8712B"), ("2_detalhes", "Preto", "#1A1A1A")]
+PALETTE = [("1_corpo", "Laranja", "#E8712B")]
 pecas = []
-for cor, m in [("1_corpo", corpo), ("2_detalhes", detalhes)]:
+for cor, m in [("1_corpo", corpo)]:
     e = m.copy()
     e.apply_transform(TO_Z_UP)
     pecas.append((cor, e))

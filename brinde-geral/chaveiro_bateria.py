@@ -113,6 +113,10 @@ verso = affinity.translate(text_shape("ABEE-MT  ·  MATO GROSSO", 4.0, max_width
                            TXT_CX, A / 2)
 base = base.difference(extrude(affinity.scale(verso, -1, 1, origin=(TXT_CX, A / 2)), 0.6, -0.01))
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
+
 # ---------- verificação e exportação ----------
 for nome, m in [("base", base), ("relevo", relevo)]:
     m.merge_vertices()
@@ -124,13 +128,10 @@ print(f"{'peça':10s} {L + POLO_L:.0f} x {A:.0f} x {BASE_T + RELIEF:.1f} mm   "
       f"massa total {total_g:.2f} g")
 
 uma_cor = base.union(relevo)
-uma_cor.merge_vertices()
+uma_cor = clean_mesh(uma_cor)
 print(f"{'stl':10s} fechada={uma_cor.is_watertight}  medidas={np.round(uma_cor.extents, 1)}")
 uma_cor.export("chaveiro_bateria.stl")
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf
 
 # A cor do corpo é a que roda entre as cinco bobinas; gravo laranja porque é a mais cheia.
 PALETTE = [("1_corpo", "Laranja", "#E8712B"),

@@ -122,6 +122,24 @@ def _clean(mesh, precision):
     return m
 
 
+def clean_mesh(mesh, precision=3):
+    """Mesma limpeza que as malhas gravadas no 3MF recebem, para uso nos STL.
+
+    Um `merge_vertices()` solto depois de um booleano solda vértices que o
+    booleano deixou a poucos milésimos um do outro e abre a malha — foi o que
+    aconteceu com o STL fundido do PowerStack, no ponto do rodapé. Aqui a ordem
+    é a que funciona: arredondar, soldar, jogar fora face degenerada, e só
+    aceitar o resultado se a peça continuar fechada.
+    """
+    erro = None
+    for p in (precision, precision + 1, precision + 2):
+        try:
+            return _clean(mesh, p)
+        except AssertionError as e:      # sobe uma casa: malha fundida de peças que se
+            erro = e                     # interpenetram tem sliver mais fino que 3 casas
+    raise AssertionError(f"não fechou nem com {precision + 2} casas: {erro}")
+
+
 def _mesh_xml(obj_id, name, mesh, pindex, precision):
     mesh = _clean(mesh, precision)
     v = "".join(f'<vertex x="{x:.{precision}f}" y="{y:.{precision}f}" z="{z:.{precision}f}"/>'

@@ -157,13 +157,20 @@ while x <= W - 6.0:                                              # fundo do cont
     x += 4.0
 corpo = corpo.difference(trimesh.util.concatenate(ondas))
 
-# rodapé escuro: mesma casca, cor separada
-rodape = corpo.intersection(rbox(W + 2, RODAPE + 1.05, D + 2, -1, -1, -1))
-corpo_claro = corpo.difference(rbox(W + 2, RODAPE + 1, D + 2, -1, -1, -1))
-
-# ---------- detalhes em relevo (segunda cor) ----------
-# Alturas medidas para não colidirem: raio 34..48; título 25..31; subtítulo 9,6..22,2.
-# Passo de 4,6 mm entre as linhas do subtítulo: a 3,9 elas se encostavam.
+# ---------- fachada: relevo na cor do próprio corpo ----------
+# Antes isto era tudo em segunda cor, saindo da fachada vertical. É a condição que
+# estragou o logo da CCR e o da WEG na impressão: em parede vertical cada camada do
+# relevo é uma ilha solta depositada logo depois de uma troca de filamento, e aqui
+# seriam quase 200 camadas com duas trocas em cada.
+#
+# Nas maquetes a saída foi imprimir a arte deitada numa chapinha e colar. Aqui não:
+# este é o brinde de tiragem, e chapinha significa uma colagem por unidade, além do
+# desperdício de purga de 400 trocas. Então a fachada inteira sai na cor do corpo, com
+# relevo de 1,0 mm em vez de 0,7 — quem desenha o raio e os dizeres é a sombra. A única
+# troca de cor que sobra na peça é o rodapé, que é uma faixa horizontal: uma troca só,
+# na camada 30. A frase da lateral vira baixo-relevo, que numa parede lisa lê melhor
+# que saliência e não muda nada no tempo de impressão.
+RELIEF_FACHADA = 1.0
 frente2d = [affinity.translate(raio_shape(14.0), W / 2, 41.0),
             affinity.translate(text_shape("FÓRUM BESS 2026", 5.4, max_width=40.0), W / 2, 28.0)]
 for i, linha in enumerate(["ENGENHARIA", "ENERGIA", "FUTURO"]):
@@ -171,15 +178,15 @@ for i, linha in enumerate(["ENGENHARIA", "ENERGIA", "FUTURO"]):
     # sairiam fundidas; o traço ainda fica acima de 0,9 mm
     frente2d.append(affinity.translate(text_shape(linha, 3.0, max_width=30.0, fatten=0.12),
                                        W / 2, 20.5 - i * 4.6))
-detalhes = [na_frente(unary_union(frente2d), RELIEF + SINK)]
+corpo = corpo.union(na_frente(unary_union(frente2d), RELIEF_FACHADA + SINK))
 
 dobradicas = []
 # Só nas arestas externas das folhas: o par do meio caía em cima do subtítulo, e em
 # contêiner real o encontro das folhas é o fecho, não a dobradiça.
 for cx in (3.6, W - 3.6):
     for cy in (PORTA_Y0 + 3.0, PORTA_Y1 - 6.0):
-        dobradicas.append(rbox(2.6, 3.0, RELIEF + SINK, cx - 1.3, cy, -RELIEF))
-detalhes.append(trimesh.util.concatenate(dobradicas))
+        dobradicas.append(rbox(2.6, 3.0, RELIEF_FACHADA + SINK, cx - 1.3, cy, -RELIEF_FACHADA))
+corpo = corpo.union(trimesh.util.concatenate(dobradicas))
 
 # A frase inteira numa linha teria 64 mm e a lateral só tem 60 de altura útil;
 # em cinco linhas curtas o bloco fica 20 x 39 mm e sobra folga nos dois sentidos.
@@ -188,12 +195,21 @@ bloco = unary_union([affinity.translate(text_shape(t, 3.0, max_width=34.0), 0, -
                      for i, t in enumerate(linhas_lat)])
 bx0, by0, bx1, by1 = bloco.bounds
 bloco = affinity.rotate(affinity.translate(bloco, -(bx0 + bx1) / 2, -(by0 + by1) / 2), -90)
-detalhes.append(na_lateral(affinity.translate(bloco, D / 2, (RODAPE + H) / 2),
-                           RELIEF + SINK, "direita"))
-detalhes_escuros = trimesh.util.concatenate(detalhes)
+# baixo-relevo de 0,6 mm: o bloco é gerado 1 mm para fora e recortado do corpo
+# na_lateral entrega o bloco começando em x = W - SINK e saindo para fora; recuar
+# 0,55 o faz começar em x = W - 0,6 e ainda romper a superfície em x = W + 0,4
+frase = na_lateral(affinity.translate(bloco, D / 2, (RODAPE + H) / 2), 1.0, "direita")
+frase.apply_translation([-0.55, 0, 0])
+corpo = corpo.difference(frase)
+
+# rodapé escuro: mesma casca, cor separada. O corte vem depois da fachada, e a peça de
+# uma cor só sai de `corpo` inteiro — unir as duas metades de volta deixava 6 faces de
+# área zero na junta, onde a passagem de cabo atravessa a linha do rodapé.
+rodape = corpo.intersection(rbox(W + 2, RODAPE + 1.05, D + 2, -1, -1, -1))
+corpo_claro = corpo.difference(rbox(W + 2, RODAPE + 1, D + 2, -1, -1, -1))
 
 # ---------- verificação e exportação ----------
-parts = {"corpo_claro": corpo_claro, "rodape_escuro": rodape, "detalhes_escuros": detalhes_escuros}
+parts = {"corpo_claro": corpo_claro, "rodape_escuro": rodape}
 for nome, m in parts.items():
     m.merge_vertices()
     m.fix_normals()
@@ -202,21 +218,25 @@ for nome, m in parts.items():
 total_g = sum(m.volume for m in parts.values()) / 1000 * DENSIDADE
 print(f"{'peça':18s} {W:.0f} x {D:.0f} x {H:.0f} mm   massa da casca {total_g:.1f} g")
 
-TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
-uma_cor = trimesh.util.concatenate([corpo_claro, rodape, detalhes_escuros])
-uma_cor.apply_transform(TO_Z_UP)
-uma_cor.apply_translation([0, 0, -uma_cor.bounds[0][2]])
-uma_cor.merge_vertices()
-print(f"{'stl':18s} cascas={len(uma_cor.split(only_watertight=False))}  medidas={np.round(uma_cor.extents, 1)}")
-uma_cor.export("organizador_mini_bess.stl")
-
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf, place_in_rows
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
 
-PALETTE = [("1_corpo", "Cinza", "#C9CDCB"), ("2_detalhes", "Preto", "#1A1A1A")]
+TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
+# A peça de uma cor só é o próprio `corpo`, antes do corte do rodapé: sem booleano de
+# remontagem, sem sliver na junta. Antes isto era uma concatenação das partes, e o STL
+# saía como colagem de 73 cascas que se atravessam.
+uma_cor = corpo.copy()
+uma_cor.apply_transform(TO_Z_UP)
+uma_cor.apply_translation([0, 0, -uma_cor.bounds[0][2]])
+uma_cor = clean_mesh(uma_cor)
+print(f"{'stl':18s} fechada={uma_cor.is_watertight}  cascas={len(uma_cor.split(only_watertight=False))}  medidas={np.round(uma_cor.extents, 1)}")
+uma_cor.export("organizador_mini_bess.stl")
+
+
+PALETTE = [("1_corpo", "Cinza", "#C9CDCB"), ("2_rodape", "Preto", "#1A1A1A")]
 pecas = []
-for cor, ms in [("1_corpo", [corpo_claro]), ("2_detalhes", [rodape, detalhes_escuros])]:
+for cor, ms in [("1_corpo", [corpo_claro]), ("2_rodape", [rodape])]:
     e = trimesh.util.concatenate([m.copy() for m in ms])
     e.apply_transform(TO_Z_UP)
     pecas.append((cor, e))

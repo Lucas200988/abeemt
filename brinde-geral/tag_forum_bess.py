@@ -107,6 +107,10 @@ relevo = extrude(relevo2d, RELIEF + 0.05, BASE_T - 0.05)     # penetra 0,05 na b
 verso = affinity.translate(text_shape("ABEE-MT  ·  MATO GROSSO", 4.4, max_width=56.0), L / 2, A / 2)
 base = base.difference(extrude(affinity.scale(verso, -1, 1, origin=(L / 2, A / 2)), 0.6, -0.01))
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bambu3mf import write_3mf, place_in_rows, clean_mesh
+
 # ---------- verificação e exportação ----------
 for nome, m in [("base", base), ("relevo", relevo)]:
     m.merge_vertices()
@@ -118,13 +122,10 @@ total_g = (base.volume + relevo.volume) / 1000 * DENSIDADE
 print(f"{'peça':10s} {L:.0f} x {A:.0f} x {BASE_T + RELIEF:.1f} mm   massa total {total_g:.2f} g")
 
 uma_cor = base.union(relevo)
-uma_cor.merge_vertices()
+uma_cor = clean_mesh(uma_cor)
 print(f"{'stl':10s} fechada={uma_cor.is_watertight}  medidas={np.round(uma_cor.extents, 1)}")
 uma_cor.export("tag_forum_bess.stl")
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bambu3mf import write_3mf
 
 # Uma peça só; a cor do corpo é a que roda entre as cinco bobinas. Gravo a laranja
 # como corpo porque é a bobina mais cheia, e preto no relevo.

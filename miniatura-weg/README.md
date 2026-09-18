@@ -45,3 +45,50 @@ Para conferir o encaixe sem gastar o contêiner inteiro, imprima só
 `miniatura_weg_placa.stl` — para imprimir peça a peça ou abrir em outro programa.
 
 Gerado por `weg_bess_miniatura.py` (`python3 weg_bess_miniatura.py` regrava tudo).
+
+## Torre de purga: duas mesas em vez de uma
+
+Cada troca de filamento joga fora material na torre de purga. O que gera troca não é a peça
+ter duas cores — é **dois objetos pedirem cores diferentes na mesma altura**: aí o fatiador
+troca dentro de cada camada, dezenas de vezes seguidas. Agrupando na mesma mesa as peças que
+começam com a mesma cor, a troca vira uma por peça, sequencial em Z.
+
+| Arquivo | Trocas de filamento |
+|---|---|
+| `miniatura_weg_multicor.3mf` (tudo numa mesa) | 22 |
+| `miniatura_weg_mesa1_cinza.3mf` + `miniatura_weg_mesa2_placa.3mf` | **3** |
+
+A placa de base é a única peça preta e branca; tirada de perto do contêiner cinza,
+sobram três trocas na maquete inteira.
+
+Quatro ajustes no Studio ajudam tanto quanto a divisão, e valem para qualquer um dos arquivos:
+
+1. **Agrupamento de filamentos em "Automático (descarga)"** na H2C. Forçar tudo num bico só
+   resolve erro de mapeamento mas desliga a otimização de purga dos dois bicos.
+2. **Descarregar no preenchimento do objeto** — manda o descarte para dentro das peças. A
+   placa de base tem 84 × 84 × 3 mm de reservatório bem ali na mesa.
+3. **Volumes de descarga**: o cálculo automático é conservador; os pares entre cores escuras
+   aceitam bem menos que o padrão.
+4. **Largura da torre**: as trocas todas acontecem nos primeiros milímetros, então a torre é
+   baixa e pode ser estreita.
+
+## Ajustes já gravados no arquivo
+
+Os 3MF trazem dois ajustes dentro deles, aplicados por cima do seu perfil ao importar:
+
+- **altura da primeira camada: 0,25 mm**
+- **gerador de parede: Arachne**
+
+Todo o resto continua vindo do seu perfil. Se algum arquivo reclamar ao abrir, apague
+`Metadata/project_settings.config` de dentro do zip — ou me avise, que eu regravo sem ele;
+os dois ajustes também podem ser postos uma vez no perfil e salvos como preset.
+
+### Imprimir por objeto
+
+A ordem que você viu em outros projetos (imprime uma peça inteira, depois a outra) é
+**Sequência de impressão → Por objeto**. Ela zera a troca de filamento entre peças, e é o
+melhor remédio para a torre de purga. Não deixei ligada no arquivo porque ela exige que as
+peças fiquem afastadas o bastante para o bico passar por cima das já prontas — com o
+espaçamento destas mesas o Studio recusaria fatiar. Para usá-la: ligue a opção e deixe o
+Studio rearranjar a mesa; se ele avisar de colisão, é porque as peças não cabem afastadas o
+suficiente, e aí a divisão em duas mesas acima faz o mesmo trabalho.

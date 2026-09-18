@@ -56,3 +56,24 @@ todo mundo.
 - `suporte_celular.3mf` — suporte de celular inclinado, 56,1 g, um filamento só.
 - `tag_forum_bess.3mf` — etiqueta retangular, 6,34 g. Substituída pelo chaveiro bateria,
   que lê como objeto em vez de etiqueta e pesa menos.
+
+## Ajustes já gravados no arquivo
+
+Os 3MF trazem dois ajustes dentro deles, aplicados por cima do seu perfil ao importar:
+
+- **altura da primeira camada: 0,25 mm**
+- **gerador de parede: Arachne**
+
+Todo o resto continua vindo do seu perfil. Se algum arquivo reclamar ao abrir, apague
+`Metadata/project_settings.config` de dentro do zip — ou me avise, que eu regravo sem ele;
+os dois ajustes também podem ser postos uma vez no perfil e salvos como preset.
+
+### Imprimir por objeto
+
+A ordem que você viu em outros projetos (imprime uma peça inteira, depois a outra) é
+**Sequência de impressão → Por objeto**. Ela zera a troca de filamento entre peças, e é o
+melhor remédio para a torre de purga. Não deixei ligada no arquivo porque ela exige que as
+peças fiquem afastadas o bastante para o bico passar por cima das já prontas — com o
+espaçamento destas mesas o Studio recusaria fatiar. Para usá-la: ligue a opção e deixe o
+Studio rearranjar a mesa; se ele avisar de colisão, é porque as peças não cabem afastadas o
+suficiente, e aí a divisão em duas mesas acima faz o mesmo trabalho.

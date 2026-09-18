@@ -371,21 +371,36 @@ def placed(name, obj):
         e.apply_transform(flip)
     return e
 
-objects = []
-for obj, groups in COLOR_GROUPS.items():
-    color_parts = []
-    for color, names in groups.items():
-        color_parts.append((color, trimesh.util.concatenate([placed(n, obj) for n in names])))
-    objects.append((obj, color_parts))
 
-# placa numa fileira, corpo e tampa na outra: mesa compacta, longe da faixa
-# reservada ao bico esquerdo nas impressoras de dois bicos
-place_in_rows(objects, [["powerstack_corpo", "powerstack_tampa"],
-                       ["placa_base", "powerstack_chapa"]])
 
-slots = write_3mf("miniatura_powerstack_multicor.3mf", "Miniatura Sungrow PowerStack 1:25",
-                  objects, PALETTE)
-print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
+def monta(nomes):
+    return [(obj, [(cor, trimesh.util.concatenate([placed(n, obj) for n in ns]))
+                   for cor, ns in COLOR_GROUPS[obj].items()]) for obj in nomes]
+
+
+# Mesas agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
+# Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
+# pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
+# que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
+# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+PREFIXO, TITULO, PRECISAO = "miniatura_powerstack", "Miniatura Sungrow PowerStack 1:25", 3
+# Aqui o ganho da divisão é pequeno e vale dizer por quê: as trocas não vêm da convivência
+# entre objetos, vêm das faixas laranja da própria tampa e da própria placa, que existem em
+# qualquer arranjo. O que a divisão resolve é tirar a torre de perto da peça de 95 mm.
+MESAS = [
+    ("multicor", list(COLOR_GROUPS),
+     [["powerstack_corpo", "powerstack_tampa"], ["placa_base", "powerstack_chapa"]]),
+    ("mesa1_corpo", ["powerstack_corpo"], [["powerstack_corpo"]]),
+    ("mesa2_pecas", ["powerstack_tampa", "powerstack_chapa", "placa_base"],
+     [["powerstack_tampa", "powerstack_chapa"], ["placa_base"]]),
+]
+for sufixo, nomes, fileiras in MESAS:
+    objs = monta(nomes)
+    place_in_rows(objs, fileiras)
+    slots = write_3mf(f"{PREFIXO}_{sufixo}.3mf", TITULO, objs, PALETTE, precision=PRECISAO)
+    print(f"{'3mf_' + sufixo:22s} {len(objs)} objetos, filamentos: "
+          + ", ".join(f"{k} = {v}" for k, v in slots.items()))
+print("arquivos gravados")
 
 # dados para o visualizador (Y para cima, montado), agrupados nas 3 cores
 import json

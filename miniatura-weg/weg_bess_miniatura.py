@@ -401,13 +401,30 @@ def placed(name, obj):
     return e
 
 
-objects = []
-for obj, groups in COLOR_GROUPS.items():
-    objects.append((obj, [(color, trimesh.util.concatenate([placed(n, obj) for n in names]))
-                          for color, names in groups.items()]))
-place_in_rows(objects, [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"], ["placa_base"]])
 
-slots = write_3mf("miniatura_weg_multicor.3mf", "Miniatura WEG BESS contêiner 1:80",
-                  objects, PALETTE)
-print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
+
+def monta(nomes):
+    return [(obj, [(cor, trimesh.util.concatenate([placed(n, obj) for n in ns]))
+                   for cor, ns in COLOR_GROUPS[obj].items()]) for obj in nomes]
+
+
+# Mesas agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
+# Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
+# pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
+# que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
+# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+PREFIXO, TITULO, PRECISAO = "miniatura_weg", "Miniatura WEG BESS contêiner 1:80", 3
+MESAS = [
+    ("multicor", list(COLOR_GROUPS),
+     [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"], ["placa_base"]]),
+    ("mesa1_cinza", ["weg_conteiner", "weg_teto", "weg_chapa_logo"],
+     [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"]]),
+    ("mesa2_placa", ["placa_base"], [["placa_base"]]),
+]
+for sufixo, nomes, fileiras in MESAS:
+    objs = monta(nomes)
+    place_in_rows(objs, fileiras)
+    slots = write_3mf(f"{PREFIXO}_{sufixo}.3mf", TITULO, objs, PALETTE, precision=PRECISAO)
+    print(f"{'3mf_' + sufixo:22s} {len(objs)} objetos, filamentos: "
+          + ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

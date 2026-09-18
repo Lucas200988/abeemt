@@ -152,7 +152,31 @@ def _mesh_xml(obj_id, name, mesh, pindex, precision):
             f'</object>')
 
 
-def write_3mf(path, title, objects, palette, precision=3):
+PROJECT_CONFIG = "Metadata/project_settings.config"
+
+# Ajustes de impressão gravados junto com o arquivo. O Studio lê este JSON em
+# `Metadata/project_settings.config` (bbs_3mf.cpp, _extract_project_config_from_archive)
+# e aplica as chaves presentes por cima do perfil aberto — as que não estão aqui continuam
+# vindo do perfil do usuário, que é o que queremos.
+#
+# Só duas chaves, de propósito. `print_sequence` ficou de fora mesmo sendo o que mais
+# ajudaria na purga: imprimir por objeto exige que as peças fiquem afastadas o bastante
+# para o bico passar por cima das já prontas, e com o espaçamento destas mesas o Studio
+# recusaria fatiar. Fica como ajuste manual, com o aviso no README.
+AJUSTES = {
+    "initial_layer_print_height": "0.25",
+    "wall_generator": "arachne",
+}
+
+
+def _project_config(ajustes):
+    import json
+    dados = {"name": "project_settings", "from": "project", "version": "01.09.00.00"}
+    dados.update(ajustes)
+    return json.dumps(dados, indent=4, ensure_ascii=False)
+
+
+def write_3mf(path, title, objects, palette, precision=3, ajustes=AJUSTES):
     """Grava um 3MF em `path`.
 
     objects -- lista de (nome do objeto, [(chave de cor, malha), ...]).
@@ -208,4 +232,6 @@ def write_3mf(path, title, objects, palette, precision=3):
         zf.writestr("_rels/.rels", RELS)
         zf.writestr("3D/3dmodel.model", model_xml)
         zf.writestr("Metadata/model_settings.config", model_settings)
+        if ajustes:
+            zf.writestr(PROJECT_CONFIG, _project_config(ajustes))
     return slot

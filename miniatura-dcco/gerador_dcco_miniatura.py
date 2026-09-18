@@ -7,8 +7,8 @@ cabine, então a carenagem foi desenhada com 1250 mm, largura típica de cabine 
 faixa de potência. Em 1:50 -> 72,4 x 25,0 x 36,7 mm; com a placa de 3 mm, 39,7 mm.
 
 Carenagem verde com chassi preto, como o gerador real. Três filamentos: verde na cabine e
-no teto, preto no chassi, no crachá do logo e na placa, branco nas letras e no emblema da
-placa. A linha entre chassi e cabine é a própria troca de cor.
+no teto, preto no chassi, na placa e no escapamento, branco no logo da DCCO e nas letras da
+placa — o logo branco sobre o verde é como a máquina real. A linha entre chassi e cabine é a própria troca de cor.
 
 Costado, da esquerda para a direita: grade do radiador, porta de acesso com visor do painel
 de controle, painel fixo com o crachá da DCCO, segunda porta de acesso, maçanetas. Chassi com
@@ -25,6 +25,7 @@ Peças (impressão sem suporte):
   corpo  - casca oca aberta em cima, parede 1,6 mm, fundo 2,0 mm; imprime apoiado no chassi
   teto   - tampa com aba de encaixe; imprime de cabeça para baixo
   cracha - 20 x 10 x 1,5 mm; imprime deitado, logo para cima, e vai colado no painel fixo
+  escap. - chaminé de 5,1 x 7,7 mm; imprime em pé e encaixa no rebaixo do teto
   placa  - base de 84 x 84 x 3 mm; o gerador é comprido e estreito, então as faixas livres
            ficam na frente e no fundo, com 29,5 mm cada
 
@@ -265,6 +266,47 @@ def cortes_teto():
 
 cap = cap.difference(cortes_teto())
 
+# ---------- escapamento: peça separada, encaixada no rebaixo do teto ----------
+# No teto ele não pode nascer: a tampa imprime de cabeça para baixo, e qualquer saliência
+# viraria um pedestal de 7 mm apoiado na mesa com a tampa inteira pendurada nele. Como
+# peça à parte ele imprime em pé, apoiado no próprio disco de base — 20 mm² na mesa, que
+# é o que segura uma peça fina desse tamanho.
+#
+# A chaminé sai com o topo cortado a 45° em vez do cotovelo curvo da foto. O cotovelo
+# termina apontando para o lado, e a última parte dele seria um balanço horizontal sem
+# nada embaixo. O corte a 45° é o limite que o bico forma sozinho, e em 1:50 lê como
+# escapamento do mesmo jeito. Se preferir o cotovelo de verdade, dá para fazer a peça
+# deitada, mas aí ela ganha um repuxo na barriga onde toca a mesa.
+ESC_CX, ESC_CZ = W - 16.0, D / 2            # mesmo ponto do rebaixo já existente no teto
+ESC_BASE_R, ESC_BASE_H = 2.55, 0.7          # entra no rebaixo de 2,6 e 0,7 do teto
+ESC_R, ESC_ALT, ESC_FURO_R = 1.8, 7.0, 0.9  # parede de 0,9 mm na boca
+
+
+def _em_pe(m, y0):
+    """Cilindro do trimesh tem eixo em Z; aqui o eixo da peça é Y."""
+    m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0]))
+    m.apply_translation([ESC_CX, y0, ESC_CZ])
+    return m
+
+
+Y0 = H - ESC_BASE_H                                        # disco assenta no rebaixo
+disco = _em_pe(cylinder(radius=ESC_BASE_R, height=ESC_BASE_H, sections=48),
+               Y0 + ESC_BASE_H / 2)
+tubo = _em_pe(cylinder(radius=ESC_R, height=ESC_ALT, sections=48), H + ESC_ALT / 2)
+escapamento = disco.union(tubo)
+# Corte a 45°, virado para o fundo do gerador. O plano passa pelo eixo do tubo a
+# ESC_R abaixo do topo, então a boca vai de H+2,4 (ponto baixo) a H+6,0 (ponto alto) e
+# usa a altura toda da chaminé. A caixa de corte nasce nesse plano e sobe: girada em
+# torno do mesmo ponto, ela tira só a cunha de cima e deixa uma rampa voltada para cima,
+# que não é balanço nenhum.
+ESC_PY = H + ESC_ALT - ESC_R
+corte = rbox(6 * ESC_R, 6 * ESC_R, 6 * ESC_R, ESC_CX - 3 * ESC_R, ESC_PY, ESC_CZ - 3 * ESC_R)
+corte.apply_transform(trimesh.transformations.rotation_matrix(
+    np.pi / 4, [1, 0, 0], point=[ESC_CX, ESC_PY, ESC_CZ]))
+escapamento = escapamento.difference(corte)
+escapamento = escapamento.difference(
+    _em_pe(cylinder(radius=ESC_FURO_R, height=ESC_ALT, sections=32), H + ESC_ALT))
+
 # ---------- crachá do logo: peça separada, impressa deitada e colada ----------
 # O rebaixo é raso de propósito: 0,7 mm deixa 0,9 mm de parede sob ele e dispensa reforço
 # por dentro, que aqui esbarraria na aba do teto. O crachá fica 0,8 mm saliente, como o
@@ -288,7 +330,7 @@ CR_CX, CR_CY = (CR_X0 + CR_X1) / 2, (CR_Y0 + CR_Y1) / 2
 bolso_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + 0.5)
 bolso_logo.apply_translation([CR_CX, CR_CY, CZ1 - CR_LOGO_PROF])
 cracha = cracha.difference(bolso_logo)
-cracha_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + SINK)
+cracha_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + SINK)   # branco, como na foto
 cracha_logo.apply_translation([CR_CX, CR_CY, CZ1 - CR_LOGO_PROF - SINK])
 
 # Maçanetas na cor da própria carenagem: em parede vertical, uma barra preta de 1,2 mm
@@ -323,7 +365,8 @@ parts = {
     "carenagem_verde": body_green,
     "chassi_preto": chassi_part,
     "cracha_verde": cracha,
-    "cracha_logo_preto": cracha_logo,
+    "cracha_logo_branco": cracha_logo,
+    "escapamento_preto": escapamento,
     "teto_verde": cap,
     "placa_base": plate,
     "emblema_e_textos": plate_marks,
@@ -366,11 +409,20 @@ print(f"{'stl_placa':20s} watertight={plate_stl.is_watertight}  volume={plate_st
       f"  medidas={np.round(plate_stl.extents, 1)}")
 plate_stl.export("miniatura_dcco_placa.stl")
 
+esc_stl = escapamento.copy()
+esc_stl.apply_transform(TO_Z_UP)
+esc_stl.apply_translation([0, 0, -esc_stl.bounds[0][2]])
+esc_stl = clean_mesh(esc_stl)
+print(f"{'stl_escapamento':20s} watertight={esc_stl.is_watertight}  volume={esc_stl.volume:8.0f} mm³"
+      f"  medidas={np.round(esc_stl.extents, 2)}")
+esc_stl.export("miniatura_dcco_escapamento.stl")
+
 # ---------- 3MF ----------
 
 COLOR_GROUPS = {
     "gerador_corpo":  {"1_verde": ["carenagem_verde"], "2_preto": ["chassi_preto"]},
-    "gerador_cracha": {"1_verde": ["cracha_verde"], "2_preto": ["cracha_logo_preto"]},
+    "gerador_cracha": {"1_verde": ["cracha_verde"], "3_branco": ["cracha_logo_branco"]},
+    "gerador_escapamento": {"2_preto": ["escapamento_preto"]},
     "gerador_teto":   {"1_verde": ["teto_verde"]},
     "placa_base":     {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
 }
@@ -393,15 +445,33 @@ def placed(name, obj):
     return e
 
 
-objects = []
-for obj, groups in COLOR_GROUPS.items():
-    objects.append((obj, [(color, trimesh.util.concatenate([placed(n, obj) for n in names]))
-                          for color, names in groups.items()]))
-place_in_rows(objects, [["gerador_corpo"], ["gerador_teto", "gerador_cracha"], ["placa_base"]])
+def monta(nomes):
+    return [(obj, [(cor, trimesh.util.concatenate([placed(n, obj) for n in ns]))
+                   for cor, ns in COLOR_GROUPS[obj].items()]) for obj in nomes]
 
-# precision=4: o contorno traçado do logo tem segmentos quase colineares, e arredondar o
-# bolso do crachá para 3 casas colapsa faces e abre a malha — a trava do bambu3mf pega isso.
-slots = write_3mf("miniatura_dcco_multicor.3mf", "Miniatura gerador Cummins carenado 1:50",
-                  objects, PALETTE, precision=4)
-print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
+
+# Duas mesas, agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
+# Numa mesa só, o fatiador precisa trocar de filamento DENTRO de cada camada sempre que dois
+# objetos pedem cores diferentes na mesma altura: o chassi preto do corpo convive com o teto
+# verde por 30 camadas, e cada uma custa uma troca. Separando as peças que começam pretas
+# das que começam verdes, as trocas caem de ~40 para ~15, e a torre de purga encolhe junto.
+# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+MESAS = [
+    ("multicor", list(COLOR_GROUPS),
+     [["gerador_corpo", "gerador_escapamento"], ["gerador_teto", "gerador_cracha"],
+      ["placa_base"]]),
+    ("mesa1_base_preta", ["gerador_corpo", "gerador_escapamento", "placa_base"],
+     [["gerador_corpo", "gerador_escapamento"], ["placa_base"]]),
+    ("mesa2_base_verde", ["gerador_teto", "gerador_cracha"],
+     [["gerador_teto", "gerador_cracha"]]),
+]
+for sufixo, nomes, fileiras in MESAS:
+    objs = monta(nomes)
+    place_in_rows(objs, fileiras)
+    # precision=4: o contorno traçado do logo tem segmentos quase colineares, e arredondar
+    # o bolso do crachá para 3 casas colapsa faces e abre a malha — a trava do bambu3mf pega.
+    slots = write_3mf(f"miniatura_dcco_{sufixo}.3mf",
+                      "Miniatura gerador Cummins carenado 1:50", objs, PALETTE, precision=4)
+    print(f"{'3mf_' + sufixo:20s} {len(objs)} objetos, filamentos: "
+          + ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

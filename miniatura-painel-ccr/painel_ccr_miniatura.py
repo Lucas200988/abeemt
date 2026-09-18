@@ -336,31 +336,30 @@ def placed(name, obj):
     return e
 
 
-objects = []
-for obj, groups in COLOR_GROUPS.items():
-    color_parts = []
-    for color, names in groups.items():
-        color_parts.append((color, trimesh.util.concatenate([placed(n, obj) for n in names])))
-    objects.append((obj, color_parts))
 
-# placa numa fileira, corpo e tampa na outra: mesa compacta, longe da faixa
-# reservada ao bico esquerdo nas impressoras de dois bicos
-place_in_rows(objects, [["painel_corpo", "painel_tampa"], ["painel_porta"], ["placa_base"]])
 
-slots = write_3mf("miniatura_painel_ccr_multicor.3mf", "Miniatura Painel CCR 1:20",
-                  objects, PALETTE)
-print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
+def monta(nomes):
+    return [(obj, [(cor, trimesh.util.concatenate([placed(n, obj) for n in ns]))
+                   for cor, ns in COLOR_GROUPS[obj].items()]) for obj in nomes]
 
-# ---------- dados para o visualizador (Y para cima, montado) ----------
-import json
-VIEW_GROUPS = {
-    "branco": ["corpo_branco", "porta_branca"],
-    "grafite": ["rodape_grafite", "tampa_grafite", "porta_logo_grafite", "placa_base"],
-    "laranja": ["emblema_e_textos"],
-}
-out = {}
-for color, names in VIEW_GROUPS.items():
-    m = trimesh.util.concatenate([parts[n] for n in names])
-    out[color] = {"v": np.round(m.vertices, 2).flatten().tolist(), "f": m.faces.flatten().tolist()}
-open("mesh_data_painel_mini.js", "w").write("const MESH_DATA=" + json.dumps(out, separators=(",", ":")) + ";")
+
+# Mesas agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
+# Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
+# pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
+# que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
+# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+PREFIXO, TITULO, PRECISAO = "miniatura_painel_ccr", "Miniatura painel CCR 1:20", 3
+MESAS = [
+    ("multicor", list(COLOR_GROUPS),
+     [["painel_corpo", "painel_tampa"], ["painel_porta"], ["placa_base"]]),
+    ("mesa1_grafite", ["painel_corpo", "painel_tampa", "placa_base"],
+     [["painel_corpo", "painel_tampa"], ["placa_base"]]),
+    ("mesa2_porta", ["painel_porta"], [["painel_porta"]]),
+]
+for sufixo, nomes, fileiras in MESAS:
+    objs = monta(nomes)
+    place_in_rows(objs, fileiras)
+    slots = write_3mf(f"{PREFIXO}_{sufixo}.3mf", TITULO, objs, PALETTE, precision=PRECISAO)
+    print(f"{'3mf_' + sufixo:22s} {len(objs)} objetos, filamentos: "
+          + ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

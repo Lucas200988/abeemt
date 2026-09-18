@@ -17,6 +17,7 @@ import numpy as np
 import trimesh
 from trimesh.creation import box, cylinder, extrude_polygon
 from shapely.geometry import Polygon, Point, box as sbox
+from shapely.ops import unary_union
 from shapely import affinity
 from matplotlib.textpath import TextPath
 from matplotlib.font_manager import FontProperties
@@ -82,6 +83,45 @@ def on_front(m, cx, cy):
     return m
 
 
+def _lay_flat(m):
+    """Deita a malha no plano da placa, com o relevo para cima."""
+    m.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
+    return m
+
+
+def lying_text(txt, cap, cz, max_width=72, height=1.5, back=False):
+    """Texto deitado na placa, lido da frente (ou do fundo, com back=True)."""
+    m = _lay_flat(text_flat(txt, cap, height, max_width=max_width))
+    if back:
+        m.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]))
+    m.apply_translation([W / 2, -SINK, cz])
+    return m
+
+
+def lying_text_side(txt, cap, cx, cz, side, max_len=72, height=1.5):
+    """Texto deitado na placa lendo ao longo da profundidade, na faixa lateral."""
+    m = _lay_flat(text_flat(txt, cap, height, max_width=max_len))
+    ang = -np.pi / 2 if side == "left" else np.pi / 2
+    m.apply_transform(trimesh.transformations.rotation_matrix(ang, [0, 1, 0]))
+    m.apply_translation([cx, -SINK, cz])
+    return m
+
+
+def lying_emblem(diam, cx, cz, height=1.5):
+    """Emblema da ABEE-MT deitado na placa: raio dentro de um anel."""
+    r_out = diam / 2
+    ring = Point(0, 0).buffer(r_out, 64).difference(Point(0, 0).buffer(r_out - 0.9, 64))
+    h = diam * 0.72
+    bolt = Polygon([(0.55, 1.0), (0.10, 0.42), (0.42, 0.42), (0.30, 0.0),
+                    (0.90, 0.58), (0.58, 0.58), (0.70, 1.0)])
+    bolt = affinity.translate(affinity.scale(bolt, h, h, origin=(0, 0)), -0.5 * h, -0.5 * h)
+    shape = unary_union([ring, bolt.buffer(0.05, join_style=2)])
+    geoms = list(shape.geoms) if hasattr(shape, "geoms") else [shape]
+    m = _lay_flat(trimesh.util.concatenate([extrude_polygon(g, height) for g in geoms]))
+    m.apply_translation([cx, -SINK, cz])
+    return m
+
+
 # ---------- corpo: caixa oca com cantos arredondados, aberta em cima ----------
 outer2d = rounded_rect(0, 0, W, D, R_CORNER)
 inner2d = rounded_rect(WALL, WALL, W - WALL, D - WALL, max(R_CORNER - WALL, 1.0))
@@ -144,7 +184,7 @@ cap_lip = profile_prism(lip2d, BODY_TOP - CAP_LIP, BODY_TOP + 0.01).difference(
     profile_prism(lip_hollow2d, BODY_TOP - CAP_LIP - 1, BODY_TOP + 0.02))
 cap = cap_plate.union(cap_lip)
 # barra de luz laranja: canal na face frontal da tampa + tira separada
-bar_w, bar_h, bar_d = W - 12.0, 0.8, 0.5
+bar_w, bar_h, bar_d = W - 12.0, 1.0, 0.5
 bar_cut = rbox(bar_w, bar_h, bar_d + 0.01, 6.0, BODY_TOP + 0.85, D - bar_d)
 cap = cap.difference(bar_cut)
 # a tira cresce SINK para cada lado e para dentro: encostada no canal ela teria
@@ -155,12 +195,12 @@ light_bar = rbox(bar_w + 2 * SINK, bar_h + 2 * SINK, bar_d + SINK,
 # ---------- detalhes em relevo na frente ----------
 gray, red, blue = [], [], []
 gray.append(on_front(text_flat("SUNGROW", 3.4, RELIEF, max_width=32), W / 2, 89.5))        # marca
-blue.append(rbox(8.0, 0.8, 0.5, W / 2 - 4, 85.5, D - SINK))                                 # indicador
+blue.append(rbox(8.0, 1.0, 0.5, W / 2 - 4, 85.4, D - SINK))                                 # indicador
 gray.append(rbox(1.3, 16.0, 1.2, 4.4, 40.0, D - SINK))                                       # alça
-ring = cylinder(radius=1.8, height=0.6, sections=32).difference(cylinder(radius=1.1, height=0.8, sections=32))
+ring = cylinder(radius=2.1, height=0.6, sections=32).difference(cylinder(radius=1.1, height=0.8, sections=32))
 ring.apply_translation([W - 8.0, 47.0, D - SINK + 0.3])
 gray.append(ring)                                                                             # anel do botão
-btn = cylinder(radius=1.1, height=1.4, sections=32)
+btn = cylinder(radius=1.1 + SINK, height=1.4, sections=32)
 btn.apply_translation([W - 8.0, 47.0, D - SINK + 0.7])
 red.append(btn)                                                                               # botão de emergência
 logo_dot = cylinder(radius=1.1, height=0.4, sections=24)
@@ -180,13 +220,24 @@ plate = profile_prism(plate2d, -PLATE_T, 0)
 # (ele virava uma face de área zero na malha exportada)
 seat = profile_prism(outer2d.buffer(0.2, join_style=1).simplify(0.001), -0.6, 0.01)
 plate = plate.difference(seat)
-plate_text = text_flat("FÓRUM BESS 2026 ABEE-MT", 3.5, 1.5, max_width=76)
-plate_text.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))  # deita no plano XZ, relevo em +Y
-plate_text.apply_translation([W / 2, -0.05, D + (pz0 + PLATE_S - D) / 2])
-plate_text2 = text_flat("POWERSTACK 255CS 1:25", 3.6, 1.5, max_width=76)
-plate_text2.apply_transform(trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0]))
-plate_text2.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]))     # lê-se por trás
-plate_text2.apply_translation([W / 2, -0.05, pz0 / 2])
+# Textos da placa: uma linha por faixa, com a letra o maior que a faixa permite.
+# O gabinete ocupa 64,4 dos 84 mm da placa, então as faixas da frente e do fundo
+# têm só 9,6 mm úteis — cabe uma linha de 6 mm de letra em cada. As laterais têm
+# 18,8 mm, e é onde entram o nome do equipamento e o emblema da associação.
+PZ0, PZ1 = pz0, pz0 + PLATE_S                     # faixa da placa em Z
+Z_MID = (PZ0 + PZ1) / 2
+X_LEFT = (px0 - 0.2) / 2                          # centro da faixa lateral esquerda
+X_RIGHT = (W + 0.2 + px0 + PLATE_S) / 2           # centro da faixa lateral direita
+plate_text = trimesh.util.concatenate([
+    # o Ó acentuado conta na altura total, então a letra sai menor que o número
+    # pedido; aqui a largura de 72 mm é que manda, e a letra fica no máximo possível
+    lying_text("FÓRUM BESS 2026", 7.0, D + (PZ1 - D) / 2),           # faixa da frente
+    lying_text("ABEE-MT", 6.5, PZ0 / 2, back=True),                  # faixa do fundo
+    # 62 mm de comprimento: as linhas da frente e do fundo são mais largas que o
+    # gabinete e invadem a faixa lateral, então a lateral tem de parar antes delas
+    lying_text_side("POWERSTACK 255CS", 5.4, X_LEFT, Z_MID, "left", max_len=62),
+    lying_emblem(13.0, X_RIGHT, Z_MID),
+])
 
 # ---------- exportação ----------
 parts = {
@@ -198,7 +249,7 @@ parts = {
     "botao_vermelho": details_red,
     "detalhes_azuis": details_blue,
     "placa_base": plate,
-    "texto_placa": trimesh.util.concatenate([plate_text, plate_text2]),
+    "texto_placa": plate_text,
 }
 for name, m in parts.items():
     m.merge_vertices()
@@ -225,7 +276,7 @@ print(f"{'stl_tampa':20s} watertight={cap_stl.is_watertight}  volume={cap_stl.vo
 cap_stl.export("miniatura_powerstack_tampa.stl")
 
 # STL 3: placa de base com os textos, deitada
-plate_stl = plate.union(trimesh.util.concatenate([plate_text, plate_text2]))
+plate_stl = plate.union(plate_text)
 plate_stl.apply_transform(TO_Z_UP)
 plate_stl.apply_translation([0, 0, -plate_stl.bounds[0][2]])
 plate_stl.merge_vertices()

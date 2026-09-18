@@ -350,7 +350,7 @@ plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1).simplif
 # Gerador comprido e estreito: sobram 29,5 mm de faixa na frente e no fundo.
 PZ0, PZ1 = pz0, pz0 + PLATE_S
 plate_marks = trimesh.util.concatenate([
-    lying_text("FÓRUM BESS 2026", 9.0, D + 9.0),
+    lying_text("FMEES 2026", 9.0, D + 9.0),
     lying_text("GRUPO GERADOR", 6.5, D + 21.0),
     lying_text("ABEE-MT", 9.0, PZ0 + 22.0, back=True),
     lying_emblem(13.0, W / 2, PZ0 + 8.5),

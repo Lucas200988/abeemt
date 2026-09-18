@@ -1,4 +1,4 @@
-"""Suporte de celular do Fórum BESS 2026, inspirado em gabinete de baterias.
+"""Suporte de celular do FMEES 2026, inspirado em gabinete de baterias.
 
 Frente com cinco indicadores de carga, raio e os dizeres do evento; laterais com
 venezianas; passagem de cabo no rodapé; encosto inclinado a 60 graus com canaleta para
@@ -137,7 +137,7 @@ detalhes2d = []
 for i in range(5):                                         # cinco indicadores de carga
     detalhes2d.append(affinity.translate(pilha_shape(5.4, 9.0), W / 2 + (i - 2) * 9.0, 37.0))
 detalhes2d.append(affinity.translate(raio_shape(10.0), W / 2, 26.0))
-detalhes2d.append(affinity.translate(text_shape("FÓRUM BESS 2026", 6.0, max_width=54.0),
+detalhes2d.append(affinity.translate(text_shape("FMEES 2026", 6.0, max_width=54.0),
                                      W / 2, 16.5))
 detalhes2d.append(affinity.translate(text_shape("ENGENHARIA · ENERGIA · FUTURO", 3.2,
                                                 max_width=54.0), W / 2, 10.5))
@@ -180,7 +180,7 @@ objects = [("suporte_celular", pecas)]
 place_in_rows(objects, [["suporte_celular"]])
 # precision=4: o subtítulo tem letra de 3,2 mm, e arredondar para 3 casas colapsa
 # quatro faces do relevo e abre a malha — a trava do bambu3mf pega isso.
-slots = write_3mf("suporte_celular.3mf", "Suporte de celular Fórum BESS 2026",
+slots = write_3mf("suporte_celular.3mf", "Suporte de celular FMEES 2026",
                   objects, PALETTE, precision=4)
 print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

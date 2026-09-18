@@ -1,4 +1,4 @@
-# Fórum BESS 2026 — peças para imprimir
+# FMEES 2026 — peças para imprimir
 
 Quatro maquetes de mesa para os patrocinadores e dois brindes. Impressora Bambu Lab H2C,
 bico de 0,4 mm, PLA.
@@ -31,7 +31,7 @@ de 0,25 mm** e **gerador de parede Arachne**. Todo o resto continua vindo do seu
 | `miniatura-dcco` | gerador Cummins carenado 1:50 | 5 | 49 g |
 | `miniatura-powerstack` | Sungrow PowerStack 1:25 | 4 | 81 g |
 | `miniatura-painel-ccr` | painel elétrico CCR 1:20 | 4 | 68 g |
-| `brinde-geral` | chaveiro bateria | 1 | 5,8 g |
+| `brinde-geral` | chaveiro bateria | 1 | 5,7 g |
 | `brinde-geral` | organizador mini BESS | 1 | 75 g |
 
 Cada conjunto assenta numa placa de 84 × 84 mm e cabe na cúpula de acrílico de

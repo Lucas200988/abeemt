@@ -1,5 +1,5 @@
 """Organizador de mesa em formato de mini contêiner BESS — porta-caneta, porta-celular
-e porta-cartões. Brinde do Fórum BESS 2026.
+e porta-cartões. Brinde do FMEES 2026.
 
 70 x 90 x 60 mm. Casca de 2,2 mm com fundo fechado, imprime em pé e sem suporte nenhum:
 tudo na peça é corte na superfície ou parede vertical.
@@ -172,7 +172,7 @@ corpo = corpo.difference(trimesh.util.concatenate(ondas))
 # que saliência e não muda nada no tempo de impressão.
 RELIEF_FACHADA = 1.0
 frente2d = [affinity.translate(raio_shape(14.0), W / 2, 41.0),
-            affinity.translate(text_shape("FÓRUM BESS 2026", 5.4, max_width=40.0), W / 2, 28.0)]
+            affinity.translate(text_shape("FMEES 2026", 5.4, max_width=40.0), W / 2, 28.0)]
 for i, linha in enumerate(["ENGENHARIA", "ENERGIA", "FUTURO"]):
     # fatten 0,12 nas linhas de 3 mm: com 0,18 duas letras encostavam a 0,02 mm e
     # sairiam fundidas; o traço ainda fica acima de 0,9 mm
@@ -242,7 +242,7 @@ for cor, ms in [("1_corpo", [corpo_claro]), ("2_rodape", [rodape])]:
     pecas.append((cor, e))
 objects = [("organizador_mini_bess", pecas)]
 place_in_rows(objects, [["organizador_mini_bess"]])
-slots = write_3mf("organizador_mini_bess.3mf", "Organizador mini BESS Fórum 2026",
+slots = write_3mf("organizador_mini_bess.3mf", "Organizador mini BESS FMEES 2026",
                   objects, PALETTE, precision=4)
 print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

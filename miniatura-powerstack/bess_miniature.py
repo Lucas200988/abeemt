@@ -278,9 +278,9 @@ Z_MID = (PZ0 + PZ1) / 2
 X_LEFT = (px0 - 0.2) / 2                          # centro da faixa lateral esquerda
 X_RIGHT = (W + 0.2 + px0 + PLATE_S) / 2           # centro da faixa lateral direita
 plate_text = trimesh.util.concatenate([
-    # o Ó acentuado conta na altura total, então a letra sai menor que o número
-    # pedido; aqui a largura de 72 mm é que manda, e a letra fica no máximo possível
-    lying_text("FÓRUM BESS 2026", 7.0, D + (PZ1 - D) / 2),           # faixa da frente
+    # sem o Ó acentuado, que contava na altura total, a altura pedida é que manda
+    # agora: a letra sai com os 7 mm cheios em vez de encolher para caber na largura
+    lying_text("FMEES 2026", 6.4, D + (PZ1 - D) / 2),                # faixa da frente
     lying_text("ABEE-MT", 6.5, PZ0 / 2, back=True),                  # faixa do fundo
     # 62 mm de comprimento: as linhas da frente e do fundo são mais largas que o
     # gabinete e invadem a faixa lateral, então a lateral tem de parar antes delas

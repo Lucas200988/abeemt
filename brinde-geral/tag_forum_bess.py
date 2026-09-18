@@ -1,4 +1,4 @@
-"""Brinde de massa do Fórum BESS 2026: chaveiro chato de duas cores.
+"""Brinde de massa do FMEES 2026: chaveiro chato de duas cores.
 
 Pensado para consumir as sobras dos cinco filamentos de 1 kg comprados para as maquetes.
 Três decisões que vêm daí:
@@ -91,14 +91,14 @@ moldura = contorno.buffer(-1.6).difference(contorno.buffer(-1.6 - BORDA))
 base = base.difference(extrude(moldura, 0.5, BASE_T - 0.5))
 
 # ---------- relevo: emblema e dizeres (segunda cor) ----------
-# "FÓRUM BESS" numa linha só ficaria com 3,4 mm de letra no espaço que sobra ao lado
-# do emblema. Em três linhas curtas, a letra sobe para 6,2 mm.
+# "FMEES 2026" cai de três linhas para duas. A largura ao lado do emblema é que limita
+# a letra: "FMEES" a 5,9 mm ocupa 28,1 dos 30 mm livres.
 EMB_D = 19.0
 EMB_CX = 22.0
 emb = affinity.translate(emblema_shape(EMB_D), EMB_CX, A / 2)
 
-TXT_CX, TXT_W = 48.5, 30.0
-linhas = [("FÓRUM", 6.2, A / 2 + 7.2), ("BESS", 6.2, A / 2), ("2026", 6.2, A / 2 - 7.2)]
+TXT_CX, TXT_W = 49.5, 30.0
+linhas = [("FMEES", 5.9, A / 2 + 4.4), ("2026", 5.9, A / 2 - 4.4)]
 relevo2d = unary_union([emb] + [affinity.translate(text_shape(t, c, max_width=TXT_W), TXT_CX, y)
                                 for t, c, y in linhas])
 relevo = extrude(relevo2d, RELIEF + 0.05, BASE_T - 0.05)     # penetra 0,05 na base
@@ -132,6 +132,6 @@ uma_cor.export("tag_forum_bess.stl")
 PALETTE = [("1_corpo", "Laranja", "#E8712B"),
            ("2_relevo", "Preto", "#1A1A1A")]
 objects = [("tag_forum_bess", [("1_corpo", base), ("2_relevo", relevo)])]
-slots = write_3mf("tag_forum_bess.3mf", "Chaveiro Fórum BESS 2026", objects, PALETTE)
+slots = write_3mf("tag_forum_bess.3mf", "Chaveiro FMEES 2026", objects, PALETTE)
 print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

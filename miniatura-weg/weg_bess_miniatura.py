@@ -316,7 +316,7 @@ PZ0, PZ1 = pz0, pz0 + PLATE_S
 # D + 0,2 (borda do rebaixo) a PZ1, a do fundo de PZ0 a -0,2. Cada bloco fica com
 # no mínimo 1,4 mm de folga da borda da placa, do rebaixo e do bloco vizinho.
 plate_marks = trimesh.util.concatenate([
-    lying_text("FÓRUM BESS 2026", 9.0, D + 8.2),
+    lying_text("FMEES 2026", 9.0, D + 8.2),
     lying_text("WEG BESS", 6.0, D + 19.2),
     lying_text("ABEE-MT", 9.0, PZ0 + 20.5, back=True),
     lying_emblem(13.0, W / 2, PZ0 + 7.9),

@@ -249,7 +249,7 @@ plate = plate.difference(profile_prism(outer2d.buffer(0.2, join_style=1).simplif
 plate_marks = trimesh.util.concatenate([
     # faixa da frente: o homenageado
     lying_text("CCR MONTAGENS INDUSTRIAIS", 4.0, 38.5, 72),
-    lying_text("FÓRUM BESS 2026", 5.2, 47.0, 72),
+    lying_text("FMEES 2026", 5.2, 47.0, 72),
     # faixa de trás: quem homenageia. Duas linhas curtas em vez de uma longa:
     # numa linha só, "HOMENAGEM ABEE-MT" bate no limite de largura da placa e a
     # letra cai para 4,7 mm; quebrada em duas, sobe para 6 mm.

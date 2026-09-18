@@ -1,4 +1,4 @@
-"""Brinde de massa do Fórum BESS 2026: chaveiro no formato do símbolo da bateria.
+"""Brinde de massa do FMEES 2026: chaveiro no formato do símbolo da bateria.
 
 A versão anterior era um retângulo com o emblema carimbado. Aqui a peça inteira é o
 símbolo: a silhueta é o ícone de bateria, com o polo virando a argola do chaveiro, e o
@@ -100,10 +100,12 @@ moldura = moldura.difference(raio.buffer(1.8))
 base = base.difference(extrude(moldura, 0.5, BASE_T - 0.5))
 
 # ---------- relevo: dizeres na segunda cor ----------
-# "FÓRUM BESS" numa linha só ficaria com 3,4 mm de letra no espaço ao lado do raio;
-# em três linhas curtas a letra sobe para 6,2 mm.
-TXT_CX, TXT_W = 41.0, 28.0
-linhas = [("FÓRUM", 6.2, A / 2 + 7.2), ("BESS", 6.2, A / 2), ("2026", 6.2, A / 2 - 7.2)]
+# "FMEES 2026" cai de três linhas para duas. Quem limita a letra aqui é a largura
+# disponível ao lado do raio, não a altura: "FMEES" é a palavra mais larga e a 5,9 mm
+# ela ocupa 28,1 dos 29 mm livres. Pedir mais que isso não aumenta a letra — só faz
+# "FMEES" encolher para caber e sair menor que "2026", com as duas linhas desiguais.
+TXT_CX, TXT_W = 41.0, 29.0
+linhas = [("FMEES", 5.9, A / 2 + 4.4), ("2026", 5.9, A / 2 - 4.4)]
 relevo2d = unary_union([affinity.translate(text_shape(t, c, max_width=TXT_W), TXT_CX, y)
                         for t, c, y in linhas])
 relevo = extrude(relevo2d, RELIEF + 0.05, BASE_T - 0.05)
@@ -137,6 +139,6 @@ uma_cor.export("chaveiro_bateria.stl")
 PALETTE = [("1_corpo", "Laranja", "#E8712B"),
            ("2_relevo", "Preto", "#1A1A1A")]
 objects = [("chaveiro_bateria", [("1_corpo", base), ("2_relevo", relevo)])]
-slots = write_3mf("chaveiro_bateria.3mf", "Chaveiro bateria Fórum BESS 2026", objects, PALETTE)
+slots = write_3mf("chaveiro_bateria.3mf", "Chaveiro bateria FMEES 2026", objects, PALETTE)
 print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 print("arquivos gravados")

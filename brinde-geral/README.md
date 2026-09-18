@@ -1,10 +1,10 @@
-# Brindes de tiragem — Fórum BESS 2026
+# Brindes de tiragem — FMEES 2026
 
 Duas peças em uso, feitas para consumir as sobras das cinco bobinas de 1 kg.
 
 ## 1. Chaveiro bateria — brinde de todos
 
-Arquivo: **`chaveiro_bateria.3mf`** · 70 × 32 × 3,2 mm · **5,81 g**
+Arquivo: **`chaveiro_bateria.3mf`** · 70 × 32 × 3,2 mm · **5,73 g**
 
 A peça inteira é o símbolo da bateria: o polo vira a argola e o raio é vazado de lado a
 lado. Imprime deitada; a troca de cor acontece só nos últimos 0,8 mm.
@@ -14,18 +14,22 @@ lado. Imprime deitada; a troca de cor acontece só nos últimos 0,8 mm.
 | 1 | cor do corpo | silhueta (troca livremente entre as cinco bobinas) |
 | 2 | cor do relevo | FÓRUM / BESS / 2026 |
 
-O verso traz ABEE-MT · MATO GROSSO em baixo-relevo, sem troca de cor.
+O verso traz ABEE-MT · MATO GROSSO em baixo-relevo, sem troca de cor. A frente diz
+**FMEES / 2026** em duas linhas de 6,26 mm — quem limita a letra é a largura livre ao
+lado do raio vazado, não a altura.
 
 **A cor do corpo é trocável sem mexer na geometria** — é assim que as cinco bobinas baixam
-juntas. Plano para 707 unidades com 5 % de reserva (94,6 % de aproveitamento, 32 por mesa):
+juntas. Plano para **716 unidades** com 5 % de reserva (94,5 % de aproveitamento, 32 por mesa):
 
 | Corpo | Relevo | Unidades |
 |---|---|---|
-| Laranja | Branco | 155 |
-| Cinza | Laranja | 156 |
+| Laranja | Verde | 165 |
+| Cinza | Branco | 151 |
 | Verde | Branco | 147 |
-| Preto | Laranja | 127 |
-| Branco | Verde | 122 |
+| Preto | Cinza | 127 |
+| Branco | Laranja | 126 |
+
+Sobra no fim: 54 g de laranja, 49 de cinza, 50 de verde, 45 de branco e 42 de preto.
 
 Para trocar as cores, edite `PALETTE` no fim de `chaveiro_bateria.py` e rode de novo.
 

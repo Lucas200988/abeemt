@@ -90,23 +90,40 @@ def place_in_rows(objects, rows, gap=12.0):
     return objects
 
 
-def _clean(mesh):
+def _clean(mesh, precision):
     """Solda vértices coincidentes e joga fora faces de área zero.
 
     Booleanos e cantos arredondados deixam algumas faces degeneradas. Fatiador
     costuma consertar em silêncio, mas gravar limpo é mais barato que contar
     com o conserto."""
+    def limpa(x, **kw):
+        y = x.copy()
+        y.merge_vertices(**kw)
+        y.update_faces(y.nondegenerate_faces())
+        y.update_faces(y.unique_faces())
+        y.remove_unreferenced_vertices()
+        return y
+
+    # Arredonda para a precisão que vai ser gravada ANTES de limpar. É o
+    # arredondamento da gravação que alinha um sliver quase colinear e o
+    # transforma em face de área zero, então limpar antes dele não resolve.
     m = mesh.copy()
-    m.merge_vertices()
-    m.update_faces(m.nondegenerate_faces())
-    m.update_faces(m.unique_faces())
-    m.remove_unreferenced_vertices()
+    m.vertices = np.round(m.vertices, precision)
+    m = limpa(m)
+    if not m.is_watertight or (m.area_faces < 1e-9).any():
+        # Sobram slivers colineares: dois vértices a poucos milésimos um do outro
+        # numa aresta reta, que nenhuma tolerância de altura remove. Solda num grid
+        # de 0,01 mm, bem abaixo da resolução de impressão — e só aceita o resultado
+        # se a peça continuar fechada e sem face de área zero.
+        s = limpa(m, digits_vertex=2)
+        if s.is_watertight and not (s.area_faces < 1e-9).any():
+            return s
     assert m.is_watertight, "malha deixou de ser fechada na limpeza"
     return m
 
 
 def _mesh_xml(obj_id, name, mesh, pindex, precision):
-    mesh = _clean(mesh)
+    mesh = _clean(mesh, precision)
     v = "".join(f'<vertex x="{x:.{precision}f}" y="{y:.{precision}f}" z="{z:.{precision}f}"/>'
                 for x, y, z in mesh.vertices)
     t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>'

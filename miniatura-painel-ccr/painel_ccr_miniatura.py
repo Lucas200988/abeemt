@@ -154,25 +154,53 @@ outer2d = rounded_rect(0, 0, W, D, R_CORNER)
 inner2d = rounded_rect(WALL, WALL, W - WALL, D - WALL, max(R_CORNER - WALL, 0.6))
 body = profile_prism(outer2d, 0, BODY_TOP).difference(profile_prism(inner2d, FLOOR, BODY_TOP + 1))
 
-# Porta: rasgo de contorno
+# ---------- porta como peça separada, impressa deitada ----------
+# O símbolo numa parede vertical obrigava a impressora a depositar, camada após
+# camada, uma ilha solta de segunda cor logo depois de uma troca de filamento —
+# quase 100 camadas, duas trocas em cada. Com a porta deitada, o símbolo vira uma
+# mancha plana numa superfície horizontal, que é a melhor superfície que a máquina
+# tem, e a troca de cor acontece em cinco camadas no total. A fresta em volta da
+# porta é realista: painel de verdade tem.
 DX0, DX1, DY0, DY1 = 2.0, W - 2.0, PLINTH + 1.5, BODY_TOP - 2.0
-door_o = rbox(DX1 - DX0, DY1 - DY0, GROOVE, DX0, DY0, D - GROOVE)
-door_i = rbox(DX1 - DX0 - 2 * GROOVE, DY1 - DY0 - 2 * GROOVE, GROOVE + 1,
-              DX0 + GROOVE, DY0 + GROOVE, D - GROOVE - 0.5)
-body = body.difference(door_o.difference(door_i))
+PORTA_T, BOLSO_PROF, PORTA_FOLGA = 2.0, 1.0, 0.25
 
-# Maçaneta escamoteável: bolso vertical à direita
+# reforço atrás da porta, para o bolso não afinar a parede de 1,6 mm
+body = body.union(rbox(DX1 - DX0 + 3.0, DY1 - DY0 + 3.0, BOLSO_PROF,
+                       DX0 - 1.5, DY0 - 1.5, D - WALL - BOLSO_PROF))
+# bolso onde a porta encaixa
+body = body.difference(rbox(DX1 - DX0 + 2 * PORTA_FOLGA, DY1 - DY0 + 2 * PORTA_FOLGA,
+                            BOLSO_PROF + 0.5, DX0 - PORTA_FOLGA, DY0 - PORTA_FOLGA,
+                            D - BOLSO_PROF))
+
+# chapa da porta: fica 1,0 mm saliente, como a folha de um quadro real
+PZ0, PZ1 = D - BOLSO_PROF, D - BOLSO_PROF + PORTA_T
+porta = rbox(DX1 - DX0, DY1 - DY0, PORTA_T, DX0, DY0, PZ0)
+
+# Maçaneta escamoteável: bolso vertical à direita, com a alavanca dentro
 HAN_X0, HAN_Y0, HAN_W, HAN_H = W - 7.0, 30.0, 4.5, 16.0
-body = body.difference(rbox(HAN_W, HAN_H, 0.9, HAN_X0, HAN_Y0, D - 0.9))
+porta = porta.difference(rbox(HAN_W, HAN_H, 0.9, HAN_X0, HAN_Y0, PZ1 - 0.9))
+porta = porta.union(rbox(2.0, HAN_H - 3.0, 0.7, HAN_X0 + 1.25, HAN_Y0 + 1.5, PZ1 - 0.9))
 
-# Venezianas de ventilação na parte baixa da porta
+# Venezianas de ventilação na parte baixa
 LV_X0, LV_X1, LV_Y0, LV_Y1 = 6.0, W - 10.0, 10.0, 27.0
 louvers = []
 y = LV_Y0
 while y <= LV_Y1:
-    louvers.append(rbox(LV_X1 - LV_X0, 1.3, 0.6, LV_X0, y, D - 0.6))
+    louvers.append(rbox(LV_X1 - LV_X0, 1.3, 0.6, LV_X0, y, PZ1 - 0.6))
     y += 2.6
-body = body.difference(trimesh.util.concatenate(louvers))
+porta = porta.difference(trimesh.util.concatenate(louvers))
+
+# Dobradiças em relevo, na cor da própria porta: quem as desenha é a sombra
+for cy in (16.0, 52.0, 86.0):
+    porta = porta.union(rbox(2.4, 6.0, 1.0, DX0 - 0.6, cy - 3.0, PZ1 - SINK))
+
+# Símbolo da CCR rente à face da porta: bolso de 1,0 mm preenchido pela peça grafite
+LOGO_W, LOGO_PROF, LOGO_CY = 28.0, 1.0, 80.0
+bolso_logo = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + 0.5)
+bolso_logo.apply_translation([W / 2, LOGO_CY, PZ1 - LOGO_PROF])
+porta = porta.difference(bolso_logo)
+porta_logo = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + SINK)
+porta_logo.apply_translation([W / 2, LOGO_CY, PZ1 - LOGO_PROF - SINK])
 
 # Fundo: contorno da chapa de fecho traseira e parafusos nos cantos
 BK = 3.0
@@ -209,37 +237,6 @@ for ex in (5.0, W - 5.0):
         eye.apply_translation([ex, H - 0.5, ez])
         cap = cap.difference(eye)
 
-# ---------- detalhes da porta (porta limpa: só o símbolo e as ferragens) ----------
-dark = []
-
-# símbolo ccr em grafite, centrado na metade de cima da porta
-# Logo embutido, não saliente. Como relevo numa parede vertical, cada camada do
-# símbolo era uma ilha solta de 1 mm depositada logo depois de uma troca de
-# filamento, em quase 100 camadas seguidas — daí a letra sair esfarrapada. No
-# bolso, o escuro fica cercado pelo claro na mesma camada: o perímetro da porta
-# continua inteiro e a aresta do símbolo é definida pela parede do bolso.
-# O bolso também aceita um brasão impresso à parte e colado, se preferir.
-LOGO_W, LOGO_PROF, LOGO_CY = 28.0, 1.0, 80.0
-bolso = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + 0.5)
-bolso.apply_translation([W / 2, LOGO_CY, D - LOGO_PROF])
-body = body.difference(bolso)
-embutido = ccr_mesh(width=LOGO_W, height_relief=LOGO_PROF + SINK)
-embutido.apply_translation([W / 2, LOGO_CY, D - LOGO_PROF - SINK])
-dark.append(embutido)
-
-# alavanca da maçaneta
-dark.append(rbox(2.0, HAN_H - 3.0, 0.8, HAN_X0 + 1.25, HAN_Y0 + 1.5, D - 0.9))
-
-# Dobradiças na cor do corpo, não em grafite. Salientes numa parede vertical e em
-# cor separada, cada uma virava uma ilha de 2,4 x 1,2 mm depositada logo depois de
-# uma troca de filamento — é o mesmo defeito do símbolo, e são elas os pentes
-# esfarrapados da peça impressa. Em relevo na própria cor, quem as desenha é a
-# sombra, e não sobra nenhuma ilha solta de segunda cor na porta.
-for cy in (16.0, 52.0, 86.0):
-    body = body.union(rbox(2.4, 6.0, 1.2, 1.4, cy - 3.0, D - SINK))
-
-detail_dark = trimesh.util.concatenate(dark)
-
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
 plate = profile_prism(rounded_rect(px0, pz0, px0 + PLATE_S, pz0 + PLATE_S, 4.0), -PLATE_T, 0)
@@ -266,7 +263,8 @@ parts = {
     "corpo_branco": body_light,
     "rodape_grafite": plinth,
     "tampa_grafite": cap,
-    "detalhes_grafite": detail_dark,
+    "porta_branca": porta,
+    "porta_logo_grafite": porta_logo,
     "placa_base": plate,
     "emblema_e_textos": plate_marks,
 }
@@ -277,12 +275,20 @@ for name, m in parts.items():
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
-body_stl = body_light.union(plinth).union(detail_dark)
+body_stl = body_light.union(plinth)
 body_stl.apply_transform(TO_Z_UP)
 body_stl.merge_vertices()
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
       f"  medidas={np.round(body_stl.extents, 1)}")
 body_stl.export("miniatura_painel_ccr_corpo.stl")
+
+# a porta sai deitada, com a face do símbolo para cima
+porta_stl = porta.union(porta_logo)
+porta_stl.apply_translation([0, 0, -porta_stl.bounds[0][2]])
+porta_stl.merge_vertices()
+print(f"{'stl_porta':20s} watertight={porta_stl.is_watertight}  volume={porta_stl.volume:8.0f} mm³"
+      f"  medidas={np.round(porta_stl.extents, 1)}")
+porta_stl.export("miniatura_painel_ccr_porta.stl")
 
 cap_stl = cap.copy()
 cap_stl.apply_transform(TO_Z_UP)
@@ -307,8 +313,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
-    "painel_corpo": {"1_branco": ["corpo_branco"],
-                     "2_grafite": ["rodape_grafite", "detalhes_grafite"]},
+    "painel_corpo": {"1_branco": ["corpo_branco"], "2_grafite": ["rodape_grafite"]},
+    "painel_porta": {"1_branco": ["porta_branca"], "2_grafite": ["porta_logo_grafite"]},
     "painel_tampa": {"2_grafite": ["tampa_grafite"]},
     "placa_base":   {"2_grafite": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
 }
@@ -321,6 +327,8 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 def placed(name, obj):
     e = parts[name].copy()
+    if obj == "painel_porta":
+        return e          # já está deitada, símbolo para cima: é o ponto da mudança
     e.apply_transform(TO_Z_UP)
     if obj == "painel_tampa":
         e.apply_transform(flip)
@@ -336,7 +344,7 @@ for obj, groups in COLOR_GROUPS.items():
 
 # placa numa fileira, corpo e tampa na outra: mesa compacta, longe da faixa
 # reservada ao bico esquerdo nas impressoras de dois bicos
-place_in_rows(objects, [["painel_corpo", "painel_tampa"], ["placa_base"]])
+place_in_rows(objects, [["painel_corpo", "painel_tampa"], ["painel_porta"], ["placa_base"]])
 
 slots = write_3mf("miniatura_painel_ccr_multicor.3mf", "Miniatura Painel CCR 1:20",
                   objects, PALETTE)
@@ -345,8 +353,8 @@ print("filamentos:", ", ".join(f"{k} = {v}" for k, v in slots.items()))
 # ---------- dados para o visualizador (Y para cima, montado) ----------
 import json
 VIEW_GROUPS = {
-    "branco": ["corpo_branco"],
-    "grafite": ["rodape_grafite", "tampa_grafite", "detalhes_grafite", "placa_base"],
+    "branco": ["corpo_branco", "porta_branca"],
+    "grafite": ["rodape_grafite", "tampa_grafite", "porta_logo_grafite", "placa_base"],
     "laranja": ["emblema_e_textos"],
 }
 out = {}

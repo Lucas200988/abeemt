@@ -8,6 +8,8 @@ Em 1:80 -> 75,7 x 30,5 x 32,4 mm; com a placa de 3 mm, 35,4 mm de altura.
 
 Diferente das outras duas maquetes de propósito: aquelas são gabinetes verticais, esta é
 o contêiner deitado, e o corpo inteiro sai numa cor só de cinza, como no material da WEG.
+Três cores ao todo, as que estão em estoque: cinza no contêiner, preto na placa e no logo,
+branco nas letras e no emblema.
 
 Lado longo, da esquerda para a direita (conforme a foto oficial): montante de canto,
 painel alto de venezianas, painel com o logo weg + BESS, seis folhas de porta com haste
@@ -257,7 +259,7 @@ cap = cap.union(trimesh.util.concatenate([c for c in castings if c.bounds[0][1] 
 LOGO_CX = (LOGO_X0 + LOGO_X1) / 2
 logo = on_front(weg_mesh(width=12.0, height_relief=RELIEF + SINK), LOGO_CX, PANEL_Y1 - 8.0)
 bess = on_front(text_flat("BESS", 3.2, RELIEF + SINK, max_width=12.0), LOGO_CX, PANEL_Y1 - 14.0)
-logo_dark = trimesh.util.concatenate([logo, bess])
+logo_preto = trimesh.util.concatenate([logo, bess])
 
 # ---------- placa de base para a cúpula ----------
 px0, pz0 = (W - PLATE_S) / 2, (D - PLATE_S) / 2
@@ -280,7 +282,7 @@ plate_marks = trimesh.util.concatenate([
 # ---------- exportação ----------
 parts = {
     "corpo_cinza": body,
-    "logo_grafite": logo_dark,
+    "logo_preto": logo_preto,
     "teto_cinza": cap,
     "placa_base": plate,
     "emblema_e_textos": plate_marks,
@@ -292,7 +294,7 @@ for name, m in parts.items():
 
 TO_Z_UP = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 
-body_stl = body.union(logo_dark)
+body_stl = body.union(logo_preto)
 body_stl.apply_transform(TO_Z_UP)
 body_stl.merge_vertices()
 print(f"{'stl_corpo':20s} watertight={body_stl.is_watertight}  volume={body_stl.volume:8.0f} mm³"
@@ -321,15 +323,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bambu3mf import write_3mf, place_in_rows
 
 COLOR_GROUPS = {
-    "weg_conteiner": {"1_cinza": ["corpo_cinza"], "2_grafite": ["logo_grafite"]},
+    "weg_conteiner": {"1_cinza": ["corpo_cinza"], "2_preto": ["logo_preto"]},
     "weg_teto":      {"1_cinza": ["teto_cinza"]},
-    "placa_base":    {"2_grafite": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
+    "placa_base":    {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
 }
-# ATENÇÃO: aqui o filamento 1 é o CINZA CLARO, não o branco das outras duas maquetes.
-# O contêiner da WEG é uniforme, por isso corpo e teto saem na mesma cor.
-PALETTE = [("1_cinza", "Cinza claro", "#C9CDCB"),
-           ("2_grafite", "Grafite", "#33373B"),
-           ("3_laranja", "Laranja", "#E8712B")]
+# Só as três cores em estoque: cinza, preto e branco. O contêiner da WEG é uniforme,
+# por isso corpo e teto saem na mesma cor; a placa vai em preto com letra branca, que é
+# o maior contraste possível dentro dessas três.
+# ATENÇÃO: nesta maquete o filamento 1 é o CINZA, não o branco das outras duas.
+PALETTE = [("1_cinza", "Cinza", "#C9CDCB"),
+           ("2_preto", "Preto", "#1A1A1A"),
+           ("3_branco", "Branco", "#EDEFEE")]
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 

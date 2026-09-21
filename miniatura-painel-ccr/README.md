@@ -39,30 +39,33 @@ uma troca de filamento — cerca de 100 camadas. Com a porta deitada são **5 ca
 
 Gerado por `painel_ccr_miniatura.py`.
 
-## Torre de purga: duas mesas em vez de uma
+## Torre de purga e ordem de impressão
 
 Cada troca de filamento joga fora material na torre de purga. O que gera troca não é a peça
 ter duas cores — é **dois objetos pedirem cores diferentes na mesma altura**: aí o fatiador
-troca dentro de cada camada, dezenas de vezes seguidas. Agrupando na mesma mesa as peças que
-começam com a mesma cor, a troca vira uma por peça, sequencial em Z.
+troca dentro de cada camada, dezenas de vezes seguidas. Duas coisas reduzem isso:
 
-| Arquivo | Trocas de filamento |
+1. **Mesas agrupadas** por qual cor está embaixo em cada peça.
+2. **A placa de base saiu daqui** e vai junto com as outras três em `placas-base/`, numa
+   troca só para as quatro. O laranja dela convivia com as cores do modelo camada a camada.
+
+| Arquivo | Trocas |
 |---|---|
 | `miniatura_painel_ccr_multicor.3mf` (tudo numa mesa) | 32 |
-| `miniatura_painel_ccr_mesa1_grafite.3mf` + `miniatura_painel_ccr_mesa2_porta.3mf` | **22** |
+| `mesa1_corpo` + `mesa2_porta` + a placa em `placas-base/` | **15** |
 
-As que sobram vêm da tampa grafite convivendo com o corpo já branco entre 5 e 7 mm.
+As dez trocas da mesa1 vêm da tampa grafite convivendo com o corpo já branco entre 5 e
+7 mm de altura.
 
-Quatro ajustes no Studio ajudam tanto quanto a divisão, e valem para qualquer um dos arquivos:
+Quatro ajustes no Studio ajudam tanto quanto a divisão, e valem para qualquer arquivo:
 
 1. **Agrupamento de filamentos em "Automático (descarga)"** na H2C. Forçar tudo num bico só
    resolve erro de mapeamento mas desliga a otimização de purga dos dois bicos.
-2. **Descarregar no preenchimento do objeto** — manda o descarte para dentro das peças. A
-   placa de base tem 84 × 84 × 3 mm de reservatório bem ali na mesa.
-3. **Volumes de descarga**: o cálculo automático é conservador; os pares entre cores escuras
+2. **Descarregar no preenchimento do objeto** — manda o descarte para dentro das peças.
+3. **Volumes de descarga**: o cálculo automático é conservador; pares entre cores escuras
    aceitam bem menos que o padrão.
-4. **Largura da torre**: as trocas todas acontecem nos primeiros milímetros, então a torre é
-   baixa e pode ser estreita.
+4. **Sequência de impressão → Por objeto**, se as peças couberem afastadas o bastante para
+   o bico passar por cima das já prontas. Zera a troca entre peças.
 
 ## Ajustes já gravados no arquivo
 

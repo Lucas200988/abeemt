@@ -9,7 +9,7 @@ carregados**. Com menos que isso o importador joga tudo no filamento 1 sem avisa
 |---|---|---|
 | 1 | **Cinza** | contêiner, teto, corpo da chapa do logo |
 | 2 | **Preto** | placa de base, logo weg + BESS |
-| 3 | **Branco** | letras e emblema da placa |
+| 3 | **Laranja** | letras e emblema da placa |
 
 > Atenção: aqui o filamento 1 é o **cinza**. Nas maquetes da CCR e do PowerStack o 1 é
 > o branco, e no gerador da DCCO é o verde.
@@ -46,31 +46,33 @@ Para conferir o encaixe sem gastar o contêiner inteiro, imprima só
 
 Gerado por `weg_bess_miniatura.py` (`python3 weg_bess_miniatura.py` regrava tudo).
 
-## Torre de purga: duas mesas em vez de uma
+## Torre de purga e ordem de impressão
 
 Cada troca de filamento joga fora material na torre de purga. O que gera troca não é a peça
 ter duas cores — é **dois objetos pedirem cores diferentes na mesma altura**: aí o fatiador
-troca dentro de cada camada, dezenas de vezes seguidas. Agrupando na mesma mesa as peças que
-começam com a mesma cor, a troca vira uma por peça, sequencial em Z.
+troca dentro de cada camada, dezenas de vezes seguidas. Duas coisas reduzem isso:
 
-| Arquivo | Trocas de filamento |
+1. **Mesas agrupadas** por qual cor está embaixo em cada peça.
+2. **A placa de base saiu daqui** e vai junto com as outras três em `placas-base/`, numa
+   troca só para as quatro. O laranja dela convivia com as cores do modelo camada a camada.
+
+| Arquivo | Trocas |
 |---|---|
 | `miniatura_weg_multicor.3mf` (tudo numa mesa) | 22 |
-| `miniatura_weg_mesa1_cinza.3mf` + `miniatura_weg_mesa2_placa.3mf` | **3** |
+| `miniatura_weg_mesa_conteiner.3mf` + a placa em `placas-base/` | **3** |
 
-A placa de base é a única peça preta e branca; tirada de perto do contêiner cinza,
-sobram três trocas na maquete inteira.
+O contêiner, o teto e a chapa do logo são todos cinza com um toque de preto, então
+cabem numa mesa só sem se atrapalhar.
 
-Quatro ajustes no Studio ajudam tanto quanto a divisão, e valem para qualquer um dos arquivos:
+Quatro ajustes no Studio ajudam tanto quanto a divisão, e valem para qualquer arquivo:
 
 1. **Agrupamento de filamentos em "Automático (descarga)"** na H2C. Forçar tudo num bico só
    resolve erro de mapeamento mas desliga a otimização de purga dos dois bicos.
-2. **Descarregar no preenchimento do objeto** — manda o descarte para dentro das peças. A
-   placa de base tem 84 × 84 × 3 mm de reservatório bem ali na mesa.
-3. **Volumes de descarga**: o cálculo automático é conservador; os pares entre cores escuras
+2. **Descarregar no preenchimento do objeto** — manda o descarte para dentro das peças.
+3. **Volumes de descarga**: o cálculo automático é conservador; pares entre cores escuras
    aceitam bem menos que o padrão.
-4. **Largura da torre**: as trocas todas acontecem nos primeiros milímetros, então a torre é
-   baixa e pode ser estreita.
+4. **Sequência de impressão → Por objeto**, se as peças couberem afastadas o bastante para
+   o bico passar por cima das já prontas. Zera a troca entre peças.
 
 ## Ajustes já gravados no arquivo
 

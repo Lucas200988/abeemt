@@ -6,9 +6,10 @@ e 1836 mm de altura. A largura publicada nessa ficha (1016 mm) é a do chassi, n
 cabine, então a carenagem foi desenhada com 1250 mm, largura típica de cabine para essa
 faixa de potência. Em 1:50 -> 72,4 x 25,0 x 36,7 mm; com a placa de 3 mm, 39,7 mm.
 
-Carenagem verde com chassi preto, como o gerador real. Três filamentos: verde na cabine e
-no teto, preto no chassi, na placa e no escapamento, branco no logo da DCCO e nas letras da
-placa — o logo branco sobre o verde é como a máquina real. A linha entre chassi e cabine é a própria troca de cor.
+Carenagem verde com chassi preto, como o gerador real. Quatro filamentos: verde na cabine e
+no teto, preto no chassi, na placa e no escapamento, laranja nas letras da placa e branco no
+logo da DCCO — o logo branco sobre o verde é como a máquina real, e a letra laranja da placa
+é a mesma das outras três maquetes. A linha entre chassi e cabine é a própria troca de cor.
 
 Costado, da esquerda para a direita: grade do radiador, porta de acesso com visor do painel
 de controle, painel fixo com o crachá da DCCO, segunda porta de acesso, maçanetas. Chassi com
@@ -424,14 +425,21 @@ COLOR_GROUPS = {
     "gerador_cracha": {"1_verde": ["cracha_verde"], "3_branco": ["cracha_logo_branco"]},
     "gerador_escapamento": {"2_preto": ["escapamento_preto"]},
     "gerador_teto":   {"1_verde": ["teto_verde"]},
-    "placa_base":     {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
+    "placa_base":     {"2_preto": ["placa_base"], "4_laranja": ["emblema_e_textos"]},
 }
-# O verde é a cor do gerador Cummins carenado. Não está no estoque atual (cinza, preto,
-# branco) — sem ele, o filamento 1 pode ser o cinza e a peça fica coerente, só não fica
-# na cor da máquina real.
+# Quatro cores na paleta, e a DCCO é a única assim: as letras da placa passaram para
+# laranja, igual às outras três maquetes, mas o logo do crachá continua branco, que é como
+# a máquina real. Antes os dois dividiam o mesmo slot.
+#
+# O laranja ficou por último de propósito. Ele só aparece na placa, e a placa saiu das
+# mesas desta pasta — vai junto com as outras três em placas-base/. Resultado: mesa1 usa
+# os slots 1 e 2, mesa2 usa 1 e 3, e as duas rodam com três filamentos carregados. Só o
+# arquivo multicor, que traz tudo, precisa dos quatro.
+# ATENÇÃO: slot acima do número de filamentos do projeto volta para o 1 sem avisar.
 PALETTE = [("1_verde", "Verde", "#2E6E45"),
            ("2_preto", "Preto", "#1A1A1A"),
-           ("3_branco", "Branco", "#EDEFEE")]
+           ("3_branco", "Branco", "#EDEFEE"),
+           ("4_laranja", "Laranja", "#E8712B")]
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 
@@ -450,19 +458,23 @@ def monta(nomes):
                    for cor, ns in COLOR_GROUPS[obj].items()]) for obj in nomes]
 
 
-# Duas mesas, agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
-# Numa mesa só, o fatiador precisa trocar de filamento DENTRO de cada camada sempre que dois
-# objetos pedem cores diferentes na mesma altura: o chassi preto do corpo convive com o teto
-# verde por 30 camadas, e cada uma custa uma troca. Separando as peças que começam pretas
-# das que começam verdes, as trocas caem de ~40 para ~15, e a torre de purga encolhe junto.
-# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+# Mesas agrupadas por qual cor está embaixo em cada peça — é isso que decide a purga.
+# Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
+# pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
+# que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
+#
+# A placa de base saiu destas mesas: com as letras das quatro maquetes em laranja sobre
+# preto, as quatro placas viraram a mesma dupla de cores e vão juntas em placas-base/,
+# numa troca só para as quatro. Tirá-la daqui economiza mais sete trocas nesta mesa, porque
+# o laranja dela convivia com as cores do modelo camada a camada.
+# O arquivo "multicor" continua com tudo, para quem preferir um trabalho só.
 MESAS = [
     ("multicor", list(COLOR_GROUPS),
      [["gerador_corpo", "gerador_escapamento"], ["gerador_teto", "gerador_cracha"],
       ["placa_base"]]),
-    ("mesa1_base_preta", ["gerador_corpo", "gerador_escapamento", "placa_base"],
-     [["gerador_corpo", "gerador_escapamento"], ["placa_base"]]),
-    ("mesa2_base_verde", ["gerador_teto", "gerador_cracha"],
+    ("mesa1_corpo", ["gerador_corpo", "gerador_escapamento"],
+     [["gerador_corpo", "gerador_escapamento"]]),
+    ("mesa2_teto", ["gerador_teto", "gerador_cracha"],
      [["gerador_teto", "gerador_cracha"]]),
 ]
 for sufixo, nomes, fileiras in MESAS:

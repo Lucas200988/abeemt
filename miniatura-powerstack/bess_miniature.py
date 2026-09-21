@@ -382,7 +382,12 @@ def monta(nomes):
 # Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
 # pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
 # que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
-# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+#
+# A placa de base saiu destas mesas: com as letras das quatro maquetes em laranja sobre
+# preto, as quatro placas viraram a mesma dupla de cores e vão juntas em placas-base/,
+# numa troca só para as quatro. Tirá-la daqui economiza mais sete trocas nesta mesa, porque
+# o laranja dela convivia com as cores do modelo camada a camada.
+# O arquivo "multicor" continua com tudo, para quem preferir um trabalho só.
 PREFIXO, TITULO, PRECISAO = "miniatura_powerstack", "Miniatura Sungrow PowerStack 1:25", 3
 # Aqui o ganho da divisão é pequeno e vale dizer por quê: as trocas não vêm da convivência
 # entre objetos, vêm das faixas laranja da própria tampa e da própria placa, que existem em
@@ -391,8 +396,8 @@ MESAS = [
     ("multicor", list(COLOR_GROUPS),
      [["powerstack_corpo", "powerstack_tampa"], ["placa_base", "powerstack_chapa"]]),
     ("mesa1_corpo", ["powerstack_corpo"], [["powerstack_corpo"]]),
-    ("mesa2_pecas", ["powerstack_tampa", "powerstack_chapa", "placa_base"],
-     [["powerstack_tampa", "powerstack_chapa"], ["placa_base"]]),
+    ("mesa2_tampa", ["powerstack_tampa", "powerstack_chapa"],
+     [["powerstack_tampa", "powerstack_chapa"]]),
 ]
 for sufixo, nomes, fileiras in MESAS:
     objs = monta(nomes)

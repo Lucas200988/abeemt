@@ -8,8 +8,8 @@ Em 1:80 -> 75,7 x 30,5 x 32,4 mm; com a placa de 3 mm, 35,4 mm de altura.
 
 Diferente das outras duas maquetes de propósito: aquelas são gabinetes verticais, esta é
 o contêiner deitado, e o corpo inteiro sai numa cor só de cinza, como no material da WEG.
-Três cores ao todo, as que estão em estoque: cinza no contêiner, preto na placa e no logo,
-branco nas letras e no emblema.
+Três cores ao todo: cinza no contêiner, preto na placa e no logo, laranja nas letras e
+no emblema da placa — a mesma letra laranja das outras três maquetes.
 
 Lado longo, da esquerda para a direita (conforme a foto oficial): montante de canto,
 painel alto de venezianas, painel com o logo weg + BESS, seis folhas de porta com haste
@@ -379,15 +379,15 @@ COLOR_GROUPS = {
     "weg_conteiner":  {"1_cinza": ["corpo_cinza"]},
     "weg_chapa_logo": {"1_cinza": ["chapa_cinza"], "2_preto": ["chapa_logo_preto"]},
     "weg_teto":       {"1_cinza": ["teto_cinza"]},
-    "placa_base":     {"2_preto": ["placa_base"], "3_branco": ["emblema_e_textos"]},
+    "placa_base":     {"2_preto": ["placa_base"], "3_laranja": ["emblema_e_textos"]},
 }
-# Só as três cores em estoque: cinza, preto e branco. O contêiner da WEG é uniforme,
-# por isso corpo e teto saem na mesma cor; a placa vai em preto com letra branca, que é
-# o maior contraste possível dentro dessas três.
+# Contêiner da WEG é uniforme, por isso corpo e teto saem na mesma cor. A placa vai em
+# preto com letra laranja, igual às outras três maquetes: com as quatro placas na mesma
+# dupla de cores dá para imprimir todas num trabalho só.
 # ATENÇÃO: nesta maquete o filamento 1 é o CINZA, não o branco das outras duas.
 PALETTE = [("1_cinza", "Cinza", "#C9CDCB"),
            ("2_preto", "Preto", "#1A1A1A"),
-           ("3_branco", "Branco", "#EDEFEE")]
+           ("3_laranja", "Laranja", "#E8712B")]
 flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 
 
@@ -412,14 +412,18 @@ def monta(nomes):
 # Numa mesa só, o fatiador troca de filamento DENTRO de cada camada sempre que dois objetos
 # pedem cores diferentes na mesma altura, e são dezenas de camadas assim. Separando as peças
 # que começam com a mesma cor, a troca vira uma por peça, sequencial em Z, e a torre encolhe.
-# O arquivo "multicor" continua existindo para quem preferir um trabalho só.
+#
+# A placa de base saiu destas mesas: com as letras das quatro maquetes em laranja sobre
+# preto, as quatro placas viraram a mesma dupla de cores e vão juntas em placas-base/,
+# numa troca só para as quatro. Tirá-la daqui economiza mais sete trocas nesta mesa, porque
+# o laranja dela convivia com as cores do modelo camada a camada.
+# O arquivo "multicor" continua com tudo, para quem preferir um trabalho só.
 PREFIXO, TITULO, PRECISAO = "miniatura_weg", "Miniatura WEG BESS contêiner 1:80", 3
 MESAS = [
     ("multicor", list(COLOR_GROUPS),
      [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"], ["placa_base"]]),
-    ("mesa1_cinza", ["weg_conteiner", "weg_teto", "weg_chapa_logo"],
+    ("mesa_conteiner", ["weg_conteiner", "weg_teto", "weg_chapa_logo"],
      [["weg_conteiner"], ["weg_teto", "weg_chapa_logo"]]),
-    ("mesa2_placa", ["placa_base"], [["placa_base"]]),
 ]
 for sufixo, nomes, fileiras in MESAS:
     objs = monta(nomes)

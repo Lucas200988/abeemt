@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Overlay de DEBUG: libera http:// para a API local (10.0.2.2:3001).
+  O build de release NÃO herda isto — o Guia de Boas Práticas da homologação
+  PagBank proíbe cleartextTraffic em produção, e lá a API é https.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:usesCleartextTraffic="true" />
+</manifest>

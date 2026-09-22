@@ -1,0 +1,8 @@
+# Android / Gradle — tudo gerado, nada disso vai para o repositório
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/

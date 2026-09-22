@@ -217,7 +217,7 @@ light_bar = rbox(bar_w + 2 * SINK, bar_h + 2 * SINK, bar_d + SINK,
 
 # 1. chapa da marca, peça separada, deitada
 CH_X0, CH_X1, CH_Y0, CH_Y1 = 7.0, 39.0, 82.0, 92.4
-CH_T, CH_BOLSO, CH_FOLGA, CH_ARTE = 1.5, 0.8, 0.25, 0.6
+CH_T, CH_BOLSO, CH_FOLGA, CH_ARTE = 1.5, 0.8, 0.25, 0.65
 body = body.difference(rbox(CH_X1 - CH_X0 + 2 * CH_FOLGA, CH_Y1 - CH_Y0 + 2 * CH_FOLGA,
                             CH_BOLSO + 0.5, CH_X0 - CH_FOLGA, CH_Y0 - CH_FOLGA, D - CH_BOLSO))
 CHZ0, CHZ1 = D - CH_BOLSO, D - CH_BOLSO + CH_T
@@ -365,7 +365,15 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 def placed(name, obj):
     e = parts[name].copy()
     if obj == "powerstack_chapa":
-        return e          # já está deitada, arte para cima: é o ponto da mudança
+        # Virada: a arte imprime contra a mesa, não como superfície de topo. Numa face
+        # de topo a fronteira entre duas cores é uma costura entre perímetros, que sai
+        # ondulada e suja do purgo da cor anterior — foi o que apareceu na chapa do
+        # SUNGROW impressa. Contra a mesa, quem define o limite entre o branco e o
+        # grafite é o próprio vidro, e sai reto. A face que vai colada passa a ser o topo,
+        # onde o acabamento não importa. Engomar aqui seria contraproducente: o bico
+        # arrastaria o escuro para dentro do claro.
+        e.apply_transform(flip)
+        return e
     e.apply_transform(TO_Z_UP)
     if obj == "powerstack_tampa":
         e.apply_transform(flip)

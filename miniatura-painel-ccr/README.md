@@ -39,6 +39,19 @@ uma troca de filamento — cerca de 100 camadas. Com a porta deitada são **5 ca
 
 Gerado por `painel_ccr_miniatura.py`.
 
+## A porta imprime com a arte para CIMA
+
+Diferente das chapas das outras três maquetes, que são viradas. A porta tem as dobradiças
+em relevo na mesma face do símbolo — virada, elas seriam o único ponto apoiado na mesa e a
+porta ficaria pendurada nelas.
+
+Isso é aceitável aqui por uma questão de escala: o símbolo tem **28 mm de largura**, contra
+4 mm de altura de letra na chapa do SUNGROW. Uma borda irregular de 0,2 mm é 5 % de uma
+letra pequena e 0,7 % de um símbolo desse tamanho.
+
+**Não use engomar (ironing) na porta.** Numa superfície de duas cores o bico arrasta o
+grafite para dentro do branco.
+
 ## Torre de purga e ordem de impressão
 
 Cada troca de filamento joga fora material na torre de purga. O que gera troca não é a peça

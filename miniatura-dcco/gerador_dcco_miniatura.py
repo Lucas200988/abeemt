@@ -326,7 +326,7 @@ cracha = rbox(CR_X1 - CR_X0, CR_Y1 - CR_Y0, CR_T, CR_X0, CR_Y0, CZ0)
 # 18 mm de largura, não 16: o traço mais fino do símbolo cresce com o desenho inteiro,
 # e a 16 mm ele caía para 0,79 mm. Engordar a curva em vez de crescer o desenho fecharia
 # as frestas do espiral, que é o que dá a forma do símbolo.
-CR_LOGO_W, CR_LOGO_PROF = 18.0, 0.6
+CR_LOGO_W, CR_LOGO_PROF = 18.0, 0.65
 CR_CX, CR_CY = (CR_X0 + CR_X1) / 2, (CR_Y0 + CR_Y1) / 2
 bolso_logo = dcco_mesh(CR_LOGO_W, CR_LOGO_PROF + 0.5)
 bolso_logo.apply_translation([CR_CX, CR_CY, CZ1 - CR_LOGO_PROF])
@@ -446,7 +446,15 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 def placed(name, obj):
     e = parts[name].copy()
     if obj == "gerador_cracha":
-        return e          # já está deitado, logo para cima: é o ponto da mudança
+        # Virada: a arte imprime contra a mesa, não como superfície de topo. Numa face
+        # de topo a fronteira entre duas cores é uma costura entre perímetros, que sai
+        # ondulada e suja do purgo da cor anterior — foi o que apareceu na chapa do
+        # SUNGROW impressa. Contra a mesa, quem define o limite entre o branco e o
+        # grafite é o próprio vidro, e sai reto. A face que vai colada passa a ser o topo,
+        # onde o acabamento não importa. Engomar aqui seria contraproducente: o bico
+        # arrastaria o escuro para dentro do claro.
+        e.apply_transform(flip)
+        return e
     e.apply_transform(TO_Z_UP)
     if obj == "gerador_teto":
         e.apply_transform(flip)

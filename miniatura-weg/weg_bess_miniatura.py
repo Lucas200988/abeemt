@@ -292,7 +292,7 @@ body = body.difference(rbox(PLAQ_X1 - PLAQ_X0 + 2 * PLAQ_FOLGA, PLAQ_Y1 - PLAQ_Y
 CHZ0, CHZ1 = D - BOLSO_PROF, D - BOLSO_PROF + PLAQ_T      # chapa fica rente ao costado
 plaq = rbox(PLAQ_X1 - PLAQ_X0, PLAQ_Y1 - PLAQ_Y0, PLAQ_T, PLAQ_X0, PLAQ_Y0, CHZ0)
 
-LOGO_W, LOGO_PROF = 15.0, 0.6
+LOGO_W, LOGO_PROF = 15.0, 0.65
 arte = []
 for cy, arte_mesh in ((19.05, lambda h: weg_mesh(width=LOGO_W, height_relief=h)),
                       (9.65, lambda h: text_flat("BESS", 4.2, h, max_width=LOGO_W))):
@@ -394,7 +394,15 @@ flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
 def placed(name, obj):
     e = parts[name].copy()
     if obj == "weg_chapa_logo":
-        return e          # já está deitada, arte para cima: é o ponto da mudança
+        # Virada: a arte imprime contra a mesa, não como superfície de topo. Numa face
+        # de topo a fronteira entre duas cores é uma costura entre perímetros, que sai
+        # ondulada e suja do purgo da cor anterior — foi o que apareceu na chapa do
+        # SUNGROW impressa. Contra a mesa, quem define o limite entre o branco e o
+        # grafite é o próprio vidro, e sai reto. A face que vai colada passa a ser o topo,
+        # onde o acabamento não importa. Engomar aqui seria contraproducente: o bico
+        # arrastaria o escuro para dentro do claro.
+        e.apply_transform(flip)
+        return e
     e.apply_transform(TO_Z_UP)
     if obj == "weg_teto":
         e.apply_transform(flip)

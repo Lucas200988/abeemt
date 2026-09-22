@@ -56,6 +56,28 @@ parede vertical seria a mesma ilha solta que estragou o logo do contêiner da WE
 
 Gerado por `gerador_dcco_miniatura.py`.
 
+## A chapa imprime com a arte para BAIXO
+
+A chapa é virada na mesa: a face da arte encosta no vidro, e a face que vai colada é que
+fica por cima. Não mude isso ao rearranjar a mesa.
+
+Numa face de topo, a fronteira entre duas cores é uma costura entre perímetros — sai
+ondulada, e o primeiro filete de cada cor ainda vem sujo do purgo da cor anterior. Contra
+a mesa, quem define o limite é o próprio vidro, e sai reto. A face colada vira o topo, onde
+o acabamento não importa.
+
+**Não use engomar (ironing) nessa peça.** Numa superfície de duas cores o bico arrasta o
+escuro para dentro do claro e piora o que deveria melhorar. Como a arte agora imprime
+contra a mesa, engomar não tem o que fazer ali de qualquer forma.
+
+**Se a fronteira ainda sair suja**, o ajuste é o volume de descarga do par claro→escuro (e
+principalmente escuro→claro). O cálculo automático do Studio é conservador para cima em
+algumas combinações e curto em outras; branco depois de grafite é o par que mais precisa.
+
+A profundidade da arte é **0,65 mm** de propósito: com a primeira camada de 0,25 e as
+demais de 0,2, a troca de cor cai exatamente no fim da terceira camada (0,25 / 0,45 / 0,65),
+sem meia camada misturada.
+
 ## Torre de purga e ordem de impressão
 
 Cada troca de filamento joga fora material na torre de purga. O que gera troca não é a peça

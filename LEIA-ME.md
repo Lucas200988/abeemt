@@ -79,6 +79,15 @@ dentro de cada camada, dezenas de vezes seguidas.
 | as quatro placas | (uma por maquete) | **1 para as quatro** |
 | **total** | **128** | **49** |
 
+## Como cada peça deve ficar
+
+`fmees-2026-pecas.png` na raiz mostra as oito impressões renderizadas a partir dos mesmos
+arquivos que vão para a impressora, nas cores dos filamentos. Serve para conferir antes de
+mandar imprimir e para mostrar aos patrocinadores o que vão receber.
+
+`render_pecas.py` regenera essa imagem; rodar depois de mexer em qualquer gerador mantém a
+folha em dia.
+
 ## Arquivos de cada pasta
 
 - `*_multicor.3mf` — tudo numa mesa, um trabalho só

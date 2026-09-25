@@ -15,7 +15,7 @@ ps = carrega("miniatura-powerstack", "bess_miniature.py")
 ccr = carrega("miniatura-painel-ccr", "painel_ccr_miniatura.py")
 chav = carrega("brinde-geral", "chaveiro_bateria.py")
 org = carrega("brinde-geral", "organizador_mini_bess.py")
-hom = carrega("placas-crea-mutua", "placas_crea_mutua.py")
+bon = carrega("bonecos-crea-mutua", "bonecos_engenharia.py")
 
 
 def posiciona(pecas, dx=0.0, dz=0.0, centrar=True):
@@ -38,38 +38,33 @@ coladas = (posiciona([(weg["plaq"], CINZA), (weg["logo_preto"], PRETO)], -26, 0)
            + posiciona([(dcco["cracha"], VERDE), (dcco["cracha_logo"], BRANCO)], -26, 20)
            + posiciona([(dcco["escapamento"], PRETO)], 10, 20))
 
-# painel 9: as duas placas de homenagem, cada uma encaixada no seu pé.
-# A placa nasce deitada (Y é a altura dela, Z a espessura, arte em z = 0, que é a
-# face que vai contra o vidro). Aqui ela é levantada — X para cima e meia volta em
-# Z, para a arte olhar para a câmera — e inclinada os mesmos 10° do rasgo.
+# painel 9: os dois bonecos, cada um com a sua placa de obra colada nos postes.
+# A placa nasce deitada (arte em z = 0, a face que vai contra o vidro); aqui ela é
+# levantada — X para cima e meia volta em Z, para a arte olhar para a câmera.
 RX = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
 RZ = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
 
 
-def encaixada(pecas, dx):
-    pivo = [hom["PE_W"] / 2, hom["RASGO_Y"], hom["PE_H"] - hom["RASGO_PROF"]]
-    tomba = trimesh.transformations.rotation_matrix(-hom["INCL"], [1, 0, 0], point=pivo)
-    saida = [(m.copy(), cor) for m, cor in pecas]
-    for g, _ in saida:
+def com_placa(nome, dx):
+    tabua = [(bon["parts"][f"placa_{nome}_corpo"].copy(), PRETO),
+             (bon["parts"][f"placa_{nome}_arte"].copy(), LARANJA)]
+    for g, _ in tabua:
         g.apply_transform(RX)
         g.apply_transform(RZ)
-    v = np.vstack([g.vertices for g, _ in saida])
-    desloca = [pivo[0] - (v[:, 0].min() + v[:, 0].max()) / 2,
-               pivo[1] - (v[:, 1].min() + v[:, 1].max()) / 2,
-               pivo[2] - v[:, 2].min()]
-    for g, _ in saida:
-        g.apply_translation(desloca)
-        g.apply_transform(tomba)
-    saida.append((hom["parts"]["pe_crea"].copy(), PRETO))
+    v = np.vstack([g.vertices for g, _ in tabua])
+    for g, _ in tabua:
+        g.apply_translation([bon["POSTE_X"] - (v[:, 0].min() + v[:, 0].max()) / 2,
+                             bon["POSTE_Y"] - bon["POSTE_D"] / 2 - v[:, 1].max(),
+                             bon["PLACA_Z0"] - v[:, 2].min()])
+    saida = [(bon["parts"][f"{nome}_preto"].copy(), PRETO),
+             (bon["parts"][f"{nome}_cinza"].copy(), CINZA),
+             (bon["parts"][f"{nome}_laranja"].copy(), LARANJA)] + tabua
     for g, _ in saida:
         g.apply_translation([dx, 0, 0])
     return saida
 
 
-homenagem = (encaixada([(hom["parts"]["placa_crea_corpo"], PRETO),
-                        (hom["parts"]["placa_crea_arte"], LARANJA)], -62)
-             + encaixada([(hom["parts"]["placa_mutua_corpo"], PRETO),
-                          (hom["parts"]["placa_mutua_arte"], LARANJA)], 62))
+bonecos = com_placa("crea", -64) + com_placa("mutua", 64)
 
 # painel 8: as quatro placas em duas fileiras
 placas = []
@@ -102,8 +97,8 @@ CENAS = [
     coladas, True, 40),
  ("Placas de base — as quatro numa mesa", "180 × 180 × 4,5 mm · 103 g · 2 filamentos",
     placas, True, 40),
- ("Placas CREA-MT e Mútua", "100 × 120 × 4 mm cada, com o pé · 195 g a mesa · 2 filamentos",
-    homenagem, False, 16),
+ ("Bonecos CREA-MT e Mútua", "88 × 46 × 90 mm cada, com a placa de obra · 130 g · 3 filamentos",
+    bonecos, False, 14),
 ]
 
 fig = plt.figure(figsize=(20.5, 17.2), facecolor="#f4f4f2")

@@ -1,6 +1,6 @@
 # FMEES 2026 — peças para imprimir
 
-Quatro maquetes de mesa para os patrocinadores, duas placas de homenagem e dois brindes.
+Quatro maquetes de mesa para os patrocinadores, dois bonecos de engenharia e dois brindes.
 Impressora Bambu Lab H2C, bico de 0,4 mm, PLA.
 
 ## Antes de importar qualquer arquivo
@@ -19,6 +19,7 @@ mandar imprimir.
 | `miniatura-powerstack` | Branco | Grafite | Laranja | — |
 | `miniatura-painel-ccr` | Branco | Grafite | Laranja | — |
 | `placas-base` | Preto | Laranja | — | — |
+| `bonecos-crea-mutua` | Preto | Cinza | Laranja | — |
 | `placas-crea-mutua` | Preto | Laranja | — | — |
 | `brinde-geral` | cor do corpo | cor do relevo | — | — |
 
@@ -39,7 +40,7 @@ de 0,25 mm** e **gerador de parede Arachne**. Todo o resto continua vindo do seu
 | `miniatura-powerstack` | Sungrow PowerStack 1:25 | 4 | 81 g |
 | `miniatura-painel-ccr` | painel elétrico CCR 1:20 | 4 | 68 g |
 | `placas-base` | as quatro placas juntas | 4 | 103 g |
-| `placas-crea-mutua` | placas CREA-MT e Mútua, com os pés | 4 | 195 g |
+| `bonecos-crea-mutua` | bonecos CREA-MT e Mútua, com as placas de obra | 4 | 130 g |
 | `brinde-geral` | chaveiro bateria | 1 | 5,7 g |
 | `brinde-geral` | organizador mini BESS | 1 | 75 g |
 
@@ -65,17 +66,22 @@ de uma troca de filamento — foram cem camadas assim que estragaram o símbolo 
 da WEG nas primeiras impressões. Deitada, a mesma arte vira mancha plana sobre superfície
 horizontal e a troca de cor acontece em três a cinco camadas no total.
 
-## Placas de homenagem CREA-MT e Mútua
+## CREA-MT e Mútua: os bonecos
 
-O CREA-MT e a Mútua não têm equipamento para virar maquete, então a homenagem a eles é uma
-placa de mesa de 100 × 120 × 4 mm com o logo e os dizeres, e um pé com rasgo inclinado 10°
-em que ela encaixa. As quatro peças saem numa mesa só, com três trocas de filamento.
+O CREA-MT e a Mútua não têm equipamento para virar maquete. A homenagem a eles é um boneco
+de engenharia de 90 mm — capacete, colete, base — com uma placa de obra ao lado trazendo a
+marca e o evento. O CREA-MT leva o engenheiro, com o tubo de projeto; a Mútua, a engenheira,
+com a prancheta. Detalhes em `bonecos-crea-mutua/README.md`.
 
-A arte é embutida rente à face e essa face **imprime contra o vidro** — é a mesma decisão
-das chapas coladas, um passo adiante: sendo a primeira camada, a fronteira entre as duas
-cores fica selada pela mesa e o purgo não aparece. Por isso, **não ligar o passar a ferro
-(ironing)** nesse trabalho: em superfície de duas cores o ferro arrasta o escuro para dentro
-do claro. Detalhes em `placas-crea-mutua/README.md`.
+A cor do boneco é função só da altura, e é disso que sai a purga baixa: preto até 11,5 mm,
+cinza até 75,1 e laranja daí para cima, **duas trocas para os dois bonecos**. A placa de obra
+é peça à parte, impressa deitada com a **arte contra o vidro** e colada nos postes — mesma
+decisão das chapas das maquetes. **Não ligar o passar a ferro (ironing)** nesse trabalho: em
+superfície de duas cores o ferro arrasta o escuro para dentro do claro.
+
+A pasta `placas-crea-mutua/` guarda a primeira ideia para esses dois patrocinadores, uma
+placa de mesa de 100 × 120 mm com o logo completo e um pé inclinado. Os arquivos continuam
+prontos, para quem quiser a placa em vez do boneco ou além dele.
 
 ## Torre de purga
 

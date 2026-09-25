@@ -69,8 +69,12 @@ def desenha(ax, pecas, az=-52.0, elev=27.0, luz=(-0.35, -0.72, 0.60), z_up=True)
     tri = np.concatenate(tri); cor = np.concatenate(cor)
     prof = np.concatenate([p.reshape(-1, 3).mean(1) for p in prof])
     o = np.argsort(prof)                             # pintor: fundo primeiro
-    ax.add_collection(PolyCollection(tri[o], facecolors=cor[o], edgecolors="none",
-                                     linewidths=0, antialiased=True))
+    # borda da mesma cor da face, fina: sem ela, a suavização do matplotlib deixa
+    # um fio de fundo entre triângulos vizinhos, e numa face quebrada em milhares
+    # de lascas — a frente da placa, cheia de furos da arte — isso vira uma teia
+    # de linhas claras que não existe na peça.
+    ax.add_collection(PolyCollection(tri[o], facecolors=cor[o], edgecolors=cor[o],
+                                     linewidths=0.3, antialiased=True))
     v = tri.reshape(-1, 2)
     cx, cy = v[:, 0].mean(), v[:, 1].mean()
     raio = max(np.ptp(v[:, 0]), np.ptp(v[:, 1])) * 0.62

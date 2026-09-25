@@ -1,7 +1,7 @@
 # FMEES 2026 — peças para imprimir
 
-Quatro maquetes de mesa para os patrocinadores e dois brindes. Impressora Bambu Lab H2C,
-bico de 0,4 mm, PLA.
+Quatro maquetes de mesa para os patrocinadores, duas placas de homenagem e dois brindes.
+Impressora Bambu Lab H2C, bico de 0,4 mm, PLA.
 
 ## Antes de importar qualquer arquivo
 
@@ -19,6 +19,7 @@ mandar imprimir.
 | `miniatura-powerstack` | Branco | Grafite | Laranja | — |
 | `miniatura-painel-ccr` | Branco | Grafite | Laranja | — |
 | `placas-base` | Preto | Laranja | — | — |
+| `placas-crea-mutua` | Preto | Laranja | — | — |
 | `brinde-geral` | cor do corpo | cor do relevo | — | — |
 
 **As letras de todas as placas de base são laranja sobre preto.** É o que permite imprimir
@@ -38,6 +39,7 @@ de 0,25 mm** e **gerador de parede Arachne**. Todo o resto continua vindo do seu
 | `miniatura-powerstack` | Sungrow PowerStack 1:25 | 4 | 81 g |
 | `miniatura-painel-ccr` | painel elétrico CCR 1:20 | 4 | 68 g |
 | `placas-base` | as quatro placas juntas | 4 | 103 g |
+| `placas-crea-mutua` | placas CREA-MT e Mútua, com os pés | 4 | 195 g |
 | `brinde-geral` | chaveiro bateria | 1 | 5,7 g |
 | `brinde-geral` | organizador mini BESS | 1 | 75 g |
 
@@ -63,6 +65,18 @@ de uma troca de filamento — foram cem camadas assim que estragaram o símbolo 
 da WEG nas primeiras impressões. Deitada, a mesma arte vira mancha plana sobre superfície
 horizontal e a troca de cor acontece em três a cinco camadas no total.
 
+## Placas de homenagem CREA-MT e Mútua
+
+O CREA-MT e a Mútua não têm equipamento para virar maquete, então a homenagem a eles é uma
+placa de mesa de 100 × 120 × 4 mm com o logo e os dizeres, e um pé com rasgo inclinado 10°
+em que ela encaixa. As quatro peças saem numa mesa só, com três trocas de filamento.
+
+A arte é embutida rente à face e essa face **imprime contra o vidro** — é a mesma decisão
+das chapas coladas, um passo adiante: sendo a primeira camada, a fronteira entre as duas
+cores fica selada pela mesa e o purgo não aparece. Por isso, **não ligar o passar a ferro
+(ironing)** nesse trabalho: em superfície de duas cores o ferro arrasta o escuro para dentro
+do claro. Detalhes em `placas-crea-mutua/README.md`.
+
 ## Torre de purga
 
 Cada pasta tem, além do arquivo de uma mesa só (`_multicor`), **duas mesas separadas** que
@@ -81,7 +95,7 @@ dentro de cada camada, dezenas de vezes seguidas.
 
 ## Como cada peça deve ficar
 
-`fmees-2026-pecas.png` na raiz mostra as oito impressões renderizadas a partir dos mesmos
+`fmees-2026-pecas.png` na raiz mostra as nove impressões renderizadas a partir dos mesmos
 arquivos que vão para a impressora, nas cores dos filamentos. Serve para conferir antes de
 mandar imprimir e para mostrar aos patrocinadores o que vão receber.
 

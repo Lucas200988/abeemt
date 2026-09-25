@@ -90,12 +90,15 @@ def place_in_rows(objects, rows, gap=12.0):
     return objects
 
 
-def _clean(mesh, precision):
+def _clean(mesh, precision, aceita_degenerada=False):
     """Solda vértices coincidentes e joga fora faces de área zero.
 
     Booleanos e cantos arredondados deixam algumas faces degeneradas. Fatiador
     costuma consertar em silêncio, mas gravar limpo é mais barato que contar
-    com o conserto."""
+    com o conserto.
+
+    aceita_degenerada só é ligado depois que a limpeza normal falhou em todas as
+    precisões — é o último recurso, não a primeira opção."""
     def limpa(x, **kw):
         y = x.copy()
         y.merge_vertices(**kw)
@@ -107,9 +110,9 @@ def _clean(mesh, precision):
     # Arredonda para a precisão que vai ser gravada ANTES de limpar. É o
     # arredondamento da gravação que alinha um sliver quase colinear e o
     # transforma em face de área zero, então limpar antes dele não resolve.
-    m = mesh.copy()
-    m.vertices = np.round(m.vertices, precision)
-    m = limpa(m)
+    bruta = mesh.copy()
+    bruta.vertices = np.round(bruta.vertices, precision)
+    m = limpa(bruta)
     if not m.is_watertight or (m.area_faces < 1e-9).any():
         # Sobram slivers colineares: dois vértices a poucos milésimos um do outro
         # numa aresta reta, que nenhuma tolerância de altura remove. Solda num grid
@@ -118,6 +121,18 @@ def _clean(mesh, precision):
         s = limpa(m, digits_vertex=2)
         if s.is_watertight and not (s.area_faces < 1e-9).any():
             return s
+    if aceita_degenerada and not m.is_watertight:
+        # Caso da arte vetorizada de um logo: o contorno traçado sobre a grade de
+        # pixels deixa dezenas de pontos exatamente sobre a mesma reta, e o
+        # triangulador chega a fechar um triângulo com três deles. Ele tem área
+        # zero, mas as arestas dele são as dos vizinhos: jogá-lo fora deixa aresta
+        # sem par e ABRE a malha. Aqui só soldar é melhor que limpar — fica fechada,
+        # que é o que o fatiador precisa, com um punhado de triângulos de área zero
+        # que ele descarta ao cruzar cada plano.
+        so_solda = bruta.copy()
+        so_solda.merge_vertices()
+        if so_solda.is_watertight:
+            return so_solda
     assert m.is_watertight, "malha deixou de ser fechada na limpeza"
     return m
 
@@ -132,16 +147,23 @@ def clean_mesh(mesh, precision=3):
     aceitar o resultado se a peça continuar fechada.
     """
     erro = None
-    for p in (precision, precision + 1, precision + 2):
-        try:
-            return _clean(mesh, p)
-        except AssertionError as e:      # sobe uma casa: malha fundida de peças que se
-            erro = e                     # interpenetram tem sliver mais fino que 3 casas
+    casas = (precision, precision + 1, precision + 2)
+    for aceita in (False, True):         # subir casa decimal primeiro; só então
+        for p in casas:                  # aceitar guardar triângulo de área zero
+            try:
+                return _clean(mesh, p, aceita)
+            except AssertionError as e:  # sobe uma casa: malha fundida de peças que se
+                erro = e                 # interpenetram tem sliver mais fino que 3 casas
     raise AssertionError(f"não fechou nem com {precision + 2} casas: {erro}")
 
 
 def _mesh_xml(obj_id, name, mesh, pindex, precision):
-    mesh = _clean(mesh, precision)
+    # a precisão aqui é fixa (é a que vai ser gravada), então não há casa decimal
+    # para subir: ou a limpeza normal fecha a malha, ou vale o último recurso.
+    try:
+        mesh = _clean(mesh, precision)
+    except AssertionError:
+        mesh = _clean(mesh, precision, aceita_degenerada=True)
     v = "".join(f'<vertex x="{x:.{precision}f}" y="{y:.{precision}f}" z="{z:.{precision}f}"/>'
                 for x, y, z in mesh.vertices)
     t = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}" p1="{pindex}"/>'

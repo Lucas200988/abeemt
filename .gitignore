@@ -2,5 +2,5 @@
 # Os geradores (.py) e os arquivos de impressão (.stl, .3mf) são versionados;
 # estes são recriados a cada execução.
 mesh_data*.js
-ccr_shape.pkl
+*.pkl
 __pycache__/

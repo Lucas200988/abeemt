@@ -15,6 +15,7 @@ ps = carrega("miniatura-powerstack", "bess_miniature.py")
 ccr = carrega("miniatura-painel-ccr", "painel_ccr_miniatura.py")
 chav = carrega("brinde-geral", "chaveiro_bateria.py")
 org = carrega("brinde-geral", "organizador_mini_bess.py")
+hom = carrega("placas-crea-mutua", "placas_crea_mutua.py")
 
 
 def posiciona(pecas, dx=0.0, dz=0.0, centrar=True):
@@ -36,6 +37,39 @@ coladas = (posiciona([(weg["plaq"], CINZA), (weg["logo_preto"], PRETO)], -26, 0)
                         (ps["indicador"], LARANJA)], 6, 0)
            + posiciona([(dcco["cracha"], VERDE), (dcco["cracha_logo"], BRANCO)], -26, 20)
            + posiciona([(dcco["escapamento"], PRETO)], 10, 20))
+
+# painel 9: as duas placas de homenagem, cada uma encaixada no seu pé.
+# A placa nasce deitada (Y é a altura dela, Z a espessura, arte em z = 0, que é a
+# face que vai contra o vidro). Aqui ela é levantada — X para cima e meia volta em
+# Z, para a arte olhar para a câmera — e inclinada os mesmos 10° do rasgo.
+RX = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
+RZ = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
+
+
+def encaixada(pecas, dx):
+    pivo = [hom["PE_W"] / 2, hom["RASGO_Y"], hom["PE_H"] - hom["RASGO_PROF"]]
+    tomba = trimesh.transformations.rotation_matrix(-hom["INCL"], [1, 0, 0], point=pivo)
+    saida = [(m.copy(), cor) for m, cor in pecas]
+    for g, _ in saida:
+        g.apply_transform(RX)
+        g.apply_transform(RZ)
+    v = np.vstack([g.vertices for g, _ in saida])
+    desloca = [pivo[0] - (v[:, 0].min() + v[:, 0].max()) / 2,
+               pivo[1] - (v[:, 1].min() + v[:, 1].max()) / 2,
+               pivo[2] - v[:, 2].min()]
+    for g, _ in saida:
+        g.apply_translation(desloca)
+        g.apply_transform(tomba)
+    saida.append((hom["parts"]["pe_crea"].copy(), PRETO))
+    for g, _ in saida:
+        g.apply_translation([dx, 0, 0])
+    return saida
+
+
+homenagem = (encaixada([(hom["parts"]["placa_crea_corpo"], PRETO),
+                        (hom["parts"]["placa_crea_arte"], LARANJA)], -62)
+             + encaixada([(hom["parts"]["placa_mutua_corpo"], PRETO),
+                          (hom["parts"]["placa_mutua_arte"], LARANJA)], 62))
 
 # painel 8: as quatro placas em duas fileiras
 placas = []
@@ -68,22 +102,24 @@ CENAS = [
     coladas, True, 40),
  ("Placas de base — as quatro numa mesa", "180 × 180 × 4,5 mm · 103 g · 2 filamentos",
     placas, True, 40),
+ ("Placas CREA-MT e Mútua", "100 × 120 × 4 mm cada, com o pé · 195 g a mesa · 2 filamentos",
+    homenagem, False, 16),
 ]
 
-fig = plt.figure(figsize=(20.5, 11.6), facecolor="#f4f4f2")
+fig = plt.figure(figsize=(20.5, 17.2), facecolor="#f4f4f2")
 fig.suptitle("FMEES 2026 — resultado esperado de cada impressão", fontsize=20,
-             fontweight="bold", color="#23262a", y=0.972)
-fig.text(0.5, 0.937, "renderizado a partir dos mesmos arquivos que vão para a impressora, "
+             fontweight="bold", color="#23262a", y=0.981)
+fig.text(0.5, 0.9575, "renderizado a partir dos mesmos arquivos que vão para a impressora, "
          "nas cores dos filamentos", ha="center", fontsize=11, color="#5d6167")
 
 for i, (titulo, sub, pecas, zup, elev) in enumerate(CENAS):
-    ax = fig.add_subplot(2, 4, i + 1)
+    ax = fig.add_subplot(3, 3, i + 1)
     ax.set_facecolor("#f4f4f2")
     print(f"  desenhando {titulo}...")
     desenha(ax, pecas, elev=elev, z_up=zup)
     ax.set_title(titulo, fontsize=12, fontweight="bold", color="#23262a", pad=8)
     ax.text(0.5, -0.05, sub, transform=ax.transAxes, ha="center", fontsize=9.3, color="#5d6167")
-fig.subplots_adjust(left=0.008, right=0.992, top=0.895, bottom=0.04, wspace=0.02, hspace=0.18)
+fig.subplots_adjust(left=0.008, right=0.992, top=0.930, bottom=0.028, wspace=0.02, hspace=0.14)
 fig.savefig("/home/user/abeemt/fmees-2026-pecas.png",
             dpi=150, facecolor="#f4f4f2")
 print("gravado")

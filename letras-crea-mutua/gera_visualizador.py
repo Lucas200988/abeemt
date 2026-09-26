@@ -34,10 +34,35 @@ finally:
     sys.stdout = real
     os.chdir(anterior)
 
+# também os nomes de colar, que são peça à parte
+import io as _io
+fonte_n = open(os.path.join(AQUI, "nomes_colados.py")).read().split("# ---------- exportação ----------")[0]
+os.chdir(AQUI)
+nn = {"__name__": "__viz_nomes__", "__file__": os.path.join(AQUI, "nomes_colados.py")}
+buf, real = _io.StringIO(), sys.stdout
+sys.stdout = buf
+try:
+    exec(compile(fonte_n, "nomes_colados.py", "exec"), nn)
+finally:
+    sys.stdout = real
+    os.chdir(anterior)
+
+import trimesh
+
 DENS = 1.24
 PECAS = []
-for chave, titulo in (("crea", "CREA-MT"), ("mutua", "mútua")):
-    m = ns["em_pe"][chave].copy()
+ALVOS = [("crea", "CREA-MT", False), ("mutua", "mútua", False),
+         ("nome_crea_62", "CREA-MT de colar", True),
+         ("nome_mutua_62", "mútua de colar", True)]
+for chave, titulo, plano in ALVOS:
+    if plano:
+        # meia-volta em X: o arquivo leva a face boa para baixo, contra o vidro, e
+        # aqui ela tem de ficar para cima, ou o visualizador mostra a face de colar
+        # e a palavra sai espelhada na tela.
+        m = nn["parts"][chave].copy()
+        m.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
+    else:
+        m = ns["em_pe"][chave].copy()
     m.merge_vertices()
     # centra em X e Y; Z fica apoiado no zero, que é onde a peça toca a mesa
     b = m.bounds
@@ -46,16 +71,31 @@ for chave, titulo in (("crea", "CREA-MT"), ("mutua", "mútua")):
     # em vez de girar o objeto na página toda hora.
     v = m.vertices[:, [0, 2, 1]]
     PECAS.append({
-        "id": chave, "nome": titulo,
+        "id": chave, "nome": titulo, "plano": plano,
+        "sub": ("Plaquinha de 2,4 mm para colar no porta-canetas. Sai também "
+                "com 90 mm de largura." if plano else
+                "Letra de 30 mm com 16 mm de espessura, sobre rodapé de 5 × 28 mm."),
         "v": np.round(v, 2).ravel().tolist(),
         "f": m.faces.ravel().tolist(),
         "larg": round(float(m.extents[0]), 1),
         "prof": round(float(m.extents[1]), 1),
         "alt": round(float(m.extents[2]), 1),
-        "g": round(m.volume / 1000 * DENS, 1),
+        "g": round(m.volume / 1000 * DENS, 2 if plano else 1),
         "faces": int(len(m.faces)),
+        # Os rótulos mudam com a peça: na de colar, o 2,4 mm é espessura e o outro
+        # número é altura de letra. Rotular pelos eixos, igual para todas, trocava
+        # os dois de lugar.
+        "medidas": ([["Largura", f"{m.extents[0]:.0f} mm"],
+                     ["Altura da letra", f"{m.extents[1]:.1f} mm"],
+                     ["Espessura", f"{m.extents[2]:.1f} mm"]] if plano else
+                    [["Largura", f"{m.extents[0]:.0f} mm"],
+                     ["Espessura", f"{m.extents[1]:.0f} mm"],
+                     ["Altura", f"{m.extents[2]:.1f} mm"]]),
+        # peça deitada se lê de cima; peça em pé, de frente
+        "phi": 0.52 if plano else 1.14,
+        "theta": -1.57 if plano else -1.32,
     })
-    print(f"{titulo:8s} {len(m.faces):5d} faces  {PECAS[-1]['larg']} x "
+    print(f"{titulo:18s} {len(m.faces):5d} faces  {PECAS[-1]['larg']} x "
           f"{PECAS[-1]['prof']} x {PECAS[-1]['alt']} mm  {PECAS[-1]['g']} g")
 
 PAGINA = r"""<title>Letras CREA-MT e Mútua</title>
@@ -181,7 +221,8 @@ PAGINA = r"""<title>Letras CREA-MT e Mútua</title>
     padding: 8px 13px; cursor: pointer;
     transition: background .15s, border-color .15s, color .15s;
   }
-  button:hover { border-color: var(--ink-3); }
+  button:hover:not(:disabled) { border-color: var(--ink-3); }
+  button:disabled { opacity: .42; cursor: default; }
   button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   button[aria-pressed="true"] {
     background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
@@ -210,8 +251,7 @@ PAGINA = r"""<title>Letras CREA-MT e Mútua</title>
     <div>
       <div class="marca">ABEE-MT · FMEES 2026</div>
       <h1 id="titulo">CREA-MT</h1>
-      <p class="sub">Letra de 30 mm com 16 mm de espessura, sobre rodapé de 5 × 28 mm.
-        Branco, um filamento só.</p>
+      <p class="sub" id="sub"></p>
     </div>
 
     <div class="grupo">
@@ -220,7 +260,7 @@ PAGINA = r"""<title>Letras CREA-MT e Mútua</title>
     </div>
 
     <div class="grupo">
-      <div class="rotulo">Posição</div>
+      <div class="rotulo">Posição <span id="pos-nota"></span></div>
       <div class="botoes">
         <button id="b-mesa" aria-pressed="true">Na mesa</button>
         <button id="b-imprime" aria-pressed="false">Como imprime</button>
@@ -237,7 +277,8 @@ PAGINA = r"""<title>Letras CREA-MT e Mútua</title>
     <ul class="notas">
       <li class="nota destaque"><strong>Imprime deitada</strong>, com a face da letra contra
         o vidro — e é assim que o arquivo já sai. Em pé, o braço de cima do E sairia 12 mm
-        do tronco com nada embaixo.</li>
+        do tronco com nada embaixo. Nas peças de colar, a face contra o vidro é a que
+        aparece; a de cima é a de colar.</li>
       <li class="nota"><strong>Ligadura de 2,4 mm</strong> prende o hífen do CREA-MT e o
         acento do mútua na letra vizinha. No logo eles não encostam em nada, e soltos
         sairiam da impressora como pecinhas avulsas.</li>
@@ -349,17 +390,24 @@ const PECAS = __DADOS__;
   function mostra(id) {
     estado.peca = PECAS.find(p => p.id === id);
     for (const p of PECAS) malhas[p.id].visible = (p.id === id);
-    document.getElementById('titulo').textContent = estado.peca.nome;
     const p = estado.peca;
+    document.getElementById('titulo').textContent = p.nome;
+    document.getElementById('sub').textContent = p.sub + ' Branco, um filamento só.';
+    // peça de colar já nasce deitada: não há duas posições para mostrar
+    if (p.plano && estado.deitada) posicao(false);
+    for (const b of [document.getElementById('b-mesa'), document.getElementById('b-imprime')])
+      b.disabled = p.plano;
+    document.getElementById('pos-nota').textContent = p.plano ? '· já imprime deitada' : '';
     document.getElementById('tabela').innerHTML =
-      [['Largura', p.larg + ' mm'], ['Espessura', p.prof + ' mm'],
-       ['Altura', p.alt + ' mm'], ['Massa maciça', p.g + ' g'],
-       ['Triângulos', p.faces.toLocaleString('pt-BR')]]
+      p.medidas.concat([['Massa maciça', String(p.g).replace('.', ',') + ' g'],
+                        ['Triângulos', p.faces.toLocaleString('pt-BR')]])
       .map(([a, b]) => '<tr><th>' + a + '</th><td>' + b + '</td></tr>').join('');
     document.getElementById('medida').textContent =
       p.larg + ' × ' + p.prof + ' × ' + p.alt + ' mm';
     for (const b of document.querySelectorAll('#pecas button'))
       b.setAttribute('aria-pressed', String(b.dataset.id === id));
+    estado.theta = p.theta;
+    estado.phi = p.phi;
     assenta();
     enquadra();
   }
@@ -391,7 +439,7 @@ const PECAS = __DADOS__;
     bGira.setAttribute('aria-pressed', String(estado.gira));
   });
   document.getElementById('b-reset').addEventListener('click', () => {
-    estado.theta = -1.32; estado.phi = 1.14; enquadra();
+    estado.theta = estado.peca.theta; estado.phi = estado.peca.phi; enquadra();
   });
 
   let arrastando = false, ux = 0, uy = 0, pinca = 0;

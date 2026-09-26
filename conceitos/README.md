@@ -14,12 +14,38 @@ resultado ficou ruim. O que código faz bem é geometria mecânica, e é disso q
 | **A** | Engrenagem planetária | ⌀ 88 × 16 mm | **gira de verdade**, sai montada da impressora, numa peça só; dente involuto, não triangular | é peça de mexer, não de contemplar |
 | **B** | Ponte treliçada | 200 × 64 × 52 mm | imponente na mesa, leitura imediata de engenharia; treliça Warren com tabuleiro e encontros | é a maior e a mais demorada de imprimir |
 | **C** | Torre de transmissão | 92 × 92 × 172 mm | alta e elegante; fala direto do tema do evento (energia) | barras finas, a mais delicada de manusear |
+| **E** | Letras 3D de mesa | 194 × 28 × 35 mm (CREA) e × 52 (Mútua) | a palavra do logo, em 3D, sobre rodapé; letra é geometria pura, é o que o código faz melhor; uma cor só, zero troca de filamento | não conta história nenhuma além do nome |
 | **D** | Capacete de obra | 128 × 100 × 58 mm | casca lisa é o que a impressora faz melhor; o brasão vai na testa, como em capacete de verdade; uma cor só | é objeto de contemplar, não de usar |
 
 Em todas, a marca vai numa chapa impressa deitada com a arte contra o vidro e colada — a
 técnica que já funciona nas maquetes — e o evento fica gravado na base, discreto.
 
-`conceito-capacete.png` mostra a peça D em seis vistas.
+`conceito-letras.png` mostra a peça E e `conceito-capacete.png` a peça D, cada uma em seis
+vistas.
+
+## Letras 3D, em detalhe
+
+A palavra do logo oficial, vetorizada, com 30 mm de altura de letra e 16 mm de espessura,
+em pé sobre um rodapé de 5 × 28 mm que liga todas as letras. 194 mm de largura, 99 g (CREA)
+e 134 g (Mútua) de material maciço — com o preenchimento de sempre, perto da metade disso.
+"FMEES 2026" fica gravado na frente do rodapé, pequeno.
+
+**Deitada é que imprime**, com a face da letra contra o vidro. Em pé, cada letra é uma
+armadilha de balanço: o braço de cima do E sai 12 mm do tronco com nada embaixo, a barra do
+T idem, a pança do R idem. Deitada não sobra um balanço sequer — medido camada a camada — e
+a face boa ainda sai com o brilho do vidro. Depois é só levantar e apoiar no rodapé.
+
+Três coisas que o desenho teve de resolver:
+
+- **o hífen do CREA-MT e o acento do mútua não encostam em letra nenhuma no logo.** Soltos,
+  sairiam como pecinhas avulsas. Cada um ganha uma ligadura de 2,4 mm no ponto de maior
+  aproximação com a letra vizinha, que some no desenho — melhor que puxar um filete até o
+  rodapé, que apareceria de frente;
+- **o rodapé começa rente à face da letra**, e não centrado. Centrado, ele sobrava 6 mm na
+  frente, e deitada para imprimir essa sobra virava degrau: as letras nasciam 6 mm no ar,
+  3300 mm² sem nada embaixo;
+- **uma cor só.** Duas sairiam caro: deitada, rodapé e letra convivem em todas as camadas de
+  0 a 16 mm, e seria uma troca de filamento por camada.
 
 ## Capacete, em detalhe
 

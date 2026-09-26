@@ -1,7 +1,7 @@
 # FMEES 2026 — peças para imprimir
 
-Quatro maquetes de mesa para os patrocinadores, dois bonecos de engenharia e dois brindes.
-Impressora Bambu Lab H2C, bico de 0,4 mm, PLA.
+Quatro maquetes de mesa para os patrocinadores, as marcas do CREA-MT e da Mútua em letra 3D
+e dois brindes. Impressora Bambu Lab H2C, bico de 0,4 mm, PLA.
 
 ## Antes de importar qualquer arquivo
 
@@ -19,8 +19,7 @@ mandar imprimir.
 | `miniatura-powerstack` | Branco | Grafite | Laranja | — |
 | `miniatura-painel-ccr` | Branco | Grafite | Laranja | — |
 | `placas-base` | Preto | Laranja | — | — |
-| `bonecos-crea-mutua` | Preto | Cinza | Laranja | — |
-| `placas-crea-mutua` | Preto | Laranja | — | — |
+| `letras-crea-mutua` | Branco | — | — | — |
 | `brinde-geral` | cor do corpo | cor do relevo | — | — |
 
 **As letras de todas as placas de base são laranja sobre preto.** É o que permite imprimir
@@ -40,7 +39,7 @@ de 0,25 mm** e **gerador de parede Arachne**. Todo o resto continua vindo do seu
 | `miniatura-powerstack` | Sungrow PowerStack 1:25 | 4 | 81 g |
 | `miniatura-painel-ccr` | painel elétrico CCR 1:20 | 4 | 68 g |
 | `placas-base` | as quatro placas juntas | 4 | 103 g |
-| `bonecos-crea-mutua` | bonecos CREA-MT e Mútua, com as placas de obra | 4 | 130 g |
+| `letras-crea-mutua` | letras 3D CREA-MT e Mútua | 2 | 233 g |
 | `brinde-geral` | chaveiro bateria | 1 | 5,7 g |
 | `brinde-geral` | organizador mini BESS | 1 | 75 g |
 
@@ -66,22 +65,21 @@ de uma troca de filamento — foram cem camadas assim que estragaram o símbolo 
 da WEG nas primeiras impressões. Deitada, a mesma arte vira mancha plana sobre superfície
 horizontal e a troca de cor acontece em três a cinco camadas no total.
 
-## CREA-MT e Mútua: os bonecos
+## CREA-MT e Mútua: as marcas em letra 3D
 
-O CREA-MT e a Mútua não têm equipamento para virar maquete. A homenagem a eles é um boneco
-de engenharia de 90 mm — capacete, colete, base — com uma placa de obra ao lado trazendo a
-marca e o evento. O CREA-MT leva o engenheiro, com o tubo de projeto; a Mútua, a engenheira,
-com a prancheta. Detalhes em `bonecos-crea-mutua/README.md`.
+O CREA-MT e a Mútua não têm equipamento para virar maquete. Para eles, a palavra do logo
+oficial em letra 3D de 30 mm sobre um rodapé, 194 mm de largura, uma peça para cada um, em
+**branco**. "FMEES 2026" fica gravado na frente do rodapé, discreto. Detalhes em
+`letras-crea-mutua/README.md`.
 
-A cor do boneco é função só da altura, e é disso que sai a purga baixa: preto até 11,5 mm,
-cinza até 75,1 e laranja daí para cima, **duas trocas para os dois bonecos**. A placa de obra
-é peça à parte, impressa deitada com a **arte contra o vidro** e colada nos postes — mesma
-decisão das chapas das maquetes. **Não ligar o passar a ferro (ironing)** nesse trabalho: em
-superfície de duas cores o ferro arrasta o escuro para dentro do claro.
+**Imprime deitada, com a face da letra contra o vidro, e os arquivos já saem assim.** Em pé,
+cada letra é uma armadilha de balanço: o braço de cima do E sai 12 mm do tronco com nada
+embaixo. Deitada não sobra balanço nenhum e a face que se vê sai com o brilho do vidro.
+Depois é só levantar e apoiar no rodapé. Uma cor só: nenhuma troca de filamento.
 
-A pasta `placas-crea-mutua/` guarda a primeira ideia para esses dois patrocinadores, uma
-placa de mesa de 100 × 120 mm com o logo completo e um pé inclinado. Os arquivos continuam
-prontos, para quem quiser a placa em vez do boneco ou além dele.
+As pastas `conceitos/`, `bonecos-crea-mutua/` e `placas-crea-mutua/` guardam as ideias que
+vieram antes desta — placa de homenagem, bonecos de engenharia, engrenagem, ponte, torre e
+capacete. **Não são o que vai ser produzido**; ficam de registro.
 
 ## Torre de purga
 

@@ -15,7 +15,7 @@ ps = carrega("miniatura-powerstack", "bess_miniature.py")
 ccr = carrega("miniatura-painel-ccr", "painel_ccr_miniatura.py")
 chav = carrega("brinde-geral", "chaveiro_bateria.py")
 org = carrega("brinde-geral", "organizador_mini_bess.py")
-bon = carrega("bonecos-crea-mutua", "bonecos_engenharia.py")
+let = carrega("letras-crea-mutua", "letras_crea_mutua.py")
 
 
 def posiciona(pecas, dx=0.0, dz=0.0, centrar=True):
@@ -38,33 +38,13 @@ coladas = (posiciona([(weg["plaq"], CINZA), (weg["logo_preto"], PRETO)], -26, 0)
            + posiciona([(dcco["cracha"], VERDE), (dcco["cracha_logo"], BRANCO)], -26, 20)
            + posiciona([(dcco["escapamento"], PRETO)], 10, 20))
 
-# painel 9: os dois bonecos, cada um com a sua placa de obra colada nos postes.
-# A placa nasce deitada (arte em z = 0, a face que vai contra o vidro); aqui ela é
-# levantada — X para cima e meia volta em Z, para a arte olhar para a câmera.
-RX = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
-RZ = trimesh.transformations.rotation_matrix(np.pi, [0, 0, 1])
-
-
-def com_placa(nome, dx):
-    tabua = [(bon["parts"][f"placa_{nome}_corpo"].copy(), PRETO),
-             (bon["parts"][f"placa_{nome}_arte"].copy(), LARANJA)]
-    for g, _ in tabua:
-        g.apply_transform(RX)
-        g.apply_transform(RZ)
-    v = np.vstack([g.vertices for g, _ in tabua])
-    for g, _ in tabua:
-        g.apply_translation([bon["POSTE_X"] - (v[:, 0].min() + v[:, 0].max()) / 2,
-                             bon["POSTE_Y"] - bon["POSTE_D"] / 2 - v[:, 1].max(),
-                             bon["PLACA_Z0"] - v[:, 2].min()])
-    saida = [(bon["parts"][f"{nome}_preto"].copy(), PRETO),
-             (bon["parts"][f"{nome}_cinza"].copy(), CINZA),
-             (bon["parts"][f"{nome}_laranja"].copy(), LARANJA)] + tabua
-    for g, _ in saida:
-        g.apply_translation([dx, 0, 0])
-    return saida
-
-
-bonecos = com_placa("crea", -64) + com_placa("mutua", 64)
+# painel 9: as duas palavras em letra 3D, na posição de mesa
+BRANCO = "#EDEFEE"
+letras = []
+for nome, dy in (("crea", -58.0), ("mutua", 58.0)):
+    g = let["em_pe"][nome].copy()
+    g.apply_translation([0, dy, 0])
+    letras.append((g, BRANCO))
 
 # painel 8: as quatro placas em duas fileiras
 placas = []
@@ -97,8 +77,8 @@ CENAS = [
     coladas, True, 40),
  ("Placas de base — as quatro numa mesa", "180 × 180 × 4,5 mm · 103 g · 2 filamentos",
     placas, True, 40),
- ("Bonecos CREA-MT e Mútua", "88 × 46 × 90 mm cada, com a placa de obra · 130 g · 3 filamentos",
-    bonecos, False, 14),
+ ("Letras 3D — CREA-MT e Mútua", "194 mm de largura · branco, um filamento só · "
+    "imprime deitada", letras, False, 24),
 ]
 
 fig = plt.figure(figsize=(20.5, 17.2), facecolor="#f4f4f2")

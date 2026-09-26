@@ -45,6 +45,15 @@ Sem suporte, sem aba, sem torre de purga.
 O arquivo não muda: é um filamento só. Branco é o que está combinado; preto, cinza ou
 laranja saem do mesmo arquivo, trocando o filamento na impressora.
 
+## Ver em 3D antes de imprimir
+
+`visualizador-letras.html` abre no navegador e mostra as duas peças em 3D: arrasta para
+girar, rola para aproximar, troca entre a posição de mesa e a de impressão. As malhas são as
+mesmas do 3MF — não é um desenho à parte que possa ficar desatualizado.
+
+`gera_visualizador.py` refaz a página a partir do gerador; rodar depois de mexer na peça
+mantém a visualização em dia.
+
 ## Como é gerado
 
 `letras_crea_mutua.py` vetoriza a palavra dos arquivos oficiais em `nl/`, monta a peça e

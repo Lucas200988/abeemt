@@ -96,6 +96,12 @@
   .info p{font-size:13px;line-height:1.42;color:#41464d;font-weight:500;min-height:37px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
   .chip{font-size:12px;font-weight:700;padding:4px 9px;border-radius:6px;background:#f1f2f3;color:#2c3036;border-left:3px solid var(--accent,#3a3d42)}
+  .m-play.on{background:#2c3036;border-color:#2c3036;color:#fff}
+  .prog{height:3px;border-radius:2px;background:#e6e7e9;margin-top:9px;overflow:hidden;display:none}
+  .prog i{display:block;height:100%;width:0;background:var(--accent,#3a3d42)}
+  body.auto .prog{display:block}
+  body.auto .prog i{animation:prog 6.5s linear infinite}
+  @keyframes prog{from{width:0}to{width:100%}}
   .swap{animation:swap .45s ease}
   @keyframes swap{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
@@ -337,8 +343,8 @@
       <button class="tab" data-m="bess">BESS</button>
       <button class="tab" data-m="diesel">Diesel</button>
       <button class="tab" data-m="dist">Distribuição</button>
-      <button class="tab icon-btn m-play" title="Apresentação automática (A)">
-        <svg class="playIco" width="12" height="12" viewBox="0 0 12 12"><path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/></svg>
+      <button class="tab m-play" title="Apresentação automática (A)" style="margin-left:auto;display:flex;align-items:center;gap:5px">
+        <svg class="playIco" width="10" height="10" viewBox="0 0 12 12"><path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/></svg><span class="playTxt">Auto</span>
       </button>
       <button class="tab icon-btn" id="fs" title="Tela cheia (F)">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 4 V1 H4 M8 1 H11 V4 M11 8 V11 H8 M4 11 H1 V8"/></svg>
@@ -348,6 +354,7 @@
       <h4 class="infoTitle"></h4>
       <p class="infoText"></p>
       <div class="chips infoChips"></div>
+      <div class="prog"><i></i></div>
     </div>
   </div>
 
@@ -423,10 +430,11 @@
       <button class="tab" data-m="bess">BESS</button>
       <button class="tab" data-m="diesel">Diesel</button>
       <button class="tab" data-m="dist">Distribuição</button>
-      <button class="tab icon-btn m-play" title="Apresentação automática">
-        <svg class="playIco" width="12" height="12" viewBox="0 0 12 12"><path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/></svg>
+      <button class="tab m-play" title="Apresentação automática" style="display:flex;align-items:center;gap:5px">
+        <svg class="playIco" width="10" height="10" viewBox="0 0 12 12"><path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/></svg><span class="playTxt">Auto</span>
       </button>
     </div>
+    <div class="prog" style="margin-top:7px"><i></i></div>
   </div>
 
   <div class="info m-info rv" style="--d:.2s">
@@ -434,6 +442,7 @@
       <h4 class="infoTitle"></h4>
       <p class="infoText"></p>
       <div class="chips infoChips"></div>
+      <div class="prog"><i></i></div>
     </div>
   </div>
 
@@ -723,8 +732,21 @@
   /* auto tour */
   var auto = null, playIcos = document.querySelectorAll('.playIco');
   function setIco(h){ playIcos.forEach(function(i){ i.innerHTML = h; }); }
-  function startAuto(){ auto = setInterval(function(){ step(1); }, 6500); setIco('<rect x="2" y="1" width="3" height="10" fill="currentColor"/><rect x="7" y="1" width="3" height="10" fill="currentColor"/>'); }
-  function stopAuto(){ if(auto){ clearInterval(auto); auto=null; } setIco('<path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/>'); }
+  function setTxt(t){ document.querySelectorAll('.playTxt').forEach(function(e){ e.textContent = t; }); }
+  function restartProg(){ document.querySelectorAll('.prog i').forEach(function(i){ i.style.animation='none'; void i.offsetWidth; i.style.animation=''; }); }
+  function startAuto(){
+    auto = setInterval(function(){ step(1); restartProg(); }, 6500);
+    document.body.classList.add('auto');
+    document.querySelectorAll('.m-play').forEach(function(b){ b.classList.add('on'); });
+    setIco('<rect x="2" y="1" width="3" height="10" fill="currentColor"/><rect x="7" y="1" width="3" height="10" fill="currentColor"/>'); setTxt('Pausar');
+    restartProg();
+  }
+  function stopAuto(){
+    if(auto){ clearInterval(auto); auto=null; }
+    document.body.classList.remove('auto');
+    document.querySelectorAll('.m-play').forEach(function(b){ b.classList.remove('on'); });
+    setIco('<path d="M2 1 L11 6 L2 11 Z" fill="currentColor"/>'); setTxt('Auto');
+  }
   document.querySelectorAll('.m-play').forEach(function(b){ b.addEventListener('click', function(){ auto ? stopAuto() : (step(1), startAuto()); }); });
 
   /* deslizar no painel de texto (celular) */

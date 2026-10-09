@@ -244,6 +244,7 @@ class FluxoRecarga(
    */
   private suspend fun acompanharSessao(sessionId: String) {
     var tentativasDeCaptura = 0
+    var encerradaDesde: Long? = null
 
     while (escopo.isActive) {
       try {
@@ -261,11 +262,27 @@ class FluxoRecarga(
             continue
           }
           if (!sessao.active) {
-            // Pendência resolvida (ou esgotadas as tentativas — nesse caso ela
-            // continua no servidor e o alerta do painel aponta para ela).
-            cofre.limparReferenciaDaSessao(sessionId)
             _tela.value = Tela.Encerrada(sessao)
-            return
+
+            // A sessão fica inativa ANTES de a conciliação congelar o valor
+            // (o worker roda a cada BORA_SETTLEMENT_INTERVAL_SECONDS). Nesse
+            // intervalo não há pendência ainda — e encerrar aqui deixaria a
+            // captura publicada logo depois sem ninguém para executá-la. Só
+            // está fechada quando o valor foi decidido E nada espera o terminal.
+            val cobrancaFechada = pendencia == null && sessao.finalAmountCents != null
+            if (cobrancaFechada) {
+              cofre.limparReferenciaDaSessao(sessionId)
+              return
+            }
+
+            // Espera limitada: sessão que nunca vai ser conciliada (falha antes
+            // de começar, sem valor a fechar) não pode prender a tela para
+            // sempre. A referência FICA guardada — se a pendência aparecer
+            // depois, o /terminal/me (pendingCaptureSessionId) a devolve.
+            val desde = encerradaDesde ?: System.currentTimeMillis().also { encerradaDesde = it }
+            if (System.currentTimeMillis() - desde > ESPERA_MAXIMA_CONCILIACAO_MS) return
+            delay(3000)
+            continue
           }
           val encerrando = (_tela.value as? Tela.Carregando)?.encerrando ?: false
           _tela.value = Tela.Carregando(sessao, encerrando)
@@ -360,12 +377,40 @@ class FluxoRecarga(
           acompanharSessao(comCapturaPendente)
         } else {
           _tela.value = Tela.Pronta(contexto)
+          manterTelaProntaAtualizada()
         }
       } else {
         _tela.value = Tela.Erro("O servidor respondeu ${resposta.code()}.")
       }
     } catch (e: IOException) {
       _tela.value = Tela.Erro("Sem conexão com o servidor. Verifique a internet do equipamento.")
+    }
+  }
+
+  /**
+   * Recarrega o contexto enquanto a tela PRONTA estiver à vista.
+   *
+   * Sem isto, o estado do carregador era lido uma vez só: carregador que
+   * estava desligado na hora deixava a maquininha presa em "indisponível" até
+   * alguém reiniciar o app — num poste sem ninguém por perto. Também pega
+   * preço ou teto alterados no painel. Roda dentro do trabalho corrente, então
+   * apertar "Iniciar" (trocarTrabalho) o encerra sozinho.
+   */
+  private suspend fun manterTelaProntaAtualizada() {
+    while (escopo.isActive && _tela.value is Tela.Pronta) {
+      delay(INTERVALO_ATUALIZACAO_PRONTA_MS)
+      try {
+        val resposta = api.contexto()
+        if (resposta.code() == 401) return aoTokenRevogado()
+        val contexto = resposta.body() ?: continue
+        if (!resposta.isSuccessful || _tela.value !is Tela.Pronta) continue
+        contextoAtual = contexto
+        val ativa = contexto.activeSessionId ?: contexto.pendingCaptureSessionId
+        if (ativa != null) return acompanharSessao(ativa)
+        _tela.value = Tela.Pronta(contexto)
+      } catch (e: IOException) {
+        // Rede oscilou: a tela segura o último estado e tenta no próximo ciclo.
+      }
     }
   }
 
@@ -395,5 +440,11 @@ class FluxoRecarga(
   private fun trocarTrabalho(bloco: suspend () -> Unit) {
     trabalhoAtual?.cancel()
     trabalhoAtual = escopo.launch { bloco() }
+  }
+
+  private companion object {
+    /** Folga sobre o ciclo da conciliação (15 s por padrão) mais a efetivação no SDK. */
+    const val ESPERA_MAXIMA_CONCILIACAO_MS = 3 * 60_000L
+    const val INTERVALO_ATUALIZACAO_PRONTA_MS = 15_000L
   }
 }

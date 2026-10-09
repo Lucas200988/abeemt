@@ -39,6 +39,7 @@
   <string name="encerrada_titulo">Recarga encerrada</string>
   <string name="encerrada_resumo_energia">Energia: %1$s kWh</string>
   <string name="encerrada_resumo_valor">Valor: R$ %1$s</string>
+  <string name="encerrada_calculando">Calculando o valor final…</string>
   <string name="encerrada_aviso_captura">A cobrança no cartão é feita após a leitura final do medidor.</string>
   <string name="encerrada_botao_nova">Nova recarga</string>
 

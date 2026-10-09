@@ -54,18 +54,31 @@ simuladas e **não movem dinheiro de ninguém**. Teste à vontade.
 1. No terminal: atualize os aplicativos de serviço pela **Loja de Aplicativos**
    antes de qualquer teste (recomendação do PagBank).
 2. No computador: instale o **Android Studio** (traz o JDK 17 e o `adb`).
-3. Descubra o IP do computador na rede Wi-Fi (Windows: `ipconfig` → "Endereço
-   IPv4", ex.: `192.168.0.10`) e conecte o terminal **na mesma rede**.
-4. Crie/edite `C:\Users\<você>\.gradle\gradle.properties` — fora do repositório:
+3. **Caminho recomendado — túnel pelo cabo USB.** Com o terminal no USB, rode
+   (a porta é a `API_PORT` do `.env`; aqui, 3006):
    ```
-   bora.baseUrl=http://192.168.0.10:3001/api/v1
+   "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" reverse tcp:3006 tcp:3006
    ```
+   O terminal passa a alcançar a API do PC em `127.0.0.1`, sem depender de
+   Wi-Fi, IP ou Firewall do Windows. Refaça o comando sempre que o cabo for
+   reconectado ou o terminal reiniciar. As transações de cartão **não** usam o
+   túnel — o PlugPag fala com o PagBank pela internet do próprio terminal.
+4. Crie/edite `C:\Users\<você>\.gradle\gradle.properties` — fora do repositório.
+   O valor é gravado no APK na compilação: mudou, clique em ▶ Run de novo.
+   ```
+   bora.baseUrl=http://127.0.0.1:3006/api/v1
+   ```
+   Sem cabo (como no piloto), use o IP do PC na mesma rede Wi-Fi
+   (`http://192.168.x.x:3006/api/v1`). Foi o que deu _timeout_ no primeiro dia
+   (2026-10-09): o Firewall do Windows barra conexões vindas de outro aparelho
+   mesmo quando o navegador do próprio PC abre a API. Exige rede com perfil
+   **Privada** e a porta liberada no firewall.
    (`bora.pagbank.codigoAtivacao` não é necessário: o terminal DEBUG já vem
    ativado — o app só usa o código se `isAuthenticated()` disser que não.)
 5. No `.env` do backend: `BORA_TERMINAL_PAYMENT_PROVIDER=terminal-mock` e
    **`BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`** — o backend só registra; quem
    reserva, efetiva e cancela é o PlugPag de verdade, dentro do terminal.
-6. `pnpm dev` na raiz do monorepo. Na primeira vez, aceite o aviso do Firewall do
+6. `pnpm dev` na raiz do monorepo (com o Docker Desktop aberto: o PostgreSQL roda nele). Na primeira vez, aceite o aviso do Firewall do
    Windows para o Node (rede **privada**) — sem isso o terminal não alcança a API.
 
 **Instalar e rodar**

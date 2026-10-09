@@ -111,8 +111,12 @@ class MainActivity : AppCompatActivity() {
       is Tela.Encerrada -> {
         telaEncerrada.visibility = View.VISIBLE
         textoResumoEnergia.text = getString(R.string.encerrada_resumo_energia, kwh(tela.sessao.energyWh))
+        // Antes de a conciliação fechar a conta não há valor final — mostrar
+        // R$ 0,00 nesse intervalo faria o motorista achar que nada foi cobrado.
         val valor = tela.sessao.finalAmountCents ?: tela.sessao.runningAmountCents
-        textoResumoValor.text = getString(R.string.encerrada_resumo_valor, reais(valor ?: 0))
+        textoResumoValor.text = valor
+          ?.let { getString(R.string.encerrada_resumo_valor, reais(it)) }
+          ?: getString(R.string.encerrada_calculando)
       }
 
       is Tela.Erro -> {

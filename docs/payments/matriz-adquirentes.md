@@ -150,20 +150,15 @@ duas primeiras perguntas decidem o projeto, e vale ter registro do que foi dito.
 > 1. **Pré-autorização com captura parcial.** Conseguimos reservar, por exemplo,
 >    R$ 200 no cartão e depois capturar apenas R$ 62,40, liberando o restante? Ou
 >    a captura precisa ser do valor total reservado?
->
 > 2. **Onde a captura acontece.** Se a pré-autorização for feita num terminal
 >    físico, a captura posterior é feita no próprio terminal ou por API,
 >    referenciando a transação?
->
 > 3. **Operação não assistida.** O contrato permite o terminal instalado ao ar
 >    livre, junto ao carregador, operado pelo próprio cliente, sem funcionário?
->
 > 4. **Aplicativo próprio no terminal.** É possível instalar nosso aplicativo
 >    Android no equipamento? Qual SDK, qual o processo e o prazo de homologação?
->
 > 5. **Webhook.** A confirmação de transação é enviada por webhook? Com
 >    assinatura criptográfica que possamos verificar?
->
 > 6. **Pix.** É possível fazer devolução **parcial** de um Pix recebido, via API?
 >
 > Também gostaríamos de saber sobre ambiente de sandbox, prazo de validade da

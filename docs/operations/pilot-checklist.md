@@ -55,4 +55,4 @@ começa.
 
 ---
 
-Assinatura do responsável: ______________________ Data: ****/****/______
+Assinatura do responsável: **********\_\_********** Data: \***\*/\*\***/**\_\_**

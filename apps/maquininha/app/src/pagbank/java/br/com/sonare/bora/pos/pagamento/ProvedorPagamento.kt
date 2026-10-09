@@ -81,7 +81,7 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     val resultado = plugPag.initializeAndActivatePinpad(PlugPagActivationData(codigo))
     if (resultado.result != PlugPag.RET_OK) {
       throw PlugPagException(
-        resultado.errorMessage ?: "Falha na ativação do terminal (${resultado.errorCode}).",
+        resultado.errorMessage.ifBlank { "Falha na ativação do terminal (${resultado.errorCode})." },
       )
     }
     ativado = true
@@ -99,7 +99,7 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
         // demo oficial (SmartCoffee, PreAutoViewModel).
         plugPag.setEventListener(object : PlugPagEventListener {
           override fun onEvent(data: PlugPagEventData) {
-            data.customMessage?.let(aoMensagem)
+            data.customMessage.takeIf { it.isNotBlank() }?.let(aoMensagem)
           }
         })
         val resultado = plugPag.doPreAutoCreate(

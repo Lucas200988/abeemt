@@ -742,6 +742,21 @@ pendência é INTERNA deles (jurídico), não nossa — não há documento ou a�
 pendente do nosso lado. Cadência de acompanhamento: cobrança educada a cada
 ~7–10 dias enquanto o jurídico não libera.
 
+**2026-10-09 — TERMINAL DEBUG RECEBIDO** (Moderninha Smart 2). Funil:
+formulário ✅ → riscos ✅ → nativo ✅ → jurídico/contrato ✅ → **terminal ✅** →
+testes no equipamento ⬜ → homologação do APK ⬜ → distribuição por Reseller/SN ⬜.
+
+No mesmo dia, antes do primeiro build: o código Kotlin do aplicativo (domínio,
+API e os dois flavors) foi **compilado contra o `.aar` oficial 1.35.0** num
+projeto de verificação JVM — compila sem erro; os dois avisos do compilador
+(campos de texto que o SDK declara nunca nulos) foram corrigidos. Também
+entraram o Gradle Wrapper 8.9, o endereço da API configurável por
+`bora.baseUrl` (o `10.0.2.2` só existe no emulador) e, do app demo oficial, a
+permissão `MANAGE_PAYMENTS` explícita e o intent-filter
+`br.com.uol.pagseguro.PAYMENT` (o launcher abre o app quando o cartão é
+inserido). Roteiro do primeiro dia e bateria de 7 testes:
+`apps/maquininha/README.md`.
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

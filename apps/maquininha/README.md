@@ -41,8 +41,64 @@ O arquivo do encaixe: `app/src/pagbank/java/.../pagamento/ProvedorPagamento.kt`.
 4. Digite o código de pareamento. Pronto: o fluxo inteiro — cartão simulado,
    recarga simulada — roda de ponta a ponta.
 
-Celular físico em vez de emulador: troque `BORA_BASE_URL` no
-`app/build.gradle.kts` pelo IP da sua máquina na rede local.
+Celular físico em vez de emulador: `bora.baseUrl` no `~/.gradle/gradle.properties`
+(ver o roteiro abaixo) — o `10.0.2.2` só existe dentro do emulador.
+
+## Dia 1 com o terminal de desenvolvimento (Moderninha Smart 2 DEBUG)
+
+O terminal DEBUG chega **ativado** e opera em ambiente de QA: as transações são
+simuladas e **não movem dinheiro de ninguém**. Teste à vontade.
+
+**Preparação (uma vez)**
+
+1. No terminal: atualize os aplicativos de serviço pela **Loja de Aplicativos**
+   antes de qualquer teste (recomendação do PagBank).
+2. No computador: instale o **Android Studio** (traz o JDK 17 e o `adb`).
+3. Descubra o IP do computador na rede Wi-Fi (Windows: `ipconfig` → "Endereço
+   IPv4", ex.: `192.168.0.10`) e conecte o terminal **na mesma rede**.
+4. Crie/edite `C:\Users\<você>\.gradle\gradle.properties` — fora do repositório:
+   ```
+   bora.baseUrl=http://192.168.0.10:3001/api/v1
+   ```
+   (`bora.pagbank.codigoAtivacao` não é necessário: o terminal DEBUG já vem
+   ativado — o app só usa o código se `isAuthenticated()` disser que não.)
+5. No `.env` do backend: `BORA_TERMINAL_PAYMENT_PROVIDER=terminal-mock` e
+   **`BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`** — o backend só registra; quem
+   reserva, efetiva e cancela é o PlugPag de verdade, dentro do terminal.
+6. `pnpm dev` na raiz do monorepo. Na primeira vez, aceite o aviso do Firewall do
+   Windows para o Node (rede **privada**) — sem isso o terminal não alcança a API.
+
+**Instalar e rodar**
+
+7. Ligue o terminal ao computador pelo cabo USB e confira: `adb devices` deve
+   listar o equipamento. Se não listar, abra chamado no portal PagBank com o
+   **número de série (SN)** — é o canal indicado por eles para o terminal DEBUG.
+8. Android Studio → `File > Open > apps/maquininha` → aguarde o Gradle sincronizar
+   → em _Build Variants_ escolha **`pagbankDebug`** → ▶ Run com o terminal
+   selecionado.
+9. No painel: crie a maquininha para um conector, gere o código de pareamento e
+   digite no terminal.
+
+**A bateria de testes (nesta ordem)**
+
+| #   | Teste                                                     | O que prova                                                                  |
+| --- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | Pareamento + tela "Conecte o cabo" com tarifa e reserva   | Rede terminal → API, token cifrado, `/terminal/me`                           |
+| 2   | Iniciar → cartão de teste → aprovar                       | `doPreAutoCreate` real, mensagens do SDK ao vivo na tela                     |
+| 3   | Recarga no simulador OCPP → encerrar                      | Fluxo completo até a conciliação publicar `pendingCapture`                   |
+| 4   | **Captura parcial: reservar o teto, efetivar o consumo**  | **O teste decisivo** — `doEffectuatePreAuto` com valor MENOR que o reservado |
+| 5   | Recarga sem consumo (encerrar antes de carregar)          | `doPreAutoCancel` — pendência de valor zero                                  |
+| 6   | Desligar o terminal entre o fim da recarga e a efetivação | Retomada pelo `pendingCaptureSessionId` ao religar                           |
+| 7   | Cartão recusado / cancelar na tela do cartão              | Caminhos de erro sem pendência pendurada                                     |
+
+Para o teste 4 ficar didático, use uma tarifa e um teto baixos no painel (ex.:
+teto R$ 5,00): o consumo simulado fica bem abaixo e a diferença é visível.
+
+**O que registrar de cada teste** (vira o anexo da homologação do APK, como os
+logs da API viraram em agosto): o `result`, `errorCode` e `message` devolvidos
+pelo SDK, o `transactionId`/`transactionCode`, e o valor efetivado. **Nunca**
+fotografe o comprovante ou a tela com dados de cartão — use só os cartões de
+teste do ambiente DEBUG.
 
 ## Flavor `pagbank` — o que já está confirmado e o que falta
 
@@ -62,10 +118,10 @@ bora.pagbank.codigoAtivacao=CODIGO_DE_ATIVACAO_DA_SUA_CONTA
 
 O que ainda depende do PagBank:
 
-- [ ] Parceria aprovada (formulário enviado; homologação da API já aprovada e
+- [x] Parceria aprovada (riscos aprovados 2026-08-26; homologação da API
       FINALIZADA — chamado 1424039934)
-- [ ] Terminal para desenvolvimento (deles, ou o do operador vinculado por SN
-      via chamado no portal — modelo Reseller da Loja de Aplicativos)
+- [x] Terminal de desenvolvimento **recebido em 2026-10-09** (Moderninha
+      Smart 2 DEBUG) — roteiro do primeiro dia acima
 - [ ] **Comportamento validado no equipamento**: assinatura lida ≠
       comportamento exercitado (briefing §18). O teste decisivo é a captura
       parcial — reservar 500, efetivar 100
@@ -79,12 +135,21 @@ O que ainda depende do PagBank:
       reinício (`pendingCaptureSessionId` no `/terminal/me`). Para exercitar
       no emulador: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal` no backend
 
-## Estado honesto deste esqueleto
+## O que já foi verificado — e o que não
 
-Escrito e revisado neste repositório, mas **ainda não compilado**: o ambiente
-onde foi gerado não tem Android SDK. A primeira abertura no Android Studio pode
-pedir ajustes menores (versões de plugin, wrapper do Gradle — gere com
-`gradle wrapper` ou deixe o Studio criar). Nada disso muda a arquitetura.
+**Compilado contra o SDK real (2026-10-09):** todo o código Kotlin — domínio,
+API, cofre, `App` e os **dois** flavors — compila sem erro contra o `.aar`
+oficial do PlugPag 1.35.0, num projeto de verificação JVM. As duas
+inconsistências que o compilador apontou (o SDK declara `errorMessage` e
+`customMessage` como texto nunca nulo — o caso real é texto vazio) foram
+corrigidas. O Kotlin 1.9.24 do projeto lê o SDK (compilado em Kotlin 2.0)
+sem problema: o app demo oficial do PagBank faz o mesmo com Kotlin 1.9.0.
+
+**Ainda não verificado:** a `MainActivity` (depende de AppCompat/ViewBinding),
+os recursos XML compilados e o APK montado — exigem o repositório do Google
+(`dl.google.com`), bloqueado no ambiente onde o código foi escrito. O primeiro
+build no Android Studio é o que fecha isso. O Gradle Wrapper (8.9, compatível
+com o plugin Android 8.5.2) já está no projeto.
 
 ## O que a maquininha nunca faz (fase-8 §4)
 

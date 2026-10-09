@@ -17,9 +17,15 @@ android {
     versionName = "0.1.0"
 
     // Para onde o aplicativo fala. 10.0.2.2 é o "localhost do host" visto de
-    // dentro do emulador Android — casa com a API NestJS rodando na sua máquina.
-    // Na maquininha real, troque pelo endereço público da API (release abaixo).
-    buildConfigField("String", "BORA_BASE_URL", "\"http://10.0.2.2:3001/api/v1\"")
+    // dentro do EMULADOR — não existe num aparelho físico. Na maquininha de
+    // desenvolvimento, aponte para o IP do computador na mesma rede Wi-Fi, em
+    // ~/.gradle/gradle.properties (nunca no repositório):
+    //   bora.baseUrl=http://192.168.0.10:3001/api/v1
+    buildConfigField(
+      "String",
+      "BORA_BASE_URL",
+      "\"${providers.gradleProperty("bora.baseUrl").orNull ?: "http://10.0.2.2:3001/api/v1"}\"",
+    )
   }
 
   buildTypes {

@@ -11,6 +11,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPreAutoData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -94,6 +95,11 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     withContext(Dispatchers.IO) {
       try {
         garantirAtivacao()
+        if (!aguardarServicoLivre()) {
+          return@withContext ResultadoPagamento.Falha(
+            "O terminal ainda está concluindo a operação anterior. Aguarde alguns segundos e tente de novo.",
+          )
+        }
         // As instruções do serviço ("INSIRA O CARTÃO", "SENHA OK"…) chegam
         // por aqui enquanto o doPreAutoCreate bloqueia — mesmo padrão do app
         // demo oficial (SmartCoffee, PreAutoViewModel).
@@ -116,6 +122,36 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
         ResultadoPagamento.Falha("Falha no PlugPag: ${e.message}")
       }
     }
+
+  /**
+   * Encerra a espera pelo cartão — o padrão do botão "abortar" do app demo
+   * oficial (SmartCoffee, PreAutoViewModel.abort). O `doPreAutoCreate`
+   * bloqueado retorna em seguida (OPERATION_ABORTED), liberando o serviço.
+   */
+  override suspend fun abortar() {
+    withContext(Dispatchers.IO) {
+      try {
+        plugPag.abort()
+      } catch (e: PlugPagException) {
+        // Nada em andamento para abortar: o serviço já está livre.
+      }
+    }
+  }
+
+  /**
+   * Espera o serviço PlugPag terminar uma operação anterior, até ~5 s.
+   *
+   * Não aborta por conta própria: o que ocupa o serviço pode ser legítimo
+   * (uma efetivação de recarga anterior em andamento) — interromper isso seria
+   * pior do que pedir ao motorista para tentar de novo em instantes.
+   */
+  private suspend fun aguardarServicoLivre(): Boolean {
+    repeat(10) {
+      if (!plugPag.isServiceBusy()) return true
+      delay(500)
+    }
+    return !plugPag.isServiceBusy()
+  }
 
   override suspend fun cancelarPreAutorizacao(
     referencia: ReferenciaPreAutorizacao,

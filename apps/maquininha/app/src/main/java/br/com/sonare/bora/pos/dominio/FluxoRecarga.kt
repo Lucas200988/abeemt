@@ -63,6 +63,9 @@ class FluxoRecarga(
   private var contextoAtual: ContextoTerminal? = null
   private var trabalhoAtual: Job? = null
 
+  /** Lido pela thread do SDK (mensagens) e pela corrotina da cobrança. */
+  @Volatile private var cobrancaCancelada = false
+
   // -------------------------------------------------------------------------
   // Entrada
   // -------------------------------------------------------------------------
@@ -121,16 +124,30 @@ class FluxoRecarga(
     // O valor da reserva vem do servidor, nunca daqui (fase-8 §3.2).
     val valor = contexto.preAuthAmountCents
 
+    cobrancaCancelada = false
     trocarTrabalho {
       _tela.value = Tela.Cobranca(valor)
       // As instruções do SDK ("INSIRA O CARTÃO"…) chegam de outra thread;
       // atribuir StateFlow.value é seguro a partir de qualquer uma.
       val aoMensagem = { mensagem: String ->
-        if (_tela.value is Tela.Cobranca) {
+        if (_tela.value is Tela.Cobranca && !cobrancaCancelada) {
           _tela.value = Tela.Cobranca(valor, mensagem)
         }
       }
-      when (val resultado = pagamento.preAutorizar(valor, aoMensagem)) {
+      val resultado = pagamento.preAutorizar(valor, aoMensagem)
+
+      if (cobrancaCancelada) {
+        // Cartão aproximado no mesmo instante do cancelamento: a reserva saiu
+        // aprovada, mas o motorista desistiu. Desfaz já — senão o valor fica
+        // preso no limite do cartão até expirar, sem recarga nenhuma.
+        if (resultado is ResultadoPagamento.Aprovado) {
+          pagamento.cancelarPreAutorizacao(resultado.referencia)
+        }
+        carregarContexto()
+        return@trocarTrabalho
+      }
+
+      when (resultado) {
         is ResultadoPagamento.Aprovado -> registrarNoBackend(resultado, valor)
         is ResultadoPagamento.Recusado -> _tela.value = Tela.Erro(resultado.mensagem)
         is ResultadoPagamento.Falha -> _tela.value = Tela.Erro(resultado.mensagem)
@@ -138,9 +155,27 @@ class FluxoRecarga(
     }
   }
 
-  /** O motorista desistiu na tela do cartão. */
+  /**
+   * O motorista desistiu na tela do cartão.
+   *
+   * Trocar de tela não basta: o SDK continua esperando o cartão e a próxima
+   * recarga recebe "serviço ocupado" (terminal DEBUG, 2026-10-10). Aborta no
+   * equipamento e deixa o `preAutorizar` em curso retornar — é ele quem volta
+   * para a tela PRONTA, depois de desfazer uma eventual aprovação simultânea.
+   */
   fun cancelarCobranca() {
-    trocarTrabalho { carregarContexto() }
+    val atual = _tela.value as? Tela.Cobranca ?: return
+    cobrancaCancelada = true
+    _tela.value = atual.copy(mensagemDoCartao = "Cancelando…")
+    escopo.launch {
+      pagamento.abortar()
+      // Último recurso, se o SDK não devolver a chamada: volta à tela inicial
+      // mesmo assim (a próxima cobrança espera o serviço liberar).
+      delay(ESPERA_MAXIMA_ABORTO_MS)
+      if (cobrancaCancelada && _tela.value is Tela.Cobranca) {
+        trocarTrabalho { carregarContexto() }
+      }
+    }
   }
 
   /**
@@ -446,5 +481,6 @@ class FluxoRecarga(
     /** Folga sobre o ciclo da conciliação (15 s por padrão) mais a efetivação no SDK. */
     const val ESPERA_MAXIMA_CONCILIACAO_MS = 3 * 60_000L
     const val INTERVALO_ATUALIZACAO_PRONTA_MS = 15_000L
+    const val ESPERA_MAXIMA_ABORTO_MS = 10_000L
   }
 }

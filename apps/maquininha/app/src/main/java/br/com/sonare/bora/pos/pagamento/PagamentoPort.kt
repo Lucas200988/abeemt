@@ -36,6 +36,16 @@ interface PagamentoPort {
   suspend fun preAutorizar(valorCents: Long, aoMensagem: (String) -> Unit = {}): ResultadoPagamento
 
   /**
+   * Interrompe a operação em andamento no equipamento (a espera pelo cartão).
+   *
+   * Cancelar só a tela não basta: no PlugPag o `doPreAutoCreate` continua
+   * bloqueado esperando o cartão, e a operação seguinte recebe "serviço
+   * ocupado" (visto no terminal DEBUG em 2026-10-10). Depois de abortar, o
+   * `preAutorizar` em curso retorna — normalmente sem aprovação.
+   */
+  suspend fun abortar()
+
+  /**
    * Desfaz uma reserva que não vai virar recarga (backend recusou a sessão,
    * motorista desistiu). Nada foi cobrado; isto libera o limite do cartão.
    */

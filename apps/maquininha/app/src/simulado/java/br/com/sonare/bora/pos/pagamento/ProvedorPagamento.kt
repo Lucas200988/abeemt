@@ -43,6 +43,11 @@ private class PagamentoSimulado : PagamentoPort {
     )
   }
 
+  override suspend fun abortar() {
+    // Nada a interromper: a "leitura" simulada é só uma espera, que a própria
+    // troca de tela já cancela.
+  }
+
   override suspend fun cancelarPreAutorizacao(referencia: ReferenciaPreAutorizacao): ResultadoPagamento {
     delay(500)
     return ResultadoPagamento.Aprovado(referencia, metodo = "CREDIT_CARD")

@@ -51,7 +51,7 @@ async function aguardar(
   throw new Error(`tempo esgotado aguardando: ${descricao}`);
 }
 
-async function simuladorPronto() {
+async function simuladorPronto(options: Record<string, unknown> = {}) {
   const sim = new OcppSimulator({
     url: wsUrl,
     chargePointIdentity: IDENTITY,
@@ -59,6 +59,7 @@ async function simuladorPronto() {
     heartbeatIntervalMs: 5000,
     autoReconnect: false,
     initialMeterWh: 1_000_000,
+    ...options,
   } as never);
 
   simuladores.push(sim);
@@ -732,6 +733,121 @@ describe('recarga pela maquininha', () => {
         },
       );
       expect(reenvio.body?.recorded).toBe(true);
+    } finally {
+      capabilities.captureLocation = 'backend';
+    }
+  });
+
+  it('encerrar antes de a recarga começar cancela na hora — e o carregador não consegue iniciar depois', async () => {
+    /**
+     * Visto no terminal DEBUG (2026-10-10): com o carregador sem iniciar, o
+     * "encerrar" recebia NOT_STARTED e a maquininha ficava presa em
+     * "Encerrando…" até o worker expirar a sessão, minutos depois. Agora o
+     * encerramento cancela na hora. E a brecha que isso abriria — o carregador
+     * iniciar DEPOIS do cancelamento e virar recarga sem pagamento — é fechada
+     * no tratador OCPP, que recusa o idTag da sessão cancelada.
+     */
+    const { token } = await terminalPareado();
+    // Aceita o RemoteStart mas nunca manda StartTransaction: cabo não conectado.
+    const sim = await simuladorPronto({ neverStartTransaction: true });
+
+    const autorizacao = await comoTerminal(token, 'POST', '/terminal/authorization', {
+      providerPaymentId: 'NSU-POS-DESISTIU',
+      method: 'CREDIT_CARD',
+      amountAuthorizedCents: 20_000,
+      idempotencyKey: 'pos-e2e-desistiu',
+    });
+    expect(autorizacao.status).toBe(201);
+    const sessionId = autorizacao.body?.sessionId as string;
+
+    await aguardar(
+      async () => {
+        const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+        return s?.status === 'STARTING';
+      },
+      { descricao: 'comando aceito, aguardando o veículo' },
+    );
+
+    // O motorista desiste na maquininha.
+    const parada = await comoTerminal(token, 'POST', `/terminal/sessions/${sessionId}/stop`, {});
+    expect((parada.body?.command as { accepted: boolean }).accepted).toBe(true);
+    expect((parada.body?.command as { message: string }).message).toContain(
+      'cancelada antes de começar',
+    );
+    expect(parada.body?.active).toBe(false);
+    expect(parada.body?.status).toBe('CANCELLED');
+
+    // Reserva desfeita na hora (captura no backend neste teste).
+    const pagamento = await prisma.payment.findFirstOrThrow({
+      where: { session: { id: sessionId } },
+    });
+    expect(pagamento.status).toBe('VOIDED');
+
+    // O carregador resolve iniciar só agora, com o idTag que lhe demos.
+    const sessoesAntes = await prisma.chargingSession.count({ where: { connectorId } });
+    const inicioTardio = (await sim.startTransaction(1, sim.idTag ?? undefined)) as {
+      idTagInfo: { status: string };
+    };
+    expect(inicioTardio.idTagInfo.status).toBe('Invalid');
+
+    // Nenhuma sessão órfã ("recarga sem pagamento") foi criada.
+    const sessoesDepois = await prisma.chargingSession.count({ where: { connectorId } });
+    expect(sessoesDepois).toBe(sessoesAntes);
+    const cancelada = await prisma.chargingSession.findUniqueOrThrow({ where: { id: sessionId } });
+    expect(cancelada.status).toBe('CANCELLED');
+    expect(cancelada.ocppTransactionId).toBeNull();
+  });
+
+  it('pré-pago que desiste antes de começar: devolução pendente no TERMINAL', async () => {
+    const registry = app.get(PaymentProviderRegistry);
+    const capabilities = registry.get('terminal-mock').capabilities as {
+      captureLocation?: 'backend' | 'terminal';
+    };
+    capabilities.captureLocation = 'terminal';
+
+    try {
+      const { token } = await terminalPareado();
+      await simuladorPronto({ neverStartTransaction: true });
+
+      const autorizacao = await comoTerminal(token, 'POST', '/terminal/authorization', {
+        providerPaymentId: 'NSU-POS-DEBITO-DESISTIU',
+        method: 'DEBIT_CARD',
+        amountAuthorizedCents: 2000,
+        idempotencyKey: 'pos-e2e-debito-desistiu',
+      });
+      expect(autorizacao.status).toBe(201);
+      const sessionId = autorizacao.body?.sessionId as string;
+
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'STARTING';
+        },
+        { descricao: 'comando aceito, aguardando o veículo' },
+      );
+
+      const parada = await comoTerminal(token, 'POST', `/terminal/sessions/${sessionId}/stop`, {});
+      expect((parada.body?.command as { accepted: boolean }).accepted).toBe(true);
+      expect((parada.body?.command as { message: string }).message).toContain('será devolvido');
+
+      // Já cobrado e nada entregue: a devolução vive no terminal.
+      expect(parada.body?.pendingRefund).toEqual({ amountCents: 2000 });
+
+      const confirmacao = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/refund-result`,
+        {
+          success: true,
+          amountRefundedCents: 2000,
+        },
+      );
+      expect(confirmacao.body?.recorded).toBe(true);
+
+      const pagamento = await prisma.payment.findFirstOrThrow({
+        where: { session: { id: sessionId } },
+      });
+      expect(pagamento.status).toBe('REFUNDED');
     } finally {
       capabilities.captureLocation = 'backend';
     }

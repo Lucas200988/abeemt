@@ -136,6 +136,20 @@ equipamento, além de energia, duração e valor corrente.
 carregador confirmar a parada e a leitura final do medidor chegar — cobrar antes
 faturaria um consumo que ainda pode subir.
 
+**`stop` antes de a recarga começar cancela na hora.** Se o carregador ainda
+não iniciou a transação (cabo não conectado, veículo recusando), não há o que
+parar — e o motorista desistindo na frente da maquininha não pode esperar o
+worker expirar a sessão minutos depois. O servidor cancela a sessão
+(`CANCELLED`) e desfaz o pagamento pelo mesmo caminho do worker: reserva
+cancelada no crédito, devolução no pré-pago (pendente no terminal quando a
+captura vive lá). A resposta vem com `command.accepted: true` e a mensagem
+"Recarga cancelada antes de começar…". A corrida com o carregador é fechada dos
+dois lados: o cancelamento só acontece se a sessão ainda está em espera, e um
+`StartTransaction` tardio com o idTag de uma sessão cancelada/expirada é
+**recusado** (`idTagInfo: Invalid`) — sem isso viraria "recarga sem pagamento".
+Visto no terminal DEBUG em 2026-10-10, quando o "Encerrar" ficava preso em
+"Encerrando…" com o simulador em `--never-start`.
+
 ### 3.5 Captura executada PELO terminal (provedores `captureLocation: 'terminal'`)
 
 No PlugPag, a pré-autorização vive **dentro do equipamento**: efetivar

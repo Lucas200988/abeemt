@@ -721,6 +721,47 @@ export class PaymentsService {
   }
 
   /**
+   * Cancela, agora, uma recarga que ainda não começou — a pedido do terminal.
+   *
+   * O worker já expira sessões paradas (regra 11.5), mas depois de 2 a 5
+   * minutos. Quem está na frente da maquininha e desistiu não pode ficar esse
+   * tempo olhando um botão travado: cancela-se na hora, com o mesmo efeito
+   * financeiro do worker (reserva cancelada; pré-pago devolvido).
+   *
+   * `updateMany` condicionado ao status fecha a corrida com o StartTransaction:
+   * se o carregador iniciou neste instante, a sessão já não está em espera, o
+   * cancelamento não acontece e quem chamou tenta o encerramento normal.
+   * A outra metade da corrida — o carregador iniciar DEPOIS do cancelamento —
+   * é tratada no tratador OCPP, que recusa o idTag de sessão cancelada.
+   */
+  async cancelNotStartedSession(sessionId: string, motivo: string): Promise<boolean> {
+    const resultado = await this.prisma.chargingSession.updateMany({
+      where: {
+        id: sessionId,
+        status: { in: ['PAYMENT_APPROVED', 'AWAITING_CHARGER', 'COMMAND_SENT', 'STARTING'] },
+      },
+      data: { status: 'CANCELLED', stoppedAt: new Date(), failureReason: motivo },
+    });
+
+    if (resultado.count === 0) return false;
+
+    try {
+      await this.voidSessionPayment(sessionId, motivo);
+    } catch (error) {
+      this.logger.error(
+        { err: error, sessionId },
+        'recarga cancelada antes de começar, mas o pagamento não pôde ser desfeito — verificar no adquirente',
+      );
+    }
+
+    this.logger.log(
+      { sessionId, motivo },
+      'recarga cancelada antes de começar, a pedido do terminal',
+    );
+    return true;
+  }
+
+  /**
    * O terminal confirmou (ou não) a captura que a conciliação deixou pendente.
    *
    * É a segunda metade do circuito `captureLocation: 'terminal'`: a conciliação

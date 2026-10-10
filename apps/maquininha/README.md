@@ -119,6 +119,8 @@ recusa a reserva por limite depois de várias repetições.
 | 9   | Pix: escolher valor → QR na tela → pagar pelo banco    | `doPayment(TYPE_PIX)` — o serviço mostra o QR e confirma          |
 | 10  | Débito ou Pix sem consumo (encerrar antes de carregar) | `voidPayment` pela pendência `pendingRefund` → REFUNDED           |
 
+| 11 | Encerrar antes de o carregador iniciar (ex.: simulador `--never-start`) | Cancelamento imediato: reserva desfeita / pré-pago devolvido; botão nunca fica preso |
+
 Ressalva aberta no teste 10: o estorno de cartão pode pedir o cartão de novo
 no equipamento. O app espera até 90 s, aborta e reporta a falha — a pendência
 fica no painel para o operador devolver pela retaguarda.

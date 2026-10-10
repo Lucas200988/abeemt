@@ -17,6 +17,13 @@ import { SessionPricingService } from '../pricing/session-pricing.service';
 import { OcppCommands } from './ocpp-commands.service';
 
 /** Contexto de cada mensagem recebida, montado pelo gateway. */
+/**
+ * Por quanto tempo, depois de cancelada/expirada, uma sessão ainda "reconhece"
+ * o próprio idTag num StartTransaction tardio. Cobre com folga o tempo que um
+ * carregador espera o cabo após um RemoteStart aceito (minutos, não horas).
+ */
+const JANELA_INICIO_TARDIO_MS = 15 * 60_000;
+
 export interface HandlerContext {
   chargerId: string;
   chargePointIdentity: string;
@@ -280,6 +287,44 @@ export class OcppHandlers {
       : null;
 
     if (!sessao) {
+      /**
+       * O idTag é NOSSO — de uma sessão que já foi cancelada ou expirou sem
+       * iniciar — e o carregador só agora resolveu começar. Aceitar criaria uma
+       * "recarga sem pagamento": o dinheiro já foi desfeito. Recusar faz o
+       * carregador encerrar a transação (StopTransaction, DeAuthorized), que
+       * cairá no caminho "sem sessão" do stopTransaction sem efeito nenhum.
+       */
+      const cancelada = connector
+        ? await this.prisma.chargingSession.findFirst({
+            where: {
+              chargerId: ctx.chargerId,
+              connectorId: connector.id,
+              idTag: payload.idTag,
+              ocppTransactionId: null,
+              status: { in: ['CANCELLED', 'EXPIRED'] },
+              stoppedAt: { gte: new Date(ctx.receivedAt.getTime() - JANELA_INICIO_TARDIO_MS) },
+            },
+            orderBy: { requestedAt: 'desc' },
+            select: { id: true, status: true },
+          })
+        : null;
+
+      if (cancelada) {
+        this.logger.warn(
+          {
+            sessionId: cancelada.id,
+            statusDaSessao: cancelada.status,
+            chargerId: ctx.chargerId,
+            connectorId: payload.connectorId,
+            transactionId,
+            correlationId: ctx.correlationId,
+          },
+          'StartTransaction tardio de sessão já cancelada — recusado para não virar recarga sem pagamento',
+        );
+
+        return { transactionId, idTagInfo: { status: 'Invalid' } };
+      }
+
       /**
        * Recarga iniciada localmente, sem passar pela plataforma (alguém usou o
        * cartão RFID do carregador, por exemplo).

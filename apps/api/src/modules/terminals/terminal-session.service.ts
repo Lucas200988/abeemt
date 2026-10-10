@@ -466,6 +466,36 @@ export class TerminalSessionService {
 
     const comando = await this.commands.remoteStop({ sessionId });
 
+    /**
+     * O carregador ainda não iniciou (cabo não conectado, veículo recusando):
+     * não há transação para parar, mas há um motorista desistindo na frente da
+     * maquininha. Cancela na hora — a reserva é desfeita (ou o pré-pago
+     * devolvido) pelo mesmo caminho que o worker usaria minutos depois.
+     */
+    if (!comando.accepted && comando.code === 'NOT_STARTED') {
+      const cancelada = await this.payments.cancelNotStartedSession(
+        sessionId,
+        'motorista desistiu na maquininha antes de a recarga começar',
+      );
+      const visao = await this.session(terminal, sessionId);
+      const prePago = isPrepaidMethod(visao.paymentMethod);
+
+      return {
+        ...visao,
+        command: cancelada
+          ? {
+              accepted: true,
+              message: prePago
+                ? 'Recarga cancelada antes de começar. O valor pago será devolvido.'
+                : 'Recarga cancelada antes de começar. Nada foi cobrado.',
+            }
+          : {
+              accepted: false,
+              message: 'A recarga acabou de começar. Toque em encerrar de novo.',
+            },
+      };
+    }
+
     return {
       ...(await this.session(terminal, sessionId)),
       command: {
@@ -610,6 +640,8 @@ export class TerminalSessionService {
         return 'Pagamento não aprovado. Nada foi cobrado.';
       case 'EXPIRED':
         return 'O tempo de espera acabou e a reserva foi cancelada. Nada foi cobrado.';
+      case 'CANCELLED':
+        return 'Recarga cancelada antes de começar.';
       case 'FAILED':
         return 'A recarga falhou. Nada além do consumido será cobrado.';
       default:

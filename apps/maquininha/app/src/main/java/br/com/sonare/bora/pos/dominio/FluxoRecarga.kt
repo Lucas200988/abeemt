@@ -332,9 +332,26 @@ class FluxoRecarga(
     trocarTrabalho {
       _tela.value = atual.copy(encerrando = true)
       try {
-        api.encerrar(atual.sessao.sessionId, PedidoEncerramento(reason = "motorista encerrou na maquininha"))
+        val resposta = api.encerrar(
+          atual.sessao.sessionId,
+          PedidoEncerramento(reason = "motorista encerrou na maquininha"),
+        )
+        val corpo = resposta.body()
+        val aceito = resposta.isSuccessful && (corpo?.command?.accepted ?: false)
+        if (!aceito) {
+          // Encerramento recusado (carregador offline, sessão que acabou de
+          // começar…): o botão VOLTA e o motivo fica na tela por alguns
+          // segundos. Deixar "Encerrando…" travado era o defeito visto no
+          // terminal DEBUG em 2026-10-10 — num totem, botão sem saída é
+          // motorista preso.
+          val motivo = corpo?.command?.message ?: "Não foi possível encerrar agora (${resposta.code()})."
+          _tela.value = Tela.Carregando((corpo ?: atual.sessao).copy(message = motivo), encerrando = false)
+          delay(4000)
+        }
       } catch (e: IOException) {
-        // O stop se perdeu na rede; o acompanhamento abaixo mostra o estado real.
+        // O stop se perdeu na rede; o acompanhamento abaixo mostra o estado
+        // real — com o botão liberado para tentar de novo.
+        _tela.value = atual.copy(encerrando = false)
       }
       acompanharSessao(atual.sessao.sessionId)
     }

@@ -25,10 +25,11 @@ const CAPABILITIES: PaymentCapabilities = {
   voidAuthorization: true,
   refund: true,
   partialRefund: true,
-  // Sem PIX: no SmartPOS o Pix tem outro fluxo (QR na tela, confirmação
-  // assíncrona) e declará-lo aqui faria o terminal oferecer ao motorista um
-  // meio que este provedor não sabe executar.
-  methods: ['CREDIT_CARD', 'DEBIT_CARD'],
+  // Débito e Pix são PRÉ-PAGOS (ADR-0010): o terminal cobra na hora e o valor
+  // vira o teto. No PlugPag o Pix é executado pelo próprio serviço do
+  // equipamento (QR na tela e confirmação, dentro do doPayment), e o app só
+  // recebe o resultado — por isso cabe num provedor iniciado pelo terminal.
+  methods: ['CREDIT_CARD', 'DEBIT_CARD', 'PIX'],
   initiatedBy: 'terminal',
   // Pior caso conhecido entre as bandeiras, para o alerta do risco R-23
   // disparar cedo o bastante.

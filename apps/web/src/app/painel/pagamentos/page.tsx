@@ -276,14 +276,14 @@ function SimularCobranca({
           <label htmlFor="metodo">Meio de pagamento</label>
           <select id="metodo" value={metodo} onChange={(e) => setMetodo(e.target.value)}>
             <option value="CREDIT_CARD">Cartão de crédito (reserva e cobra o consumido)</option>
-            <option value="DEBIT_CARD">Cartão de débito</option>
+            <option value="DEBIT_CARD">Cartão de débito (valor fixo, cobrado na hora)</option>
             <option value="PIX">Pix (valor fixo, cobrado na hora)</option>
           </select>
         </div>
 
         <div className="campo">
           <label htmlFor="valor">
-            {metodo === 'PIX' ? 'Valor a pagar (R$)' : 'Valor a reservar (R$)'}
+            {metodo === 'CREDIT_CARD' ? 'Valor a reservar (R$)' : 'Valor a pagar (R$)'}
           </label>
           <input
             id="valor"
@@ -301,9 +301,9 @@ function SimularCobranca({
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--texto-suave)', marginTop: 10 }}>
-        {metodo === 'PIX'
-          ? 'No Pix o valor é cobrado integralmente no início. Se nenhuma energia for entregue, ele é devolvido por inteiro.'
-          : 'No cartão o valor é apenas reservado. No fim da recarga, cobramos somente o que foi consumido e a diferença é liberada pelo emissor.'}
+        {metodo === 'CREDIT_CARD'
+          ? 'No crédito o valor é apenas reservado. No fim da recarga, cobramos somente o que foi consumido e a diferença é liberada pelo emissor.'
+          : 'No débito e no Pix o valor é cobrado integralmente no início e vira o teto da recarga. Se nenhuma energia for entregue, ele é devolvido por inteiro.'}
       </p>
     </Cartao>
   );

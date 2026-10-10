@@ -149,9 +149,14 @@ export class TerminalAuthorizationDto {
   @MaxLength(120)
   providerPaymentId!: string;
 
-  @ApiProperty({ enum: ['CREDIT_CARD', 'DEBIT_CARD'] })
-  @IsIn(['CREDIT_CARD', 'DEBIT_CARD'])
-  method!: 'CREDIT_CARD' | 'DEBIT_CARD';
+  @ApiProperty({
+    enum: ['CREDIT_CARD', 'DEBIT_CARD', 'PIX'],
+    description:
+      'CREDIT_CARD = reserva (pré-autorização). DEBIT_CARD e PIX = venda já ' +
+      'CONCLUÍDA no terminal; o valor pago vira o teto da recarga (ADR-0010).',
+  })
+  @IsIn(['CREDIT_CARD', 'DEBIT_CARD', 'PIX'])
+  method!: 'CREDIT_CARD' | 'DEBIT_CARD' | 'PIX';
 
   @ApiProperty({
     description: 'Valor RESERVADO no cartão, em CENTAVOS inteiros (ADR-0005). R$ 200,00 = 20000.',
@@ -236,6 +241,33 @@ export class TerminalCaptureResultDto {
   @IsString()
   @MaxLength(60)
   authorizationCode?: string;
+
+  @ApiPropertyOptional({ description: 'Mensagem de erro do SDK, quando success=false.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  errorMessage?: string;
+}
+
+/**
+ * Resultado da DEVOLUÇÃO de um pré-pago (débito/Pix) sem energia entregue,
+ * executada no SDK do equipamento. Integral por definição (ADR-0010 §4): o
+ * valor precisa ser exatamente o pago.
+ */
+export class TerminalRefundResultDto {
+  @ApiProperty({ description: 'O estorno no SDK do equipamento deu certo?' })
+  @IsBoolean()
+  success!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Valor devolvido, em CENTAVOS. No sucesso, precisa ser IGUAL ao valor pago.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'amountRefundedCents precisa ser inteiro em centavos (ADR-0005).' })
+  @Min(0)
+  @Max(TETO_AUTORIZACAO_CENTS)
+  amountRefundedCents?: number;
 
   @ApiPropertyOptional({ description: 'Mensagem de erro do SDK, quando success=false.' })
   @IsOptional()

@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SESSION_STATUS_LABELS, isActiveSession, labelOf } from '@bora/contracts';
+import { isPrepaidMethod } from '@bora/payment-core';
+import { runtimeEnv } from '../../config/runtime-env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -13,7 +15,11 @@ import { PaymentProviderRegistry } from '../payments/payment-provider.registry';
 import { SessionPricingService } from '../pricing/session-pricing.service';
 import { OcppCommands } from '../ocpp/ocpp-commands.service';
 import type { TerminalIdentity } from './terminal.guard';
-import type { TerminalAuthorizationDto, TerminalCaptureResultDto } from './dto/terminal.dto';
+import type {
+  TerminalAuthorizationDto,
+  TerminalCaptureResultDto,
+  TerminalRefundResultDto,
+} from './dto/terminal.dto';
 
 /**
  * O que a maquininha pode fazer (FASE 8, caminho A).
@@ -50,6 +56,12 @@ export interface TerminalContext {
   ceilingAmountCents: number;
   /** Meios que o provedor configurado sabe executar neste terminal. */
   methods: string[];
+  /**
+   * Valores que a maquininha oferece nos meios PRÉ-PAGOS (débito e Pix), em
+   * centavos, já filtrados pelo mínimo da tarifa e pelo teto da sessão. O
+   * aplicativo escolhe entre estes — nunca inventa um valor (fase-8 §4).
+   */
+  prepaidOptionsCents: number[];
   /** Sessão em andamento neste conector, se houver. */
   activeSessionId: string | null;
   /**
@@ -59,6 +71,12 @@ export interface TerminalContext {
    * alerta do painel.
    */
   pendingCaptureSessionId: string | null;
+  /**
+   * Sessão JÁ ENCERRADA deste conector com DEVOLUÇÃO de pré-pago aguardando
+   * este terminal (nenhuma energia entregue; estorno vive no SDK). Mesmo
+   * motivo do campo acima: equipamento que reiniciou retoma a pendência.
+   */
+  pendingRefundSessionId: string | null;
 }
 
 /** Estado da recarga, no vocabulário da tela do motorista. */
@@ -88,6 +106,14 @@ export interface TerminalSessionView {
    * do servidor.
    */
   pendingCapture: { amountCents: number } | null;
+  /** CREDIT_CARD / DEBIT_CARD / PIX — a tela muda o que diz sobre a cobrança. */
+  paymentMethod: string | null;
+  /**
+   * Devolução INTEGRAL de um pré-pago aguardando execução PELO TERMINAL:
+   * nenhuma energia foi entregue (ADR-0010 §4) e o estorno vive no SDK.
+   * O terminal executa e confirma via POST /terminal/sessions/:id/refund-result.
+   */
+  pendingRefund: { amountCents: number } | null;
 }
 
 @Injectable()
@@ -128,19 +154,26 @@ export class TerminalSessionService {
       select: { id: true, status: true },
     });
 
-    const sessaoComCapturaPendente = await this.prisma.chargingSession.findFirst({
+    // Uma pendência por vez basta: a mais recente. Captura (crédito parado em
+    // AUTHORIZED com valor congelado) ou devolução (pré-pago CAPTURED com valor
+    // final zero) — o terminal resolve uma e o próximo /me mostra a seguinte.
+    const sessaoPendente = await this.prisma.chargingSession.findFirst({
       where: {
         connectorId: terminal.connectorId,
         stoppedAt: { not: null },
-        finalAmountCents: { not: null },
-        payment: { status: 'AUTHORIZED' },
+        OR: [
+          { finalAmountCents: { not: null }, payment: { status: 'AUTHORIZED' } },
+          { finalAmountCents: 0, payment: { status: 'CAPTURED', amountCapturedCents: { gt: 0 } } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         stoppedAt: true,
         finalAmountCents: true,
-        payment: { select: { status: true, provider: true } },
+        payment: {
+          select: { status: true, provider: true, method: true, amountCapturedCents: true },
+        },
       },
     });
 
@@ -167,11 +200,32 @@ export class TerminalSessionService {
       ceilingAmountCents: termos.ceilingAmountCents,
       methods: provider.capabilities.methods,
       activeSessionId: sessaoAtiva && isActiveSession(sessaoAtiva.status) ? sessaoAtiva.id : null,
+      prepaidOptionsCents: this.opcoesPrePagas(
+        termos.preAuthCeilingCents,
+        termos.snapshot.minimumAmountCents,
+      ),
       pendingCaptureSessionId:
-        sessaoComCapturaPendente && this.pendenciaDeCaptura(sessaoComCapturaPendente)
-          ? sessaoComCapturaPendente.id
-          : null,
+        sessaoPendente && this.pendenciaDeCaptura(sessaoPendente) ? sessaoPendente.id : null,
+      pendingRefundSessionId:
+        sessaoPendente && this.pendenciaDeDevolucao(sessaoPendente) ? sessaoPendente.id : null,
     };
+  }
+
+  /**
+   * Valores oferecidos nos meios pré-pagos (ADR-0010 §5: faixas modestas).
+   *
+   * Vêm da configuração do servidor e passam por dois filtros: o mínimo da
+   * tarifa (abaixo dele a recarga nem fecha) e o teto da sessão (acima dele a
+   * autorização é recusada, AMOUNT_ABOVE_CEILING). Se nada sobrar — teto de
+   * teste baixo, por exemplo — oferece o próprio teto, que é sempre válido.
+   */
+  private opcoesPrePagas(tetoCents: number, minimoCents: number | null): number[] {
+    const minimo = minimoCents ?? 0;
+    const validas = runtimeEnv.BORA_PREPAID_OPTIONS_CENTS.filter(
+      (v) => v >= minimo && v <= tetoCents,
+    );
+    if (validas.length > 0) return validas;
+    return tetoCents >= minimo ? [tetoCents] : [];
   }
 
   /**
@@ -289,6 +343,50 @@ export class TerminalSessionService {
       amountCapturedCents: sessao.payment?.amountCapturedCents ?? null,
       message: this.mensagemDaTela(sessao.status, sessao.ceilingReachedAt !== null),
       pendingCapture: this.pendenciaDeCaptura(sessao),
+      paymentMethod: sessao.payment?.method ?? null,
+      pendingRefund: this.pendenciaDeDevolucao(sessao),
+    };
+  }
+
+  /**
+   * O terminal registra o resultado do estorno de um pré-pago sem energia.
+   *
+   * Mesma divisão do captureResult: a regra financeira mora no
+   * PaymentsService; aqui fica o que é do terminal — a sessão precisa ser
+   * DESTE conector (R-32) e o resultado vai para a auditoria.
+   */
+  async refundResult(
+    terminal: TerminalIdentity,
+    sessionId: string,
+    dto: TerminalRefundResultDto,
+  ): Promise<TerminalSessionView & { recorded: boolean; resultMessage: string }> {
+    await this.buscarSessaoDoTerminal(terminal, sessionId);
+
+    const resultado = await this.payments.registerTerminalRefundResult({
+      sessionId,
+      success: dto.success,
+      amountRefundedCents: dto.amountRefundedCents,
+      errorMessage: dto.errorMessage,
+    });
+
+    await this.audit.record({
+      action: 'terminal.refund_result',
+      entityType: 'ChargingSession',
+      entityId: sessionId,
+      organizationId: terminal.organizationId,
+      newValue: {
+        terminalId: terminal.id,
+        success: dto.success,
+        amountRefundedCents: dto.amountRefundedCents ?? null,
+        status: resultado.status,
+        erro: dto.errorMessage ?? null,
+      },
+    });
+
+    return {
+      ...(await this.session(terminal, sessionId)),
+      recorded: resultado.recorded,
+      resultMessage: resultado.message,
     };
   }
 
@@ -400,6 +498,7 @@ export class TerminalSessionService {
             amountCapturedCents: true,
             status: true,
             provider: true,
+            method: true,
           },
         },
       },
@@ -450,6 +549,40 @@ export class TerminalSessionService {
     }
 
     return { amountCents: sessao.finalAmountCents };
+  }
+
+  /**
+   * Existe DEVOLUÇÃO de pré-pago esperando este terminal executar?
+   *
+   * Só quando a conciliação (ou o cancelamento de sessão que não começou)
+   * congelou valor final ZERO num pagamento pré-pago ainda CAPTURED — o
+   * dinheiro do motorista está retido sem energia entregue — e o provedor
+   * declara a devolução no terminal.
+   */
+  private pendenciaDeDevolucao(sessao: {
+    stoppedAt: Date | null;
+    finalAmountCents: number | null;
+    payment: {
+      status: string;
+      provider: string;
+      method: string;
+      amountCapturedCents: number | null;
+    } | null;
+  }): { amountCents: number } | null {
+    const pagamento = sessao.payment;
+    if (!pagamento || pagamento.status !== 'CAPTURED') return null;
+    if (!isPrepaidMethod(pagamento.method)) return null;
+    if (!sessao.stoppedAt || sessao.finalAmountCents !== 0) return null;
+    if (!pagamento.amountCapturedCents || pagamento.amountCapturedCents <= 0) return null;
+
+    try {
+      const provider = this.providers.get(pagamento.provider);
+      if (provider.capabilities.captureLocation !== 'terminal') return null;
+    } catch {
+      return null;
+    }
+
+    return { amountCents: pagamento.amountCapturedCents };
   }
 
   /** Texto curto, em português, para a tela pequena da maquininha. */

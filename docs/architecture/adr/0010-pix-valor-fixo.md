@@ -1,6 +1,6 @@
 # ADR-0010 — Pix com valor fixo, sem devolução automática
 
-- **Status:** Aceito, com uma exceção obrigatória (§4)
+- **Status:** Aceito, com uma exceção obrigatória (§4) e uma emenda (§6: débito)
 - **Data:** 2026-07-29
 - **Fase:** 0 (implementação nas fases 5, 6 e 7)
 - **Origem:** decisão do cliente em 2026-07-29, resolvendo a pergunta 17 e a premissa P8
@@ -156,3 +156,33 @@ decisão (c) de fato simplifica.
 
 - `refundPayment` continua obrigatório na porta de pagamento; muda apenas quem o
   aciona (sistema no consumo zero, operador nos demais casos).
+
+## 6. Emenda (2026-10-10): o débito segue o modelo do Pix
+
+Decisão tomada ao implementar débito e Pix na maquininha, com o terminal de
+desenvolvimento do PagBank em mãos.
+
+**Contexto.** Pré-autorização só existe no cartão de crédito. Nenhum adquirente
+avaliado (PagBank, Rede, Cielo, Getnet, Stone) reserva valor em débito, e na
+maquininha o débito é uma **venda imediata** — no PlugPag, `doPayment` com
+`TYPE_DEBITO`, o mesmo caminho do `TYPE_PIX`. Tratar o débito como reserva, como
+o provedor simulado permitia, era uma ficção que só existia no mock.
+
+**Decisão.** `DEBIT_CARD` é **pré-pago**, com exatamente as regras desta ADR:
+o motorista escolhe um valor entre as opções publicadas pelo servidor
+(`BORA_PREPAID_OPTIONS_CENTS`, filtradas pelo mínimo da tarifa e pelo teto), paga
+na hora, o valor vira o teto da sessão, a parada automática mira ~100%
+(`BORA_AUTOSTOP_THRESHOLD_PIX_PCT` passa a valer para os dois meios), não há
+troco automático e a devolução por consumo zero é obrigatória (§4).
+
+**Devolução no equipamento.** Quando a captura vive no terminal
+(`captureLocation: 'terminal'`), o estorno também vive lá: a conciliação publica
+`pendingRefund` e a maquininha executa `voidPayment` e confirma
+(`POST /terminal/sessions/:id/refund-result`). Ressalva registrada: o estorno de
+cartão pode exigir o cartão de novo no equipamento; se o motorista já tiver ido
+embora, a pendência fica visível no painel para o operador devolver pela
+retaguarda.
+
+**Consequência no código.** `isPrepaidMethod()` em `@bora/payment-core` é a
+única fonte da verdade sobre "quem é pré-pago"; conciliação, cancelamento de
+sessão, parada automática e o contrato do terminal passam por ela.

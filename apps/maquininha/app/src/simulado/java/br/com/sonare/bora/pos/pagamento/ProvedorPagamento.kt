@@ -43,6 +43,34 @@ private class PagamentoSimulado : PagamentoPort {
     )
   }
 
+  override suspend fun cobrarValorFixo(
+    metodo: String,
+    valorCents: Long,
+    aoMensagem: (String) -> Unit,
+  ): ResultadoPagamento {
+    aoMensagem(if (metodo == "PIX") "PAGUE O PIX PELO APP DO SEU BANCO" else "INSIRA O CARTÃO DE DÉBITO")
+    delay(1200)
+    aoMensagem("PROCESSANDO…")
+    delay(800)
+    return ResultadoPagamento.Aprovado(
+      referencia = ReferenciaPreAutorizacao(providerPaymentId = "SIM-${UUID.randomUUID()}"),
+      metodo = metodo,
+      cardBrand = if (metodo == "PIX") null else "SIMULADO",
+      cardLastFour = if (metodo == "PIX") null else "0000",
+      nsu = "000000",
+      authorizationCode = "SIM000",
+    )
+  }
+
+  override suspend fun estornar(
+    referencia: ReferenciaPreAutorizacao,
+    metodo: String,
+    valorCents: Long,
+  ): ResultadoPagamento {
+    delay(500)
+    return ResultadoPagamento.Aprovado(referencia, metodo = metodo)
+  }
+
   override suspend fun abortar() {
     // Nada a interromper: a "leitura" simulada é só uma espera, que a própria
     // troca de tela já cancela.

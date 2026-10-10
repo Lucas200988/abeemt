@@ -7,6 +7,7 @@ import {
   type TariffSnapshot,
 } from '@bora/pricing';
 import type { PaymentMethod } from '@bora/database';
+import { isPrepaidMethod } from '@bora/payment-core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { runtimeEnv } from '../../config/runtime-env';
 
@@ -226,16 +227,15 @@ export class SessionPricingService {
   /**
    * Limiar de parada automática em centavos (ADR-0008 §4, ADR-0010 §3).
    *
-   * O percentual do Pix é maior porque o incentivo se inverte: no cartão,
-   * ultrapassar o teto é prejuízo nosso — o excedente não é cobrável; no Pix, o
-   * valor já foi pago, e parar antes é entregar menos energia do que o motorista
-   * comprou.
+   * O percentual dos pré-pagos (Pix e débito) é maior porque o incentivo se
+   * inverte: no crédito, ultrapassar o teto é prejuízo nosso — o excedente não
+   * é cobrável; no pré-pago, o valor já foi pago, e parar antes é entregar
+   * menos energia do que o motorista comprou.
    */
   autoStopThreshold(ceilingAmountCents: number, method: PaymentMethod | null): number {
-    const pct =
-      method === 'PIX'
-        ? runtimeEnv.BORA_AUTOSTOP_THRESHOLD_PIX_PCT
-        : runtimeEnv.BORA_AUTOSTOP_THRESHOLD_CARD_PCT;
+    const pct = isPrepaidMethod(method)
+      ? runtimeEnv.BORA_AUTOSTOP_THRESHOLD_PIX_PCT
+      : runtimeEnv.BORA_AUTOSTOP_THRESHOLD_CARD_PCT;
 
     return autoStopThresholdCents(ceilingAmountCents, pct);
   }

@@ -12,15 +12,28 @@
   <!-- Pronta -->
   <string name="pronta_titulo">Conecte o cabo ao veículo</string>
   <string name="pronta_subtitulo">Depois toque em iniciar para pagar e carregar</string>
-  <string name="pronta_botao">Iniciar recarga</string>
+  <string name="pronta_escolha">Como você quer pagar?</string>
+  <string name="pronta_botao">Crédito — pague só o que consumir</string>
+  <string name="pronta_botao_debito">Débito — valor fixo</string>
+  <string name="pronta_botao_pix">Pix — valor fixo</string>
   <string name="pronta_preco_kwh">R$ %1$s por kWh</string>
   <string name="pronta_taxa_conexao">+ R$ %1$s de conexão</string>
   <string name="pronta_reserva">Reserva no cartão: R$ %1$s — você só paga o que consumir</string>
   <string name="pronta_indisponivel">Carregador indisponível no momento</string>
 
+  <!-- Escolha do valor (débito e Pix) -->
+  <string name="escolha_titulo">Quanto você quer carregar?</string>
+  <string name="escolha_subtitulo">%1$s: o valor é cobrado agora e vira o limite da recarga. Valor não utilizado não é devolvido.</string>
+  <string name="escolha_opcao">R$ %1$s</string>
+  <string name="escolha_voltar">Voltar</string>
+  <string name="metodo_debito">Cartão de débito</string>
+  <string name="metodo_pix">Pix</string>
+
   <!-- Cobrança -->
   <string name="cobranca_titulo">Aproxime ou insira o cartão</string>
   <string name="cobranca_subtitulo">Reservando R$ %1$s — a cobrança final será só do consumo</string>
+  <string name="cobranca_titulo_pix">Pague o Pix pelo app do seu banco</string>
+  <string name="cobranca_subtitulo_prepago">Pagando R$ %1$s — você recebe energia até esse valor</string>
   <string name="cobranca_cancelar">Cancelar</string>
 
   <!-- Registrando -->
@@ -39,6 +52,8 @@
   <string name="encerrada_titulo">Recarga encerrada</string>
   <string name="encerrada_resumo_energia">Energia: %1$s kWh</string>
   <string name="encerrada_resumo_valor">Valor: R$ %1$s</string>
+  <string name="encerrada_resumo_pago">Valor pago: R$ %1$s</string>
+  <string name="encerrada_aviso_prepago">Pagamento à vista. Se nenhuma energia foi entregue, o valor é devolvido integralmente.</string>
   <string name="encerrada_calculando">Calculando o valor final…</string>
   <string name="encerrada_aviso_captura">A cobrança no cartão é feita após a leitura final do medidor.</string>
   <string name="encerrada_botao_nova">Nova recarga</string>

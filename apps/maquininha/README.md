@@ -105,7 +105,23 @@ simuladas e **não movem dinheiro de ninguém**. Teste à vontade.
 | 7   | Cartão recusado / cancelar na tela do cartão              | Caminhos de erro sem pendência pendurada                                     |
 
 Para o teste 4 ficar didático, use uma tarifa e um teto baixos no painel (ex.:
-teto R$ 5,00): o consumo simulado fica bem abaixo e a diferença é visível.
+teto R$ 10,00 em Carregadores → editar → "Teto por sessão"): o consumo
+simulado fica bem abaixo e a diferença é visível — e o emissor do cartão não
+recusa a reserva por limite depois de várias repetições.
+
+**Débito e Pix (pré-pagos, ADR-0010 §6)** — na tela PRONTA aparecem os botões
+"Débito" e "Pix"; o motorista escolhe um valor entre os que o servidor publica
+(`BORA_PREPAID_OPTIONS_CENTS`, filtrados pelo mínimo da tarifa e pelo teto):
+
+| #   | Teste                                                  | O que prova                                                       |
+| --- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| 8   | Débito: escolher valor → cartão → carregar → encerrar  | `doPayment(TYPE_DEBITO)`, pagamento CAPTURED na hora, teto = pago |
+| 9   | Pix: escolher valor → QR na tela → pagar pelo banco    | `doPayment(TYPE_PIX)` — o serviço mostra o QR e confirma          |
+| 10  | Débito ou Pix sem consumo (encerrar antes de carregar) | `voidPayment` pela pendência `pendingRefund` → REFUNDED           |
+
+Ressalva aberta no teste 10: o estorno de cartão pode pedir o cartão de novo
+no equipamento. O app espera até 90 s, aborta e reporta a falha — a pendência
+fica no painel para o operador devolver pela retaguarda.
 
 **O que registrar de cada teste** (vira o anexo da homologação do APK, como os
 logs da API viraram em agosto): o `result`, `errorCode` e `message` devolvidos
@@ -137,7 +153,9 @@ O que ainda depende do PagBank:
       Smart 2 DEBUG) — roteiro do primeiro dia acima
 - [x] **Captura parcial validada no equipamento (2026-10-10)**: reserva de
       R$ 200,00, efetivação de R$ 5,00 pelo `doEffectuatePreAuto` na Gertec
-      GPOS780S DEBUG — ver fase-8 §8.1-K. Faltam os testes 5–7 da bateria
+      GPOS780S DEBUG — ver fase-8 §8.1-K. Testes 5 e 7 ✅; falta o 6
+- [ ] **Débito e Pix no equipamento** (testes 8–10): código pronto e compilado
+      contra o SDK; comportamento do `doPayment`/`voidPayment` a confirmar
 - [ ] Homologação do APK no Guia de Boas Práticas (targetSdk 23 no flavor
       pagbank ✓, sem cleartext em release ✓, permissões mínimas ✓, assinatura
       V1+V2 na geração do APK)

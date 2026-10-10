@@ -38,6 +38,12 @@ interface BoraApi {
     @Body corpo: PedidoResultadoCaptura,
   ): Response<RespostaResultadoCaptura>
 
+  @POST("terminal/sessions/{id}/refund-result")
+  suspend fun resultadoDevolucao(
+    @Path("id") id: String,
+    @Body corpo: PedidoResultadoDevolucao,
+  ): Response<RespostaResultadoDevolucao>
+
   @POST("terminal/heartbeat")
   suspend fun heartbeat(@Body corpo: PedidoHeartbeat): Response<Unit>
 }

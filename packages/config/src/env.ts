@@ -64,6 +64,31 @@ export const envSchema = z
     BORA_PREAUTH_CEILING_CENTS: z.coerce.number().int().positive().default(20000),
     BORA_AUTOSTOP_THRESHOLD_CARD_PCT: percent.default(95),
     BORA_AUTOSTOP_THRESHOLD_PIX_PCT: percent.default(100),
+    /**
+     * Valores oferecidos na maquininha para os meios PRÉ-PAGOS (débito e Pix),
+     * em centavos, separados por vírgula (ADR-0010 §5: faixas modestas). O
+     * servidor filtra pelo mínimo da tarifa e pelo teto da sessão; se nada
+     * sobrar, oferece o próprio teto. O aplicativo nunca decide valores.
+     */
+    BORA_PREPAID_OPTIONS_CENTS: z
+      .string()
+      .default('2000,3000,5000')
+      .transform((v, ctx) => {
+        const valores = v
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .map(Number);
+        if (valores.length === 0 || valores.some((n) => !Number.isInteger(n) || n <= 0)) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'BORA_PREPAID_OPTIONS_CENTS: inteiros positivos em centavos, separados por vírgula',
+          });
+          return z.NEVER;
+        }
+        return [...new Set(valores)].sort((a, b) => a - b);
+      }),
 
     // Pagamento
     /// Provedor usado para novos pagamentos. Em produção, um provedor simulado

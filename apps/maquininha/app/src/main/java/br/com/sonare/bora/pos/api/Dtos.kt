@@ -40,6 +40,14 @@ data class ContextoTerminal(
   val activeSessionId: String?,
   /** Sessão encerrada com captura ainda pendente NESTE terminal — resolver antes de tudo. */
   val pendingCaptureSessionId: String? = null,
+  /** Sessão encerrada com DEVOLUÇÃO de pré-pago pendente neste terminal. */
+  val pendingRefundSessionId: String? = null,
+  /**
+   * Valores que a maquininha oferece no débito e no Pix (centavos), já
+   * filtrados pelo servidor. O app escolhe entre eles — nunca inventa um valor.
+   * Nulo quando o servidor ainda não os manda (Gson não aplica o padrão).
+   */
+  val prepaidOptionsCents: List<Long>? = null,
 )
 
 data class ConectorContexto(
@@ -109,9 +117,32 @@ data class SessaoTerminal(
    * exato; amountCents == 0 = cancelar a reserva. Nulo = nada pendente.
    */
   val pendingCapture: PendenciaCaptura? = null,
+  /** CREDIT_CARD / DEBIT_CARD / PIX — muda o que a tela diz sobre a cobrança. */
+  val paymentMethod: String? = null,
+  /**
+   * Devolução INTEGRAL de um pré-pago sem energia entregue, aguardando ESTE
+   * terminal executar o estorno no SDK (ADR-0010 §4). Nulo = nada pendente.
+   */
+  val pendingRefund: PendenciaDevolucao? = null,
 )
 
 data class PendenciaCaptura(val amountCents: Long)
+
+data class PendenciaDevolucao(val amountCents: Long)
+
+// --- POST /terminal/sessions/:id/refund-result -------------------------------
+
+data class PedidoResultadoDevolucao(
+  val success: Boolean,
+  val amountRefundedCents: Long? = null,
+  val errorMessage: String? = null,
+)
+
+data class RespostaResultadoDevolucao(
+  val recorded: Boolean,
+  val resultMessage: String?,
+  val pendingRefund: PendenciaDevolucao?,
+)
 
 // --- POST /terminal/sessions/:id/capture-result ------------------------------
 

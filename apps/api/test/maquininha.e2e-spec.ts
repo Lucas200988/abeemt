@@ -526,6 +526,217 @@ describe('recarga pela maquininha', () => {
     }
   });
 
+  it('pré-pago no TERMINAL (débito): cobra na hora, o valor vira o teto, nada a capturar', async () => {
+    /**
+     * Débito e Pix na maquininha são venda IMEDIATA (ADR-0010): o PlugPag já
+     * cobrou quando o app nos avisa. O pagamento nasce CAPTURED, o valor pago
+     * é o teto da recarga e a conciliação não tem o que capturar — nem pode
+     * publicar pendência de captura para o terminal.
+     */
+    const registry = app.get(PaymentProviderRegistry);
+    const capabilities = registry.get('terminal-mock').capabilities as {
+      captureLocation?: 'backend' | 'terminal';
+    };
+    capabilities.captureLocation = 'terminal';
+
+    try {
+      const { token } = await terminalPareado();
+      const sim = await simuladorPronto();
+
+      // O servidor diz quais valores a maquininha pode oferecer — nunca o app.
+      const contexto = await comoTerminal(token, 'GET', '/terminal/me');
+      expect(contexto.body?.methods).toContain('PIX');
+      const opcoes = contexto.body?.prepaidOptionsCents as number[];
+      const teto = contexto.body?.preAuthAmountCents as number;
+      expect(opcoes.length).toBeGreaterThan(0);
+      expect(opcoes.every((v) => v <= teto)).toBe(true);
+
+      const pago = opcoes[0];
+      const autorizacao = await comoTerminal(token, 'POST', '/terminal/authorization', {
+        providerPaymentId: 'NSU-POS-DEBITO',
+        method: 'DEBIT_CARD',
+        amountAuthorizedCents: pago,
+        idempotencyKey: 'pos-e2e-debito',
+        cardBrand: 'ELO',
+        cardLastFour: '1111',
+      });
+      expect(autorizacao.status).toBe(201);
+      expect(autorizacao.body?.status).toBe('CAPTURED');
+      const sessionId = autorizacao.body?.sessionId as string;
+
+      // Já cobrado — não é reserva.
+      let pagamento = await prisma.payment.findFirstOrThrow({
+        where: { session: { id: sessionId } },
+      });
+      expect(pagamento.status).toBe('CAPTURED');
+      expect(pagamento.amountCapturedCents).toBe(pago);
+
+      const sessao = await prisma.chargingSession.findUniqueOrThrow({ where: { id: sessionId } });
+      expect(sessao.ceilingAmountCents).toBe(pago);
+
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'CHARGING' && sim.transactionId !== null;
+        },
+        { descricao: 'recarga em curso' },
+      );
+
+      sim.advanceMeter(2000);
+      await sim.meterValues(1);
+      await aguardar(async () => {
+        const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+        return (s?.energyWh ?? 0) >= 2000;
+      });
+
+      await comoTerminal(token, 'POST', `/terminal/sessions/${sessionId}/stop`, {});
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'COMPLETED';
+        },
+        { descricao: 'sessão encerrada' },
+      );
+
+      const fechamento = await payments.settleSession(sessionId);
+      expect(fechamento.settled).toBe(true);
+      expect(fechamento.reason).toContain('valor fixo');
+
+      // Valor fixo: o consumo (R$ 8,00) fica abaixo do pago, e a sobra não vira
+      // troco (ADR-0010). Nada pendente para o terminal.
+      const fechada = await comoTerminal(token, 'GET', `/terminal/sessions/${sessionId}`);
+      expect(fechada.body?.finalAmountCents).toBe(pago);
+      expect(fechada.body?.paymentMethod).toBe('DEBIT_CARD');
+      expect(fechada.body?.pendingCapture).toBeNull();
+      expect(fechada.body?.pendingRefund).toBeNull();
+
+      pagamento = await prisma.payment.findFirstOrThrow({ where: { session: { id: sessionId } } });
+      expect(pagamento.status).toBe('CAPTURED');
+    } finally {
+      capabilities.captureLocation = 'backend';
+    }
+  });
+
+  it('pré-pago (Pix) sem energia: devolução pendente no TERMINAL, confirmada e fechada', async () => {
+    /**
+     * ADR-0010 §4: pagou e não recebeu nada → devolução integral, inegociável.
+     * Com a captura no equipamento, o estorno (voidPayment) também vive no
+     * SDK: a conciliação congela zero, publica pendingRefund, e o terminal
+     * confirma — com as mesmas regras do capture-result.
+     */
+    const registry = app.get(PaymentProviderRegistry);
+    const capabilities = registry.get('terminal-mock').capabilities as {
+      captureLocation?: 'backend' | 'terminal';
+    };
+    capabilities.captureLocation = 'terminal';
+
+    try {
+      const { token } = await terminalPareado();
+      const sim = await simuladorPronto();
+
+      const autorizacao = await comoTerminal(token, 'POST', '/terminal/authorization', {
+        providerPaymentId: 'NSU-POS-PIX',
+        method: 'PIX',
+        amountAuthorizedCents: 2000,
+        idempotencyKey: 'pos-e2e-pix',
+      });
+      expect(autorizacao.status).toBe(201);
+      expect(autorizacao.body?.status).toBe('CAPTURED');
+      const sessionId = autorizacao.body?.sessionId as string;
+
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'CHARGING' && sim.transactionId !== null;
+        },
+        { descricao: 'recarga em curso' },
+      );
+
+      // Encerra sem o medidor andar: nenhuma energia entregue.
+      await comoTerminal(token, 'POST', `/terminal/sessions/${sessionId}/stop`, {});
+      await aguardar(
+        async () => {
+          const s = await prisma.chargingSession.findUnique({ where: { id: sessionId } });
+          return s?.status === 'COMPLETED';
+        },
+        { descricao: 'sessão encerrada' },
+      );
+
+      const fechamento = await payments.settleSession(sessionId);
+      expect(fechamento.settled).toBe(true);
+      expect(fechamento.reason).toContain('devolução pendente');
+
+      // Dinheiro ainda retido, pendência publicada nos dois lugares.
+      let pagamento = await prisma.payment.findFirstOrThrow({
+        where: { session: { id: sessionId } },
+      });
+      expect(pagamento.status).toBe('CAPTURED');
+
+      const comPendencia = await comoTerminal(token, 'GET', `/terminal/sessions/${sessionId}`);
+      expect(comPendencia.body?.pendingRefund).toEqual({ amountCents: 2000 });
+      expect(comPendencia.body?.pendingCapture).toBeNull();
+
+      const contexto = await comoTerminal(token, 'GET', '/terminal/me');
+      expect(contexto.body?.pendingRefundSessionId).toBe(sessionId);
+      expect(contexto.body?.pendingCaptureSessionId).toBeNull();
+
+      // Devolução é integral: valor parcial é recusado.
+      const parcial = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/refund-result`,
+        {
+          success: true,
+          amountRefundedCents: 1000,
+        },
+      );
+      expect(parcial.status).toBe(400);
+
+      // Falha mantém a pendência (e o alerta) vivos.
+      const falha = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/refund-result`,
+        {
+          success: false,
+          errorMessage: 'simulando SDK fora do ar',
+        },
+      );
+      expect(falha.body?.recorded).toBe(false);
+
+      const confirmacao = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/refund-result`,
+        {
+          success: true,
+          amountRefundedCents: 2000,
+        },
+      );
+      expect(confirmacao.status).toBe(201);
+      expect(confirmacao.body?.recorded).toBe(true);
+      expect(confirmacao.body?.pendingRefund).toBeNull();
+
+      pagamento = await prisma.payment.findFirstOrThrow({ where: { session: { id: sessionId } } });
+      expect(pagamento.status).toBe('REFUNDED');
+      expect(pagamento.amountRefundedCents).toBe(2000);
+
+      // Reenvio idempotente.
+      const reenvio = await comoTerminal(
+        token,
+        'POST',
+        `/terminal/sessions/${sessionId}/refund-result`,
+        {
+          success: true,
+          amountRefundedCents: 2000,
+        },
+      );
+      expect(reenvio.body?.recorded).toBe(true);
+    } finally {
+      capabilities.captureLocation = 'backend';
+    }
+  });
+
   it('reenvio da mesma chave não cria segunda cobrança', async () => {
     const { token } = await terminalPareado();
     await simuladorPronto();

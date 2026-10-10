@@ -22,6 +22,7 @@ import {
   TerminalAuthorizationDto,
   TerminalCaptureResultDto,
   TerminalHeartbeatDto,
+  TerminalRefundResultDto,
   TerminalStopSessionDto,
 } from './dto/terminal.dto';
 
@@ -155,5 +156,21 @@ export class TerminalApiController {
     @Body() dto: TerminalCaptureResultDto,
   ) {
     return this.sessions.captureResult(terminal, id, dto);
+  }
+
+  @Post('sessions/:id/refund-result')
+  @ApiOperation({
+    summary: 'O terminal confirma a devolução de um pré-pago sem energia entregue',
+    description:
+      'Débito e Pix são cobrados na hora (ADR-0010); se a recarga não entregou energia, a ' +
+      'devolução é obrigatória e, com a captura no equipamento, é o SDK (voidPayment) quem a ' +
+      'executa. A conciliação publica a pendência em pendingRefund e o aplicativo confirma aqui.',
+  })
+  refundResult(
+    @CurrentTerminal() terminal: TerminalIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TerminalRefundResultDto,
+  ) {
+    return this.sessions.refundResult(terminal, id, dto);
   }
 }

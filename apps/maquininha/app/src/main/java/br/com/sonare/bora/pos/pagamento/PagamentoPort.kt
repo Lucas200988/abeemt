@@ -46,6 +46,35 @@ interface PagamentoPort {
   suspend fun abortar()
 
   /**
+   * Venda IMEDIATA nos meios pré-pagos — débito e Pix (ADR-0010).
+   *
+   * Não existe reserva fora do crédito: o dinheiro sai agora e o valor pago
+   * vira o teto da recarga. `metodo` é o vocabulário do backend
+   * ("DEBIT_CARD" | "PIX"); o valor vem das opções que o servidor publica em
+   * `/terminal/me` — o app nunca inventa um valor. No PlugPag, o Pix mostra o
+   * QR e espera a confirmação dentro do próprio equipamento.
+   */
+  suspend fun cobrarValorFixo(
+    metodo: String,
+    valorCents: Long,
+    aoMensagem: (String) -> Unit = {},
+  ): ResultadoPagamento
+
+  /**
+   * Estorno INTEGRAL de um pré-pago sem energia entregue (ADR-0010 §4).
+   *
+   * Executado quando o backend publica `pendingRefund`. No PlugPag é o
+   * `voidPayment`; o tipo do estorno depende do meio (cartão × Pix), por isso
+   * `metodo` vem junto. Ressalva registrada: o estorno de cartão pode pedir o
+   * cartão de novo no equipamento — a confirmar no terminal DEBUG.
+   */
+  suspend fun estornar(
+    referencia: ReferenciaPreAutorizacao,
+    metodo: String,
+    valorCents: Long,
+  ): ResultadoPagamento
+
+  /**
    * Desfaz uma reserva que não vai virar recarga (backend recusou a sessão,
    * motorista desistiu). Nada foi cobrado; isto libera o limite do cartão.
    */

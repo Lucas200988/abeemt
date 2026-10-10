@@ -167,6 +167,38 @@ Para desenvolver sem equipamento: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`
 põe o terminal-mock nesse modo. Coberto ponta a ponta em
 `apps/api/test/maquininha.e2e-spec.ts` ("captura no TERMINAL").
 
+### 3.6 Débito e Pix: venda imediata, valor como teto (ADR-0010 §6)
+
+Fora do crédito não existe reserva. A maquininha cobra na hora (PlugPag
+`doPayment`, `TYPE_DEBITO`/`TYPE_PIX`) e informa o valor PAGO:
+
+```
+GET /terminal/me
+→ { …, "methods": ["CREDIT_CARD", "DEBIT_CARD", "PIX"],
+     "prepaidOptionsCents": [2000, 3000, 5000],      ← o app escolhe ENTRE estes
+     "pendingRefundSessionId": null }
+
+POST /terminal/authorization
+{ "method": "DEBIT_CARD" | "PIX", "amountAuthorizedCents": 3000, … }
+→ 201 { "status": "CAPTURED", … }                    ← já cobrado, não é reserva
+```
+
+O pagamento nasce `CAPTURED`, o teto da sessão é o valor pago, a parada
+automática mira 100% e a conciliação não captura nada ("valor fixo — sem
+ajuste"). Sem energia entregue, a devolução é obrigatória (ADR-0010 §4) — e,
+com a captura no equipamento, é o terminal quem a executa:
+
+```
+GET  /terminal/sessions/:id   → "pendingRefund": { "amountCents": 3000 }   (valor final 0)
+POST /terminal/sessions/:id/refund-result  { "success": true, "amountRefundedCents": 3000 }
+→ pagamento REFUNDED
+```
+
+Mesmas regras do `capture-result`: valor exato (a devolução é integral),
+idempotente, falha mantém a pendência e o alerta de cobrança pendente aceso.
+Coberto em `maquininha.e2e-spec.ts` ("pré-pago no TERMINAL" e "pré-pago (Pix)
+sem energia").
+
 ---
 
 ## 4. O que a maquininha nunca faz
@@ -771,7 +803,19 @@ backend com `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`:
 | `capture-result`               | ✅ pagamento CAPTURED no painel                              |
 
 Por que é prova: nesse modo o backend nunca chama `capture()` — o status
-CAPTURED só existe se o terminal executou o SDK e confirmou. Ressalva honesta:
+CAPTURED só existe se o terminal executou o SDK e confirmou.
+
+Na sequência do mesmo dia: **teste 7** (desistência no cartão pela tecla do
+terminal) ✅; **teste 5** (recarga que não começa, `--never-start`) ✅ —
+reserva cancelada pelo `doPreAutoCancel`, "Reserva cancelada" com R$ 0,00 no
+painel. Dois achados corrigidos no app: (a) cancelar na nossa tela deixava o
+`doPreAutoCreate` bloqueado e a operação seguinte recebia "Serviço ocupado" —
+o botão passou a chamar `abort()` do SDK; (b) a sessão fica inativa antes de a
+conciliação congelar o valor, e o app encerrava o acompanhamento cedo demais.
+Observação de campo: emissores recusam a reserva de R$ 200 por aproximação
+("use chip ou tarja") e, após várias reservas seguidas no mesmo cartão, por
+limite ("transação não autorizada") — reservas canceladas podem levar horas
+para liberar o limite. Para testes, baixar o teto no painel. Ressalva honesta:
 o ambiente DEBUG é de QA (transações simuladas pelo PagBank); a produção usa o
 mesmo SDK e o mesmo fluxo, mas a primeira efetivação real será conferida no
 piloto. Faltam os testes 5–7 da bateria (cancelamento sem consumo, retomada

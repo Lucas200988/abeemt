@@ -47,6 +47,9 @@ class MainActivity : AppCompatActivity() {
   private fun ligarBotoes() = with(binding) {
     botaoParear.setOnClickListener { fluxo.parear(campoCodigoPareamento.text.toString()) }
     botaoIniciar.setOnClickListener { fluxo.iniciarRecarga() }
+    botaoIniciarDebito.setOnClickListener { fluxo.escolherPrePago("DEBIT_CARD") }
+    botaoIniciarPix.setOnClickListener { fluxo.escolherPrePago("PIX") }
+    botaoVoltarEscolha.setOnClickListener { fluxo.voltarParaPronta() }
     botaoCancelarCobranca.setOnClickListener { fluxo.cancelarCobranca() }
     botaoEncerrar.setOnClickListener { fluxo.encerrarRecarga() }
     botaoNovaRecarga.setOnClickListener { fluxo.novaRecarga() }
@@ -63,7 +66,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun desenhar(tela: Tela) = with(binding) {
     val todas = listOf(
-      telaPareamento, telaPronta, telaCobranca,
+      telaPareamento, telaPronta, telaEscolhaValor, telaCobranca,
       telaRegistrando, telaCarregando, telaEncerrada, telaErro,
     )
     todas.forEach { it.visibility = View.GONE }
@@ -88,12 +91,48 @@ class MainActivity : AppCompatActivity() {
         textoTaxaConexao.text = getString(R.string.pronta_taxa_conexao, reais(c.tariff.connectionFeeCents))
         textoReserva.text = getString(R.string.pronta_reserva, reais(c.preAuthAmountCents))
         textoIndisponivel.visibility = if (c.connector.available) View.GONE else View.VISIBLE
-        botaoIniciar.isEnabled = c.connector.available
+        // Só os meios que o provedor do servidor declara — o app não escolhe.
+        val temPrePago = c.prepaidOptionsCents.orEmpty().isNotEmpty()
+        botaoIniciar.visibility = if ("CREDIT_CARD" in c.methods) View.VISIBLE else View.GONE
+        botaoIniciarDebito.visibility =
+          if ("DEBIT_CARD" in c.methods && temPrePago) View.VISIBLE else View.GONE
+        botaoIniciarPix.visibility = if ("PIX" in c.methods && temPrePago) View.VISIBLE else View.GONE
+        listOf(botaoIniciar, botaoIniciarDebito, botaoIniciarPix).forEach {
+          it.isEnabled = c.connector.available
+        }
+      }
+
+      is Tela.EscolhaValor -> {
+        telaEscolhaValor.visibility = View.VISIBLE
+        textoEscolhaSubtitulo.text = getString(R.string.escolha_subtitulo, nomeDoMeio(tela.metodo))
+        listaValores.removeAllViews()
+        val altura = (64 * resources.displayMetrics.density).toInt()
+        val margem = (12 * resources.displayMetrics.density).toInt()
+        tela.opcoesCents.forEach { valor ->
+          listaValores.addView(
+            android.widget.Button(this@MainActivity).apply {
+              text = getString(R.string.escolha_opcao, reais(valor))
+              textSize = 22f
+              layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                altura,
+              ).also { it.topMargin = margem }
+              setOnClickListener { fluxo.pagarValorFixo(valor) }
+            },
+          )
+        }
       }
 
       is Tela.Cobranca -> {
         telaCobranca.visibility = View.VISIBLE
-        textoCobrancaValor.text = getString(R.string.cobranca_subtitulo, reais(tela.valorCents))
+        val prePago = tela.metodo != "CREDIT_CARD"
+        textoCobrancaTitulo.setText(
+          if (tela.metodo == "PIX") R.string.cobranca_titulo_pix else R.string.cobranca_titulo,
+        )
+        textoCobrancaValor.text = getString(
+          if (prePago) R.string.cobranca_subtitulo_prepago else R.string.cobranca_subtitulo,
+          reais(tela.valorCents),
+        )
         textoEventoCartao.text = tela.mensagemDoCartao ?: ""
       }
 
@@ -113,10 +152,19 @@ class MainActivity : AppCompatActivity() {
         textoResumoEnergia.text = getString(R.string.encerrada_resumo_energia, kwh(tela.sessao.energyWh))
         // Antes de a conciliação fechar a conta não há valor final — mostrar
         // R$ 0,00 nesse intervalo faria o motorista achar que nada foi cobrado.
+        val prePago = tela.sessao.paymentMethod == "DEBIT_CARD" || tela.sessao.paymentMethod == "PIX"
         val valor = tela.sessao.finalAmountCents ?: tela.sessao.runningAmountCents
         textoResumoValor.text = valor
-          ?.let { getString(R.string.encerrada_resumo_valor, reais(it)) }
+          ?.let {
+            getString(
+              if (prePago) R.string.encerrada_resumo_pago else R.string.encerrada_resumo_valor,
+              reais(it),
+            )
+          }
           ?: getString(R.string.encerrada_calculando)
+        textoAvisoEncerrada.setText(
+          if (prePago) R.string.encerrada_aviso_prepago else R.string.encerrada_aviso_captura,
+        )
       }
 
       is Tela.Erro -> {
@@ -133,6 +181,9 @@ class MainActivity : AppCompatActivity() {
     textoDuracao.text = getString(R.string.carregando_duracao, duracao(sessao.durationSeconds))
     textoMensagemSessao.text = sessao.message ?: ""
   }
+
+  private fun nomeDoMeio(metodo: String): String =
+    getString(if (metodo == "PIX") R.string.metodo_pix else R.string.metodo_debito)
 
   // Formatação da tela: centavos → "12,34"; Wh → "1,50"; segundos → "1h 02min".
   private fun reais(cents: Long): String =

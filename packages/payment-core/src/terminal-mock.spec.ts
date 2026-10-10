@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assertCents } from '@bora/contracts';
 import { ManualPaymentProvider } from './manual';
 import { TerminalMockPaymentProvider } from './terminal-mock';
-import { assertProviderSupportsModel } from './provider';
+import { assertProviderSupportsModel, isPrepaidMethod } from './provider';
 
 /**
  * A autorização que nasce fora do backend.
@@ -19,14 +19,27 @@ describe('maquininha simulada', () => {
     expect(criar().capabilities.initiatedBy).toBe('terminal');
   });
 
-  it('aceita crédito e débito — o que o motorista passa na maquininha', () => {
+  it('aceita crédito, débito e Pix — o que o motorista paga na maquininha', () => {
     const metodos = criar().capabilities.methods;
 
     expect(metodos).toContain('CREDIT_CARD');
     expect(metodos).toContain('DEBIT_CARD');
-    // Pix no SmartPOS tem outro fluxo; declará-lo faria o terminal oferecer ao
-    // motorista um meio que este provedor não sabe executar.
-    expect(metodos).not.toContain('PIX');
+    // Pix entrou quando o PlugPag mostrou que executa o QR e a confirmação
+    // dentro do próprio doPayment: o app só recebe o resultado.
+    expect(metodos).toContain('PIX');
+  });
+
+  /**
+   * Débito e Pix são pré-pagos (ADR-0010): nenhum adquirente faz
+   * pré-autorização fora do crédito. É o que faz a conciliação tratar o valor
+   * pago como teto, sem captura posterior.
+   */
+  it('classifica débito e Pix como pré-pagos, e crédito como reserva', () => {
+    expect(isPrepaidMethod('DEBIT_CARD')).toBe(true);
+    expect(isPrepaidMethod('PIX')).toBe(true);
+    expect(isPrepaidMethod('CREDIT_CARD')).toBe(false);
+    expect(isPrepaidMethod('MANUAL')).toBe(false);
+    expect(isPrepaidMethod(null)).toBe(false);
   });
 
   it('atende o modelo do produto', () => {

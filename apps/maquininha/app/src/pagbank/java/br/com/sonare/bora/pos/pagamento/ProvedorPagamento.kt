@@ -7,8 +7,10 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEffectuatePreAutoData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPreAutoData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -124,6 +126,77 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
     }
 
   /**
+   * Venda imediata — débito (TYPE_DEBITO) ou Pix (TYPE_PIX) — pelo
+   * `doPayment`, com os argumentos na ordem do app demo oficial (SmartCoffee,
+   * PaymentViewModel): tipo, valor, tipo de parcelamento, parcelas,
+   * referência, imprimir. No Pix o próprio serviço mostra o QR na tela e
+   * espera a confirmação; as instruções chegam pelo listener.
+   */
+  override suspend fun cobrarValorFixo(
+    metodo: String,
+    valorCents: Long,
+    aoMensagem: (String) -> Unit,
+  ): ResultadoPagamento = withContext(Dispatchers.IO) {
+    val tipo = when (metodo) {
+      "DEBIT_CARD" -> PlugPag.TYPE_DEBITO
+      "PIX" -> PlugPag.TYPE_PIX
+      else -> return@withContext ResultadoPagamento.Falha("Meio de pagamento não suportado: $metodo")
+    }
+    try {
+      garantirAtivacao()
+      if (!aguardarServicoLivre()) {
+        return@withContext ResultadoPagamento.Falha(
+          "O terminal ainda está concluindo a operação anterior. Aguarde alguns segundos e tente de novo.",
+        )
+      }
+      plugPag.setEventListener(object : PlugPagEventListener {
+        override fun onEvent(data: PlugPagEventData) {
+          data.customMessage.takeIf { it.isNotBlank() }?.let(aoMensagem)
+        }
+      })
+      val resultado = plugPag.doPayment(
+        PlugPagPaymentData(
+          tipo,
+          valorCents.toInt(),
+          PlugPag.INSTALLMENT_TYPE_A_VISTA,
+          1,
+          referenciaLoja,
+          false,
+        ),
+      )
+      paraResultado(resultado, metodo)
+    } catch (e: PlugPagException) {
+      ResultadoPagamento.Falha("Falha no PlugPag: ${e.message}")
+    }
+  }
+
+  /**
+   * Estorno pelo `voidPayment`. O tipo segue o app demo oficial: Pix (e QR)
+   * usam VOID_QRCODE; cartão usa VOID_PAYMENT. Nomes dos campos confirmados
+   * no demo (transactionCode, transactionId, voidType, printReceipt).
+   */
+  override suspend fun estornar(
+    referencia: ReferenciaPreAutorizacao,
+    metodo: String,
+    valorCents: Long,
+  ): ResultadoPagamento = withContext(Dispatchers.IO) {
+    try {
+      garantirAtivacao()
+      val resultado = plugPag.voidPayment(
+        PlugPagVoidData(
+          transactionCode = referencia.transactionCode.orEmpty(),
+          transactionId = referencia.transactionId.orEmpty(),
+          printReceipt = false,
+          voidType = if (metodo == "PIX") PlugPag.VOID_QRCODE else PlugPag.VOID_PAYMENT,
+        ),
+      )
+      paraResultado(resultado, metodo)
+    } catch (e: PlugPagException) {
+      ResultadoPagamento.Falha("Falha ao estornar: ${e.message}")
+    }
+  }
+
+  /**
    * Encerra a espera pelo cartão — o padrão do botão "abortar" do app demo
    * oficial (SmartCoffee, PreAutoViewModel.abort). O `doPreAutoCreate`
    * bloqueado retorna em seguida (OPERATION_ABORTED), liberando o serviço.
@@ -200,7 +273,10 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
    * não os quatro últimos — enviar o bin no lugar seria mentira, e derivar
    * qualquer outra coisa seria chutar. O campo é opcional no contrato.
    */
-  private fun paraResultado(r: PlugPagTransactionResult): ResultadoPagamento {
+  private fun paraResultado(
+    r: PlugPagTransactionResult,
+    metodo: String = "CREDIT_CARD",
+  ): ResultadoPagamento {
     if (r.result != PlugPag.RET_OK) {
       return ResultadoPagamento.Recusado(
         r.message ?: "Operação recusada (código ${r.errorCode ?: "?"}).",
@@ -212,7 +288,7 @@ private class PagamentoPlugPag(private val plugPag: PlugPag) : PagamentoPort {
         transactionCode = r.transactionCode,
         transactionId = r.transactionId,
       ),
-      metodo = "CREDIT_CARD", // pré-autorização só existe no crédito (CONTRATO PagBank)
+      metodo = metodo, // pré-autorização só existe no crédito; débito e Pix são venda imediata
       cardBrand = r.cardBrand,
       cardLastFour = null,
       nsu = r.hostNsu ?: r.nsu,

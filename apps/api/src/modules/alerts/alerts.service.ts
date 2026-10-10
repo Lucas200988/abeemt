@@ -129,12 +129,21 @@ export class AlertsService {
         where: {
           ...orgFilter,
           stoppedAt: { not: null, lt: new Date(agora.getTime() - LIMIARES.cobrancaPendenteMs) },
-          // Dois jeitos de uma cobrança estar pendente: a conciliação ainda não
-          // fechou o valor (finalAmountCents nulo) — ou fechou, mas a captura é
-          // do TERMINAL e a maquininha ainda não confirmou (pagamento parado em
-          // AUTHORIZED). Sem o segundo braço, uma maquininha muda deixaria
-          // energia entregue sem cobrança e nenhum alerta aceso.
-          OR: [{ finalAmountCents: null }, { payment: { status: 'AUTHORIZED' } }],
+          // Três jeitos de uma cobrança estar pendente: a conciliação ainda não
+          // fechou o valor (finalAmountCents nulo); fechou, mas a captura é do
+          // TERMINAL e a maquininha ainda não confirmou (pagamento parado em
+          // AUTHORIZED); ou um PRÉ-PAGO sem energia entregue espera o terminal
+          // devolver (valor final zero com dinheiro ainda retido). Sem os dois
+          // últimos braços, uma maquininha muda deixaria energia sem cobrança —
+          // ou dinheiro do motorista sem devolução — e nenhum alerta aceso.
+          OR: [
+            { finalAmountCents: null },
+            { payment: { status: 'AUTHORIZED' } },
+            {
+              finalAmountCents: 0,
+              payment: { status: 'CAPTURED', amountCapturedCents: { gt: 0 } },
+            },
+          ],
         },
         select: { id: true, stoppedAt: true, charger: { select: { name: true } } },
         take: 20,

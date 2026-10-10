@@ -13,6 +13,26 @@ import type { Cents } from '@bora/contracts';
 
 export type PaymentMethod = 'CREDIT_CARD' | 'DEBIT_CARD' | 'PIX' | 'MANUAL';
 
+/**
+ * Meios PRÉ-PAGOS: o dinheiro sai na hora e o valor pago vira o teto da recarga
+ * (ADR-0010). Não existe "reservar e cobrar depois" fora do crédito — nenhum
+ * adquirente faz pré-autorização em débito ou Pix, e na maquininha o débito é
+ * uma venda imediata (PlugPag TYPE_DEBITO), exatamente como o Pix.
+ *
+ * A consequência prática: parada automática em ~100% do valor pago, nada a
+ * capturar na conciliação, e devolução integral obrigatória quando nenhuma
+ * energia for entregue (ADR-0010 §4).
+ */
+export const PREPAID_METHODS: readonly PaymentMethod[] = ['DEBIT_CARD', 'PIX'];
+
+export function isPrepaidMethod(method: PaymentMethod | string | null | undefined): boolean {
+  return (
+    method !== null &&
+    method !== undefined &&
+    (PREPAID_METHODS as readonly string[]).includes(method)
+  );
+}
+
 export type PaymentStatus =
   | 'PENDING'
   | 'AUTHORIZED'

@@ -13,7 +13,7 @@ import {
   assertCents,
   labelOf,
 } from '@bora/contracts';
-import { PaymentProviderError, type PaymentInstrument } from '@bora/payment-core';
+import { PaymentProviderError, isPrepaidMethod, type PaymentInstrument } from '@bora/payment-core';
 import type { PricingBreakdown } from '@bora/pricing';
 import { Prisma, type PaymentMethod, type PaymentStatus } from '@bora/database';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -218,13 +218,15 @@ export class PaymentsService {
     }
 
     /**
-     * Pix é pré-pago, não reserva (ADR-0010).
+     * Pix e débito são pré-pagos, não reserva (ADR-0010; débito na emenda §6).
      *
-     * O motorista já transferiu o dinheiro; não existe "capturar depois". Por
-     * isso capturamos na hora — e o que sobra não vira troco automático, exceto
-     * consumo zero, que é devolvido integralmente (ADR-0010 §4).
+     * O motorista já pagou; não existe "capturar depois". Por isso capturamos
+     * na hora — e o que sobra não vira troco automático, exceto consumo zero,
+     * que é devolvido integralmente (ADR-0010 §4).
      */
-    if (input.method === 'PIX') {
+    const prePago = isPrepaidMethod(input.method);
+
+    if (prePago) {
       const capturado = await provider.capture(
         resultado.providerPaymentId,
         assertCents(resultado.amountAuthorizedCents),
@@ -238,7 +240,8 @@ export class PaymentsService {
     return this.aprovarEIniciar({
       paymentId: payment.id,
       sessionId: session.id,
-      status: input.method === 'PIX' ? 'CAPTURED' : 'AUTHORIZED',
+      status: prePago ? 'CAPTURED' : 'AUTHORIZED',
+      prePago,
       amountAuthorizedCents: resultado.amountAuthorizedCents,
       ceilingAmountCents: termos.ceilingAmountCents,
     });
@@ -321,12 +324,36 @@ export class PaymentsService {
       expiresAt: input.expiresAt,
     });
 
+    /**
+     * Débito e Pix na maquininha são venda IMEDIATA (ADR-0010): o dinheiro já
+     * saiu quando o terminal nos avisa. Registrar como "reserva" faria a
+     * conciliação tentar capturar depois — e, com a captura no terminal,
+     * publicaria um `pendingCapture` que o SDK não tem como executar numa
+     * venda já concluída. Então o pagamento nasce CAPTURED, com o valor pago
+     * como teto.
+     *
+     * Provedor que captura pelo backend (simulados) precisa ter o próprio
+     * estado atualizado, senão a devolução por consumo zero não acha nada
+     * para devolver. Com a captura no terminal, o SDK já fez isso de verdade.
+     */
+    const prePago = isPrepaidMethod(input.method);
+    const agora = new Date();
+
+    if (prePago && provider.capabilities.captureLocation !== 'terminal') {
+      await provider.capture(
+        input.providerPaymentId,
+        assertCents(input.amountAuthorizedCents, 'amountAuthorizedCents'),
+      );
+    }
+
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
-        status: 'AUTHORIZED',
+        status: prePago ? 'CAPTURED' : 'AUTHORIZED',
         providerPaymentId: input.providerPaymentId,
-        authorizedAt: new Date(),
+        authorizedAt: agora,
+        capturedAt: prePago ? agora : undefined,
+        amountCapturedCents: prePago ? input.amountAuthorizedCents : undefined,
         expiresAt: input.expiresAt,
         ...this.camposDoInstrumento(input.instrument),
       },
@@ -335,7 +362,8 @@ export class PaymentsService {
     return this.aprovarEIniciar({
       paymentId: payment.id,
       sessionId: session.id,
-      status: 'AUTHORIZED',
+      status: prePago ? 'CAPTURED' : 'AUTHORIZED',
+      prePago,
       amountAuthorizedCents: input.amountAuthorizedCents,
       ceilingAmountCents: termos.ceilingAmountCents,
     });
@@ -392,12 +420,32 @@ export class PaymentsService {
     }
 
     /**
-     * Pix já foi cobrado no início (ADR-0010). Só há o que fazer quando a
-     * energia entregue foi zero: aí a devolução é obrigatória, porque o
-     * motorista pagou e não recebeu nada.
+     * Pix e débito já foram cobrados no início (ADR-0010). Só há o que fazer
+     * quando a energia entregue foi zero: aí a devolução é obrigatória, porque
+     * o motorista pagou e não recebeu nada.
      */
-    if (sessao.payment.method === 'PIX') {
+    if (isPrepaidMethod(sessao.payment.method)) {
       if ((sessao.energyWh ?? 0) === 0 && sessao.payment.status === 'CAPTURED') {
+        /**
+         * Devolução que vive no equipamento (PlugPag: `voidPayment` é chamada
+         * do SDK). Mesma mecânica da captura: congela zero em
+         * `finalAmountCents`, deixa o pagamento CAPTURED e publica a pendência
+         * em `pendingRefund`; quem fecha é o `refund-result` do terminal.
+         */
+        if (provider.capabilities.captureLocation === 'terminal') {
+          await this.prisma.chargingSession.update({
+            where: { id: sessionId },
+            data: { finalAmountCents: 0 },
+          });
+
+          this.logger.log(
+            { sessionId, paymentId: sessao.payment.id, provider: provider.name },
+            'devolução pendente no terminal — nenhuma energia foi entregue',
+          );
+
+          return { settled: true, reason: 'devolução pendente no terminal: nenhuma energia' };
+        }
+
         const devolvido = await provider.refund(providerPaymentId);
         await this.aplicarResultado(sessao.payment.id, devolvido);
 
@@ -406,7 +454,7 @@ export class PaymentsService {
           data: { finalAmountCents: 0 },
         });
 
-        return { settled: true, reason: 'Pix devolvido: nenhuma energia foi entregue' };
+        return { settled: true, reason: 'pré-pago devolvido: nenhuma energia foi entregue' };
       }
 
       // Valor fixo: o que sobrou não é devolvido (ADR-0010, decisão do cliente).
@@ -415,7 +463,7 @@ export class PaymentsService {
         data: { finalAmountCents: sessao.payment.amountCapturedCents },
       });
 
-      return { settled: true, reason: 'Pix de valor fixo — sem ajuste' };
+      return { settled: true, reason: 'pré-pago de valor fixo — sem ajuste' };
     }
 
     if (sessao.payment.status !== 'AUTHORIZED') {
@@ -545,17 +593,131 @@ export class PaymentsService {
       return;
     }
 
-    // Pix já capturado e recarga que não começou: devolução obrigatória.
-    if (pagamento.status === 'CAPTURED' && pagamento.method === 'PIX') {
+    // Pré-pago já cobrado e recarga que não começou: devolução obrigatória.
+    if (pagamento.status === 'CAPTURED' && isPrepaidMethod(pagamento.method)) {
       const provider = this.providers.get(pagamento.provider);
+
+      // Devolução que vive no equipamento: publica a pendência (valor final
+      // zero + pagamento CAPTURED) e espera o terminal executar o estorno.
+      if (provider.capabilities.captureLocation === 'terminal') {
+        await this.prisma.chargingSession.update({
+          where: { id: sessionId },
+          data: { finalAmountCents: 0 },
+        });
+
+        this.logger.log(
+          { sessionId, paymentId: pagamento.id, motivo },
+          'devolução do pré-pago pendente no terminal: a recarga não chegou a começar',
+        );
+        return;
+      }
+
       const resultado = await provider.refund(providerPaymentId);
       await this.aplicarResultado(pagamento.id, resultado);
 
       this.logger.log(
         { sessionId, paymentId: pagamento.id, motivo },
-        'Pix devolvido: a recarga não chegou a começar',
+        'pré-pago devolvido: a recarga não chegou a começar',
       );
     }
+  }
+
+  /**
+   * O terminal confirmou (ou não) a DEVOLUÇÃO de um pré-pago sem energia.
+   *
+   * Espelho do `registerTerminalCaptureResult` para o outro lado do dinheiro:
+   * a conciliação (ou o cancelamento de sessão que não começou) congelou
+   * `finalAmountCents = 0` num pagamento CAPTURED, e este método é quem o
+   * fecha em REFUNDED. Mesmas regras: valor exato, idempotente, falha mantém
+   * a pendência viva (e o alerta de cobrança pendente aceso).
+   */
+  async registerTerminalRefundResult(input: {
+    sessionId: string;
+    success: boolean;
+    amountRefundedCents?: number;
+    errorMessage?: string;
+  }): Promise<{ recorded: boolean; status: PaymentStatus | null; message: string }> {
+    const sessao = await this.prisma.chargingSession.findUnique({
+      where: { id: input.sessionId },
+      include: { payment: true },
+    });
+
+    if (!sessao?.payment) {
+      throw new NotFoundException({
+        code: 'PAYMENT_NOT_FOUND',
+        message: 'Esta recarga não tem pagamento associado.',
+      });
+    }
+
+    const pagamento = sessao.payment;
+    const provider = this.providers.get(pagamento.provider);
+
+    if (provider.capabilities.captureLocation !== 'terminal') {
+      throw new BadRequestException({
+        code: 'REFUND_NOT_TERMINAL',
+        message: 'A devolução deste provedor é feita pelo servidor, não pelo terminal.',
+      });
+    }
+
+    if (!isPrepaidMethod(pagamento.method)) {
+      throw new BadRequestException({
+        code: 'NOT_PREPAID',
+        message: 'Só pagamentos pré-pagos (débito e Pix) são devolvidos pelo terminal.',
+      });
+    }
+
+    const esperado = pagamento.amountCapturedCents;
+
+    // Reenvio de uma confirmação já aplicada: idempotente.
+    if (pagamento.status === 'REFUNDED') {
+      if (input.success) {
+        return { recorded: true, status: pagamento.status, message: 'Devolução já registrada.' };
+      }
+      throw new ConflictException({
+        code: 'ALREADY_REFUNDED',
+        message: 'Este pagamento já foi devolvido.',
+      });
+    }
+
+    if (pagamento.status !== 'CAPTURED' || sessao.finalAmountCents !== 0 || esperado <= 0) {
+      throw new ConflictException({
+        code: 'NO_PENDING_REFUND',
+        message: 'Não há devolução pendente para esta recarga.',
+      });
+    }
+
+    if (!input.success) {
+      this.logger.warn(
+        { sessionId: input.sessionId, paymentId: pagamento.id, erro: input.errorMessage },
+        'terminal reportou falha ao devolver o pré-pago — pagamento segue CAPTURED',
+      );
+      return {
+        recorded: false,
+        status: pagamento.status,
+        message: 'Falha registrada. A devolução continua pendente; tente novamente.',
+      };
+    }
+
+    if (input.amountRefundedCents !== esperado) {
+      throw new BadRequestException({
+        code: 'AMOUNT_MISMATCH',
+        message:
+          `O valor devolvido (${input.amountRefundedCents ?? 'nenhum'}) difere do valor pago ` +
+          `(${esperado}). A devolução por consumo zero é sempre integral.`,
+      });
+    }
+
+    await this.prisma.payment.update({
+      where: { id: pagamento.id },
+      data: { status: 'REFUNDED', amountRefundedCents: esperado, refundedAt: new Date() },
+    });
+
+    this.logger.log(
+      { sessionId: input.sessionId, paymentId: pagamento.id, valorCents: esperado },
+      'devolução do pré-pago confirmada pelo terminal',
+    );
+
+    return { recorded: true, status: 'REFUNDED', message: 'Valor pago devolvido integralmente.' };
   }
 
   /**
@@ -976,6 +1138,8 @@ export class PaymentsService {
     paymentId: string;
     sessionId: string;
     status: PaymentStatus;
+    /** Pré-pago: se a recarga não começar, o valor é DEVOLVIDO — não "nada cobrado". */
+    prePago?: boolean;
     amountAuthorizedCents: number;
     ceilingAmountCents: number;
   }): Promise<StartPaidSessionResult> {
@@ -998,7 +1162,7 @@ export class PaymentsService {
       message: comando.accepted
         ? 'Pagamento aprovado. Conecte o cabo e aguarde o início da recarga.'
         : `Pagamento aprovado, mas a recarga não pôde começar: ${comando.message} ` +
-          'Nada foi cobrado.',
+          (input.prePago ? 'O valor pago será devolvido.' : 'Nada foi cobrado.'),
       amountAuthorizedCents: input.amountAuthorizedCents,
       ceilingAmountCents: input.ceilingAmountCents,
       command: { accepted: comando.accepted, code: comando.code, message: comando.message },

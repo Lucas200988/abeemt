@@ -121,14 +121,85 @@
       android:textSize="18sp"
       android:visibility="gone" />
 
+    <TextView
+      android:id="@+id/textoEscolhaMeio"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="28dp"
+      android:text="@string/pronta_escolha"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="16sp" />
+
     <Button
       android:id="@+id/botaoIniciar"
       android:layout_width="match_parent"
-      android:layout_height="72dp"
-      android:layout_marginTop="32dp"
+      android:layout_height="64dp"
+      android:layout_marginTop="12dp"
       android:backgroundTint="@color/bora_primaria"
       android:text="@string/pronta_botao"
-      android:textSize="22sp" />
+      android:textSize="20sp" />
+
+    <!-- Débito e Pix: venda imediata com valor escolhido (ADR-0010). Só
+         aparecem quando o provedor configurado no servidor os declara. -->
+    <Button
+      android:id="@+id/botaoIniciarDebito"
+      android:layout_width="match_parent"
+      android:layout_height="56dp"
+      android:layout_marginTop="10dp"
+      android:text="@string/pronta_botao_debito"
+      android:textSize="18sp"
+      android:visibility="gone" />
+
+    <Button
+      android:id="@+id/botaoIniciarPix"
+      android:layout_width="match_parent"
+      android:layout_height="56dp"
+      android:layout_marginTop="10dp"
+      android:text="@string/pronta_botao_pix"
+      android:textSize="18sp"
+      android:visibility="gone" />
+  </LinearLayout>
+
+  <!-- ESCOLHA DO VALOR: débito e Pix (pré-pago). Os botões de valor são
+       criados em tempo de execução a partir das opções que o servidor publica. -->
+  <LinearLayout
+    android:id="@+id/telaEscolhaValor"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:gravity="center"
+      android:text="@string/escolha_titulo"
+      android:textSize="30sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:id="@+id/textoEscolhaSubtitulo"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:gravity="center"
+      android:textColor="@color/bora_texto_suave"
+      android:textSize="15sp" />
+
+    <LinearLayout
+      android:id="@+id/listaValores"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="20dp"
+      android:orientation="vertical" />
+
+    <Button
+      android:id="@+id/botaoVoltarEscolha"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:text="@string/escolha_voltar" />
   </LinearLayout>
 
   <!-- COBRANÇA: "aproxime o cartão" -->
@@ -145,9 +216,11 @@
       android:layout_height="64dp" />
 
     <TextView
+      android:id="@+id/textoCobrancaTitulo"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_marginTop="24dp"
+      android:gravity="center"
       android:text="@string/cobranca_titulo"
       android:textSize="30sp"
       android:textStyle="bold" />
@@ -299,6 +372,7 @@
       android:textSize="22sp" />
 
     <TextView
+      android:id="@+id/textoAvisoEncerrada"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="16dp"

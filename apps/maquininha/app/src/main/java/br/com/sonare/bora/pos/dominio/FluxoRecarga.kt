@@ -8,6 +8,7 @@ import br.com.sonare.bora.pos.api.PedidoEncerramento
 import br.com.sonare.bora.pos.api.PedidoHeartbeat
 import br.com.sonare.bora.pos.api.PedidoPareamento
 import br.com.sonare.bora.pos.api.PedidoResultadoCaptura
+import br.com.sonare.bora.pos.api.PedidoResultadoDevolucao
 import br.com.sonare.bora.pos.api.SessaoTerminal
 import br.com.sonare.bora.pos.pagamento.PagamentoPort
 import br.com.sonare.bora.pos.pagamento.ReferenciaPreAutorizacao
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.util.UUID
 
@@ -50,7 +52,13 @@ class FluxoRecarga(
     object Iniciando : Tela()
     data class Pareamento(val emAndamento: Boolean, val erro: String? = null) : Tela()
     data class Pronta(val contexto: ContextoTerminal) : Tela()
-    data class Cobranca(val valorCents: Long, val mensagemDoCartao: String? = null) : Tela()
+    /** Débito/Pix: o motorista escolhe quanto pagar entre as opções do servidor. */
+    data class EscolhaValor(val metodo: String, val opcoesCents: List<Long>) : Tela()
+    data class Cobranca(
+      val valorCents: Long,
+      val mensagemDoCartao: String? = null,
+      val metodo: String = "CREDIT_CARD",
+    ) : Tela()
     object Registrando : Tela()
     data class Carregando(val sessao: SessaoTerminal, val encerrando: Boolean = false) : Tela()
     data class Encerrada(val sessao: SessaoTerminal) : Tela()
@@ -136,24 +144,89 @@ class FluxoRecarga(
       }
       val resultado = pagamento.preAutorizar(valor, aoMensagem)
 
-      if (cobrancaCancelada) {
-        // Cartão aproximado no mesmo instante do cancelamento: a reserva saiu
-        // aprovada, mas o motorista desistiu. Desfaz já — senão o valor fica
-        // preso no limite do cartão até expirar, sem recarga nenhuma.
-        if (resultado is ResultadoPagamento.Aprovado) {
-          pagamento.cancelarPreAutorizacao(resultado.referencia)
-        }
-        carregarContexto()
-        return@trocarTrabalho
-      }
-
-      when (resultado) {
-        is ResultadoPagamento.Aprovado -> registrarNoBackend(resultado, valor)
-        is ResultadoPagamento.Recusado -> _tela.value = Tela.Erro(resultado.mensagem)
-        is ResultadoPagamento.Falha -> _tela.value = Tela.Erro(resultado.mensagem)
-      }
+      concluirCobranca(resultado, valor)
     }
   }
+
+  /**
+   * Débito ou Pix: antes de cobrar, o motorista escolhe quanto. As opções vêm
+   * do servidor (`prepaidOptionsCents`) — o app nunca inventa um valor.
+   */
+  fun escolherPrePago(metodo: String) {
+    val contexto = contextoAtual ?: return
+    val opcoes = contexto.prepaidOptionsCents.orEmpty()
+    trabalhoAtual?.cancel()
+    _tela.value = if (opcoes.isEmpty()) {
+      Tela.Erro("Este ponto não aceita $metodo no momento. Use o cartão de crédito.")
+    } else {
+      Tela.EscolhaValor(metodo, opcoes)
+    }
+  }
+
+  fun voltarParaPronta() {
+    trocarTrabalho { carregarContexto() }
+  }
+
+  /** O motorista escolheu o valor: venda imediata no débito/Pix (ADR-0010). */
+  fun pagarValorFixo(valorCents: Long) {
+    val escolha = _tela.value as? Tela.EscolhaValor ?: return
+    // Defesa em profundidade: só os valores publicados pelo servidor passam.
+    if (valorCents !in escolha.opcoesCents) return
+
+    cobrancaCancelada = false
+    trocarTrabalho {
+      _tela.value = Tela.Cobranca(valorCents, metodo = escolha.metodo)
+      val aoMensagem = { mensagem: String ->
+        if (_tela.value is Tela.Cobranca && !cobrancaCancelada) {
+          _tela.value = Tela.Cobranca(valorCents, mensagem, escolha.metodo)
+        }
+      }
+      val resultado = pagamento.cobrarValorFixo(escolha.metodo, valorCents, aoMensagem)
+      concluirCobranca(resultado, valorCents)
+    }
+  }
+
+  /** O que acontece depois que o SDK devolve — igual para reserva e venda. */
+  private suspend fun concluirCobranca(resultado: ResultadoPagamento, valorCents: Long) {
+    if (cobrancaCancelada) {
+      // Cartão aproximado no mesmo instante do cancelamento: saiu aprovado, mas
+      // o motorista desistiu. Desfaz já — no crédito o valor ficaria preso no
+      // limite até expirar; no pré-pago o dinheiro já saiu.
+      if (resultado is ResultadoPagamento.Aprovado) {
+        val desfeito = desfazerPagamento(resultado, valorCents)
+        if (desfeito !is ResultadoPagamento.Aprovado) {
+          _tela.value = Tela.Erro(
+            "O pagamento foi feito, mas o cancelamento falhou. Procure o operador para a devolução.",
+          )
+          return
+        }
+      }
+      carregarContexto()
+      return
+    }
+
+    when (resultado) {
+      is ResultadoPagamento.Aprovado -> registrarNoBackend(resultado, valorCents)
+      is ResultadoPagamento.Recusado -> _tela.value = Tela.Erro(resultado.mensagem)
+      is ResultadoPagamento.Falha -> _tela.value = Tela.Erro(resultado.mensagem)
+    }
+  }
+
+  /**
+   * Desfaz um pagamento que não vai virar recarga: cancela a reserva (crédito)
+   * ou estorna a venda (débito/Pix) — o SDK trata os dois de forma diferente.
+   */
+  private suspend fun desfazerPagamento(
+    aprovado: ResultadoPagamento.Aprovado,
+    valorCents: Long,
+  ): ResultadoPagamento =
+    if (ehPrePago(aprovado.metodo)) {
+      pagamento.estornar(aprovado.referencia, aprovado.metodo, valorCents)
+    } else {
+      pagamento.cancelarPreAutorizacao(aprovado.referencia)
+    }
+
+  private fun ehPrePago(metodo: String?) = metodo == "DEBIT_CARD" || metodo == "PIX"
 
   /**
    * O motorista desistiu na tela do cartão.
@@ -223,8 +296,8 @@ class FluxoRecarga(
             acompanharSessao(corpo.sessionId)
           } else {
             // O backend recusou a sessão (conector ocupado, teto…). O dinheiro
-            // está reservado à toa: devolve o limite ao motorista JÁ.
-            pagamento.cancelarPreAutorizacao(aprovado.referencia)
+            // está reservado — ou já saiu, no pré-pago — à toa: desfaz JÁ.
+            desfazerPagamento(aprovado, valorCents)
             _tela.value = Tela.Erro(corpo.message ?: "A recarga não pôde começar. Nada foi cobrado.")
           }
           return
@@ -232,7 +305,7 @@ class FluxoRecarga(
         // 4xx: o backend explicou o motivo; retentar não muda nada.
         ultimaFalha = "O servidor recusou a autorização (${resposta.code()})."
         if (resposta.code() in 400..499) {
-          pagamento.cancelarPreAutorizacao(aprovado.referencia)
+          desfazerPagamento(aprovado, valorCents)
           _tela.value = Tela.Erro(ultimaFalha)
           return
         }
@@ -279,6 +352,7 @@ class FluxoRecarga(
    */
   private suspend fun acompanharSessao(sessionId: String) {
     var tentativasDeCaptura = 0
+    var tentativasDeDevolucao = 0
     var encerradaDesde: Long? = null
 
     while (escopo.isActive) {
@@ -296,6 +370,13 @@ class FluxoRecarga(
             delay(1500)
             continue
           }
+          val devolucao = sessao.pendingRefund
+          if (!sessao.active && devolucao != null && tentativasDeDevolucao < 5) {
+            tentativasDeDevolucao += 1
+            resolverDevolucaoPendente(sessionId, devolucao.amountCents, sessao.paymentMethod)
+            delay(1500)
+            continue
+          }
           if (!sessao.active) {
             _tela.value = Tela.Encerrada(sessao)
 
@@ -304,7 +385,8 @@ class FluxoRecarga(
             // intervalo não há pendência ainda — e encerrar aqui deixaria a
             // captura publicada logo depois sem ninguém para executá-la. Só
             // está fechada quando o valor foi decidido E nada espera o terminal.
-            val cobrancaFechada = pendencia == null && sessao.finalAmountCents != null
+            val cobrancaFechada =
+              pendencia == null && devolucao == null && sessao.finalAmountCents != null
             if (cobrancaFechada) {
               cofre.limparReferenciaDaSessao(sessionId)
               return
@@ -389,6 +471,49 @@ class FluxoRecarga(
     }
   }
 
+  /**
+   * Devolução integral de um pré-pago sem energia (ADR-0010 §4), executada no
+   * SDK e confirmada ao backend. Com limite de tempo: o estorno de cartão
+   * pode pedir o cartão de novo no equipamento — se o motorista já foi embora,
+   * aborta, reporta a falha e a pendência fica visível no painel para o
+   * operador devolver pela retaguarda.
+   */
+  private suspend fun resolverDevolucaoPendente(sessionId: String, valorCents: Long, metodo: String?) {
+    val guardada = cofre.referenciaDaSessao(sessionId)
+    if (guardada == null) {
+      reportarDevolucao(sessionId, PedidoResultadoDevolucao(success = false, errorMessage = "terminal sem a referência do pagamento"))
+      return
+    }
+    val (providerPaymentId, transactionId, transactionCode) = guardada
+    val referencia = ReferenciaPreAutorizacao(
+      providerPaymentId = providerPaymentId,
+      transactionId = transactionId,
+      transactionCode = transactionCode,
+    )
+
+    val resultado = withTimeoutOrNull(ESPERA_MAXIMA_ESTORNO_MS) {
+      pagamento.estornar(referencia, metodo ?: "DEBIT_CARD", valorCents)
+    }
+    if (resultado == null) pagamento.abortar()
+
+    val pedido = when (resultado) {
+      is ResultadoPagamento.Aprovado -> PedidoResultadoDevolucao(success = true, amountRefundedCents = valorCents)
+      is ResultadoPagamento.Recusado -> PedidoResultadoDevolucao(success = false, errorMessage = resultado.mensagem)
+      is ResultadoPagamento.Falha -> PedidoResultadoDevolucao(success = false, errorMessage = resultado.mensagem)
+      null -> PedidoResultadoDevolucao(success = false, errorMessage = "tempo esgotado no estorno")
+    }
+    reportarDevolucao(sessionId, pedido)
+  }
+
+  private suspend fun reportarDevolucao(sessionId: String, pedido: PedidoResultadoDevolucao) {
+    try {
+      api.resultadoDevolucao(sessionId, pedido)
+    } catch (e: IOException) {
+      // Confirmação perdida na rede: a pendência continua publicada e o
+      // próximo ciclo do poll resolve — o backend é idempotente.
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Apoio
   // -------------------------------------------------------------------------
@@ -402,7 +527,7 @@ class FluxoRecarga(
       if (resposta.isSuccessful && contexto != null) {
         contextoAtual = contexto
         val ativa = contexto.activeSessionId
-        val comCapturaPendente = contexto.pendingCaptureSessionId
+        val comCapturaPendente = contexto.pendingCaptureSessionId ?: contexto.pendingRefundSessionId
         if (ativa != null) {
           // O app reabriu no meio de uma recarga: volta direto para a tela dela.
           acompanharSessao(ativa)
@@ -440,7 +565,9 @@ class FluxoRecarga(
         val contexto = resposta.body() ?: continue
         if (!resposta.isSuccessful || _tela.value !is Tela.Pronta) continue
         contextoAtual = contexto
-        val ativa = contexto.activeSessionId ?: contexto.pendingCaptureSessionId
+        val ativa = contexto.activeSessionId
+          ?: contexto.pendingCaptureSessionId
+          ?: contexto.pendingRefundSessionId
         if (ativa != null) return acompanharSessao(ativa)
         _tela.value = Tela.Pronta(contexto)
       } catch (e: IOException) {
@@ -482,5 +609,7 @@ class FluxoRecarga(
     const val ESPERA_MAXIMA_CONCILIACAO_MS = 3 * 60_000L
     const val INTERVALO_ATUALIZACAO_PRONTA_MS = 15_000L
     const val ESPERA_MAXIMA_ABORTO_MS = 10_000L
+    /** Estorno que pede o cartão de volta não pode prender a maquininha para sempre. */
+    const val ESPERA_MAXIMA_ESTORNO_MS = 90_000L
   }
 }

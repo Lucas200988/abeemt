@@ -757,6 +757,26 @@ permissão `MANAGE_PAYMENTS` explícita e o intent-filter
 inserido). Roteiro do primeiro dia e bateria de 7 testes:
 `apps/maquininha/README.md`.
 
+**2026-10-10 — CAPTURA PARCIAL PROVADA NO EQUIPAMENTO.** Gertec GPOS780S
+(terminal DEBUG do PagBank, Android 13), app `pagbankDebug`, PlugPag 1.35.0,
+backend com `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal`:
+
+| Etapa                          | Resultado                                                    |
+| ------------------------------ | ------------------------------------------------------------ |
+| Pareamento (túnel USB)         | ✅ token cifrado, contexto do servidor                       |
+| `doPreAutoCreate`              | ✅ reserva de **R$ 200,00** no cartão de crédito             |
+| Recarga (simulador OCPP)       | ✅ kWh ao vivo, encerramento pela maquininha                 |
+| Conciliação → `pendingCapture` | ✅ valor congelado; backend NÃO capturou                     |
+| `doEffectuatePreAuto`          | ✅ efetivado **R$ 5,00** (mínimo da tarifa) — **E2 provado** |
+| `capture-result`               | ✅ pagamento CAPTURED no painel                              |
+
+Por que é prova: nesse modo o backend nunca chama `capture()` — o status
+CAPTURED só existe se o terminal executou o SDK e confirmou. Ressalva honesta:
+o ambiente DEBUG é de QA (transações simuladas pelo PagBank); a produção usa o
+mesmo SDK e o mesmo fluxo, mas a primeira efetivação real será conferida no
+piloto. Faltam os testes 5–7 da bateria (cancelamento sem consumo, retomada
+após desligar, recusa).
+
 ### 8.2 Confirmar a autorização contra o adquirente
 
 É o resíduo do risco R-32. Hoje acreditamos no que a maquininha declara. Quando

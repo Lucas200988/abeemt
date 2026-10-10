@@ -135,9 +135,9 @@ O que ainda depende do PagBank:
       FINALIZADA — chamado 1424039934)
 - [x] Terminal de desenvolvimento **recebido em 2026-10-09** (Moderninha
       Smart 2 DEBUG) — roteiro do primeiro dia acima
-- [ ] **Comportamento validado no equipamento**: assinatura lida ≠
-      comportamento exercitado (briefing §18). O teste decisivo é a captura
-      parcial — reservar 500, efetivar 100
+- [x] **Captura parcial validada no equipamento (2026-10-10)**: reserva de
+      R$ 200,00, efetivação de R$ 5,00 pelo `doEffectuatePreAuto` na Gertec
+      GPOS780S DEBUG — ver fase-8 §8.1-K. Faltam os testes 5–7 da bateria
 - [ ] Homologação do APK no Guia de Boas Práticas (targetSdk 23 no flavor
       pagbank ✓, sem cleartext em release ✓, permissões mínimas ✓, assinatura
       V1+V2 na geração do APK)

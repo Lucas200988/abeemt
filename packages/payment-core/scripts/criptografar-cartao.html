@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Borá Carregar — criptografar cartão (SDK oficial PagBank)</title>
+    <!--
+      Esta página existe porque o gerador do portal de sandbox do PagBank
+      recusa a chave pública de PRODUÇÃO. Ela usa o SDK JavaScript OFICIAL do
+      PagBank (o mesmo que lojas online usam) para criptografar o cartão no
+      SEU navegador, com a chave que você colar.
+
+      O número do cartão NÃO sai desta página: a criptografia acontece
+      localmente, pelo código do próprio PagBank, e só o RESULTADO
+      criptografado é copiado para o .env. Nada é enviado a servidor nenhum.
+
+      Uso: abra este arquivo no navegador (duplo clique), cole a chave pública
+      impressa pelo pnpm verificar:pagbank, preencha o cartão e clique em
+      "Gerar criptograma" DUAS vezes — cada clique gera um resultado diferente
+      e cada um vale para UMA autorização.
+    -->
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+      label { display: block; margin-top: 1rem; font-weight: 600; }
+      input, textarea { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
+      textarea { font-family: monospace; font-size: 0.8rem; }
+      button { margin-top: 1.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; }
+      .resultado { margin-top: 1rem; padding: 1rem; background: #f0f7f0; border: 1px solid #9c9; word-break: break-all; font-family: monospace; font-size: 0.8rem; }
+      .erro { background: #fff0f0; border-color: #c99; }
+      .aviso { background: #fffbe6; border: 1px solid #e6d780; padding: 0.75rem; margin-top: 1rem; }
+      small { color: #555; }
+    </style>
+  </head>
+  <body>
+    <h1>Criptografar cartão — SDK oficial PagBank</h1>
+    <p class="aviso">
+      Tudo acontece <strong>neste navegador</strong>: o número do cartão não é
+      enviado a lugar nenhum. Só o <em>resultado criptografado</em> vai para o
+      seu <code>.env</code>. Feche a página ao terminar.
+    </p>
+
+    <label>Chave pública (a impressa pelo <code>pnpm verificar:pagbank</code>)
+      <textarea id="chave" rows="5" placeholder="MIIBIjANBgkqhkiG9w0BAQEF..."></textarea>
+    </label>
+    <label>Número do cartão <input id="numero" inputmode="numeric" autocomplete="off" /></label>
+    <label>Nome (como impresso no cartão) <input id="nome" autocomplete="off" /></label>
+    <label>Mês de validade (2 dígitos) <input id="mes" placeholder="12" autocomplete="off" /></label>
+    <label>Ano de validade (4 dígitos) <input id="ano" placeholder="2030" autocomplete="off" /></label>
+    <label>CVV <input id="cvv" inputmode="numeric" autocomplete="off" /></label>
+
+    <button id="gerar">Gerar criptograma</button>
+    <small> — clique DUAS vezes: cada clique gera um resultado novo (cada um vale UMA autorização)</small>
+
+    <div id="saida"></div>
+
+    <script src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js"></script>
+    <script>
+      let contador = 0;
+      document.getElementById('gerar').addEventListener('click', () => {
+        const saida = document.getElementById('saida');
+        if (typeof PagSeguro === 'undefined') {
+          saida.innerHTML = '<div class="resultado erro">O SDK do PagBank não carregou — confira sua internet e recarregue a página.</div>' + saida.innerHTML;
+          return;
+        }
+        const card = PagSeguro.encryptCard({
+          publicKey: document.getElementById('chave').value.trim(),
+          holder: document.getElementById('nome').value.trim(),
+          number: document.getElementById('numero').value.replace(/\D/g, ''),
+          expMonth: document.getElementById('mes').value.trim(),
+          expYear: document.getElementById('ano').value.trim(),
+          securityCode: document.getElementById('cvv').value.trim(),
+        });
+        if (card.hasErrors) {
+          const erros = (card.errors || []).map((e) => `${e.code}: ${e.message}`).join(' · ');
+          saida.innerHTML = `<div class="resultado erro">Erro do SDK: ${erros || 'dados inválidos'}</div>` + saida.innerHTML;
+          return;
+        }
+        contador += 1;
+        const id = `cripto-${contador}`;
+        saida.innerHTML =
+          `<div class="resultado">` +
+          `<strong>Resultado ${contador}</strong> ` +
+          `<button onclick="navigator.clipboard.writeText(document.getElementById('${id}').textContent)">copiar</button>` +
+          `<div id="${id}">${card.encryptedCard}</div>` +
+          `</div>` + saida.innerHTML;
+      });
+    </script>
+  </body>
+</html>

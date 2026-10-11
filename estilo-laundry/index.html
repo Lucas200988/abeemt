@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="robots" content="noindex,nofollow,noarchive"/>
+<meta name="referrer" content="no-referrer"/>
+<title>Estilo Laundry · Dashboard Financeiro 2026</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f4f5f3;--surface:#fcfcfb;--surface-2:#f1f1ee;
+  --ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);
+  --accent:#2a78d6;--accent-ink:#1c5cab;
+  --rec:#2a78d6;--desp:#eb6834;--pos:#2a78d6;--neg:#e34948;
+  --good-text:#006300;--bad-text:#b42318;
+  --st-real:#0ca30c;--st-proj:#2a78d6;--st-misto:#fab219;
+  --shadow:0 1px 2px rgba(11,11,11,.04),0 4px 16px rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d;--surface:#1a1a19;--surface-2:#242422;
+    --ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+    --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+    --accent:#3987e5;--accent-ink:#86b6ef;
+    --rec:#3987e5;--desp:#d95926;--pos:#3987e5;--neg:#e66767;
+    --good-text:#0ca30c;--bad-text:#f08a8a;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--surface-2:#242422;
+  --ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+  --accent:#3987e5;--accent-ink:#86b6ef;
+  --rec:#3987e5;--desp:#d95926;--pos:#3987e5;--neg:#e66767;
+  --good-text:#0ca30c;--bad-text:#f08a8a;
+  --shadow:none;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--page);color:var(--ink);line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;padding:28px 0 20px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent-ink)}
+h1{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.15;margin-top:4px}
+.sub{color:var(--ink-2);font-size:14px;margin-top:4px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ring);background:var(--surface);border-radius:10px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--shadow);transition:background .15s,opacity .15s}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;font-weight:700;letter-spacing:-.005em}
+.card .desc{color:var(--ink-2);font-size:13px;margin-top:2px}
+.card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+.stack{display:grid;gap:14px}
+.note{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.note .ico{font-size:18px;line-height:1.2;width:24px;text-align:center;color:var(--muted)}
+.note h2{font-size:14px}
+.note p{color:var(--ink-2);font-size:13px;margin-top:3px}
+.status-line{margin-top:10px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.status-line .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.status-line.ok .dot{background:var(--st-real)}
+.status-line.err .dot{background:var(--neg)}
+.status-line strong{font-weight:600}
+details.diag{margin-top:10px;font-size:13px;color:var(--ink-2)}
+details.diag summary{cursor:pointer;font-weight:600;color:var(--ink)}
+details.diag ul{margin:8px 0 0 18px;display:grid;gap:3px}
+details.diag li.warn::marker{color:var(--st-misto)}
+.filters{display:grid;gap:14px;grid-template-columns:1fr;align-items:end}
+@media (min-width:760px){.filters{grid-template-columns:minmax(220px,300px) 1fr}}
+.field label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+.select{position:relative}
+.select select{appearance:none;-webkit-appearance:none;width:100%;border:1px solid var(--ring);background:var(--surface);border-radius:10px;padding:10px 36px 10px 12px;font-size:14px;font-weight:500}
+.select::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:var(--surface-2);border:1px solid var(--ring);border-radius:10px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(11,11,11,.08)}
+.hint{grid-column:1/-1;font-size:12px;color:var(--muted)}
+.kpis{display:grid;gap:14px;grid-template-columns:repeat(2,1fr)}
+@media (min-width:860px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{padding:16px 18px}
+.kpi .lbl{font-size:13px;color:var(--ink-2);font-weight:500}
+.kpi .val{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:6px;line-height:1.1;word-break:break-word}
+@media (min-width:860px){.kpi .val{font-size:28px}}
+.kpi .val.neg{color:var(--bad-text)}
+.kpi .foot{font-size:12px;color:var(--muted);margin-top:6px}
+.charts{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:860px){.charts{grid-template-columns:1fr 1fr}}
+.chart{position:relative;min-height:120px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:inherit;fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.chart .lbl-ink text{fill:var(--ink-2)}
+.chart .grid line{stroke:var(--grid);stroke-width:1;shape-rendering:crispEdges}
+.chart .axis line{stroke:var(--axis);stroke-width:1;shape-rendering:crispEdges}
+.chart .hit{fill:transparent;cursor:default}
+.chart .hit:hover+g rect,.chart .hit:focus-visible+g rect{opacity:.78}
+.chart .hit:focus-visible{outline:none;fill:var(--ring)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend i.line{height:2px;width:14px;border-radius:1px}
+.tip{position:absolute;pointer-events:none;z-index:5;background:var(--ink);color:var(--surface);padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.35;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;transition:opacity .08s;min-width:150px;max-width:260px}
+.tip.on{opacity:1}
+.tip .t{font-weight:700;margin-bottom:4px}
+.tip .r{display:flex;justify-content:space-between;gap:12px}
+.tip .r b{font-weight:600;font-variant-numeric:tabular-nums}
+.tip .r i{display:inline-block;width:10px;height:2px;margin-right:6px;vertical-align:middle;border-radius:1px}
+.empty{color:var(--muted);font-size:13px;padding:22px 0;text-align:center}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--grid);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--grid);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.neg{color:var(--bad-text)}
+td.pos{color:var(--good-text)}
+td.dim{color:var(--muted)}
+tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;background:var(--surface)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.realizado::before{background:var(--st-real)}
+.pill.projetado::before{background:var(--st-proj)}
+.pill.misto::before{background:var(--st-misto)}
+td .select select{padding:6px 30px 6px 10px;font-size:12px;border-radius:8px;min-width:150px}
+td .select::after{right:12px}
+.bar-cell{display:flex;align-items:center;gap:10px}
+.bar-cell .track{flex:1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;min-width:60px}
+.bar-cell .fill{height:100%;background:var(--desp);border-radius:3px}
+.tools{display:flex;gap:10px;flex-wrap:wrap}
+.tools .field{min-width:180px;flex:1}
+.tools input[type=search]{width:100%;border:1px solid var(--ring);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:14px}
+.count{font-size:12px;color:var(--muted);margin-top:8px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:28px 16px 0;line-height:1.5}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <div class="eyebrow">Estilo Laundry · Financeiro</div>
+    <h1>Dashboard 2026</h1>
+    <p class="sub">Resultado mensal, fluxo de caixa e análise de despesas</p>
+  </div>
+  <div class="actions">
+    <label class="btn primary" for="file">
+      <span aria-hidden="true">⬆︎</span> Importar planilha Excel
+      <input id="file" type="file" accept=".xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/>
+    </label>
+    <button class="btn" id="reload" type="button" disabled>Recarregar dados</button>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="card note" aria-labelledby="h-fonte">
+    <div class="ico" aria-hidden="true">ⓘ</div>
+    <div>
+      <h2 id="h-fonte">Fonte de dados: aba “2026 - Lav”</h2>
+      <p>Selecione a planilha atualizada. O arquivo é lido localmente no seu navegador; nenhuma outra aba é utilizada. Para ler arquivos Excel, é necessária conexão com a internet para carregar a biblioteca de importação.</p>
+      <div class="status-line" id="file-status" role="status"><span class="dot"></span><span>Nenhuma planilha carregada.</span></div>
+      <details class="diag" id="diag" hidden>
+        <summary>Como a planilha foi interpretada</summary>
+        <ul id="diag-list"></ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="card note" aria-labelledby="h-priv">
+    <div class="ico" aria-hidden="true">🔒</div>
+    <div>
+      <h2 id="h-priv">Privacidade dos dados</h2>
+      <p>Importe o Excel pelo app Arquivos. O Dashboard lê apenas “2026 - Lav” no próprio navegador; não envia a planilha para a hospedagem. A privacidade do site deve ser confirmada nas configurações do projeto Netlify.</p>
+    </div>
+  </section>
+
+  <section class="card filters" aria-label="Filtros">
+    <div class="field">
+      <label for="period">Período analisado</label>
+      <div class="select"><select id="period"></select></div>
+    </div>
+    <div class="field">
+      <label id="lbl-status">Classificação dos lançamentos</label>
+      <div class="seg" role="group" aria-labelledby="lbl-status" id="status-seg">
+        <button type="button" data-status="all" aria-pressed="true">Todos os status</button>
+        <button type="button" data-status="realizado" aria-pressed="false">Realizado</button>
+        <button type="button" data-status="projetado" aria-pressed="false">Projetado</button>
+        <button type="button" data-status="misto" aria-pressed="false">Misto / a revisar</button>
+      </div>
+    </div>
+    <p class="hint">Status inicial de outubro a dezembro: misto (realizado + previsto). Ajuste a classificação por mês conforme necessário.</p>
+  </section>
+
+  <section class="kpis" aria-label="Indicadores">
+    <div class="card kpi"><div class="lbl">Receitas</div><div class="val" id="k-rec">R$ 0,00</div><div class="foot" id="k-rec-f">No período selecionado</div></div>
+    <div class="card kpi"><div class="lbl">Despesas totais</div><div class="val" id="k-desp">R$ 0,00</div><div class="foot" id="k-desp-f">Inclui reserva registrada na planilha</div></div>
+    <div class="card kpi"><div class="lbl">Resultado do período</div><div class="val" id="k-res">R$ 0,00</div><div class="foot" id="k-res-f">Receitas menos despesas</div></div>
+    <div class="card kpi"><div class="lbl">Saldo final</div><div class="val" id="k-saldo">R$ 0,00</div><div class="foot" id="k-saldo-f">Saldo de caixa acumulado</div></div>
+  </section>
+
+  <section class="charts" aria-label="Gráficos">
+    <div class="card">
+      <div class="card-head"><div><h2>Receitas x despesas</h2><p class="desc">Comparação mensal; o filtro de status é aplicado aos meses classificados.</p></div></div>
+      <div class="legend"><span><i style="background:var(--rec)"></i>Receitas</span><span><i style="background:var(--desp)"></i>Despesas</span></div>
+      <div class="chart" id="c-recdesp"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>Resultado e margem</h2><p class="desc">Resultado mensal e percentual sobre as receitas.</p></div></div>
+      <div class="legend"><span><i style="background:var(--pos)"></i>Resultado positivo</span><span><i style="background:var(--neg)"></i>Resultado negativo</span><span><i class="line" style="background:var(--ink-2)"></i>Margem (%)</span></div>
+      <div class="chart" id="c-resultado"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>Despesas por categoria</h2><p class="desc">Distribuição dos gastos no período selecionado.</p></div></div>
+      <div class="chart" id="c-categorias"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>Composição das despesas</h2><p class="desc">Categoria e valor total no período selecionado.</p></div></div>
+      <div id="t-composicao"></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-mensal">
+    <div class="card-head"><div><h2 id="h-mensal">Resumo mensal</h2><p class="desc">Classifique cada mês como realizado, projetado ou misto. Outubro a dezembro começam como mistos, conforme informado.</p></div></div>
+    <div id="t-mensal"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-det">
+    <div class="card-head"><div><h2 id="h-det">Detalhamento das despesas</h2><p class="desc">Explore os valores por categoria, tipo e item individual. Os valores vêm das células da planilha; fórmulas agregadas em uma célula aparecem como o item informado nela.</p></div></div>
+    <div class="tools">
+      <div class="field"><label for="f-cat">Categoria</label><div class="select"><select id="f-cat"><option value="">Todas as categorias</option></select></div></div>
+      <div class="field"><label for="f-busca">Buscar item</label><input id="f-busca" type="search" placeholder="Ex.: energia, aluguel…" autocomplete="off"/></div>
+    </div>
+    <div id="t-detalhe" style="margin-top:12px"></div>
+  </section>
+</div>
+
+<footer>Estilo Laundry · Dashboard financeiro local · Processamento local no navegador. Somente a aba “2026 - Lav” é utilizada; o arquivo Excel não é enviado para a hospedagem.</footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ========= Configuração ========= */
+const SHEET_NAME = '2026 - Lav';
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const STORE = { data:'el-dash:data', status:'el-dash:status', period:'el-dash:period', filter:'el-dash:filter' };
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_ABR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const STATUS_LABEL = { realizado:'Realizado', projetado:'Projetado', misto:'Misto / a revisar' };
+const DEFAULT_STATUS = m => (m >= 10 ? 'misto' : 'realizado');
+
+/* ========= Utilidades ========= */
+const $ = s => document.querySelector(s);
+const fmtBRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+const fmtPct = v => { if (v == null || !isFinite(v)) return '—'; const r = Math.round(v * 10) / 10; return new Intl.NumberFormat('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }).format(r === 0 ? 0 : r) + '%'; };
+const brl = v => (v == null ? '—' : fmtBRL.format(v));
+function compact(v){
+  const a = Math.abs(v); const s = v < 0 ? '-' : '';
+  if (a >= 1e6) return s + trimNum(a/1e6) + ' mi';
+  if (a >= 1e3) return s + trimNum(a/1e3) + ' mil';
+  return s + trimNum(a);
+}
+function trimNum(n){ return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: n < 10 ? 1 : 0 }).format(n); }
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function store(k, v){ try { if (v === undefined) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function load(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }
+function el(tag, attrs, children){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){ if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+  (children || []).forEach(c => e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+  return e;
+}
+const NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs, children){
+  const e = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs){ if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  (children || []).forEach(c => e.appendChild(c));
+  return e;
+}
+function niceTicks(min, max, n){
+  if (min === max){ max = min + 1; }
+  const span = max - min, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const steps = [1, 2, 2.5, 5, 10]; let step = mag * 10;
+  for (const s of steps){ if (raw / mag <= s){ step = s * mag; break; } }
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const t = []; for (let v = lo; v <= hi + step/2; v += step) t.push(+v.toFixed(10));
+  return { lo, hi, ticks:t };
+}
+
+/* ========= Leitura da planilha ========= */
+function parseNumber(v){
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (typeof v === 'boolean') return null;
+  let s = String(v).trim();
+  if (!s || s === '-' || s === '—') return null;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)){ neg = true; s = s.slice(1,-1); }
+  if (/^-/.test(s)){ neg = true; s = s.slice(1); }
+  s = s.replace(/r\$/i,'').replace(/\s/g,'');
+  if (!/^[\d.,]+$/.test(s)) return null;
+  if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g,'').replace(',','.');
+  else if (/\.\d{1,2}$/.test(s) && !/,/.test(s)) s = s;  // 1234.56
+  else s = s.replace(/[.,]/g,'');
+  const n = parseFloat(s);
+  return isFinite(n) ? (neg ? -n : n) : null;
+}
+function monthOf(v){
+  if (v == null) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v.getMonth() + 1;
+  if (typeof v === 'number'){ // serial Excel (2026 ≈ 46000..46400)
+    if (v > 40000 && v < 60000){ const d = new Date(Math.round((v - 25569) * 86400000)); return d.getUTCMonth() + 1; }
+    return null;
+  }
+  const s = norm(v).replace(/\./g,'');
+  if (!s) return null;
+  const m1 = s.match(/^(\d{1,2})[\/\-](\d{2,4})$/); if (m1 && +m1[1] >= 1 && +m1[1] <= 12) return +m1[1];
+  const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})$/); if (m2 && +m2[2] >= 1 && +m2[2] <= 12) return +m2[2];
+  for (let i = 0; i < 12; i++){
+    const full = norm(MESES[i]);
+    if (s === MESES_ABR[i] || s === full) return i + 1;
+    if (new RegExp('^' + MESES_ABR[i] + '[a-z]*([\\s\\/\\-]*(de\\s*)?(20)?26)?$').test(s)) return i + 1;
+  }
+  return null;
+}
+const RX = {
+  receita: /\b(receita|receitas|faturamento|entrada|entradas|vendas|recebimento|recebimentos)\b/,
+  despesa: /\b(despesa|despesas|saida|saidas|custo|custos|gasto|gastos|pagamento|pagamentos)\b/,
+  total: /\b(total|totais|subtotal|soma)\b/,
+  saldoIni: /saldo\s*(inicial|anterior|de\s*abertura)/,
+  saldoFim: /saldo\s*(final|acumulado|de\s*caixa|em\s*caixa)|^saldo$/,
+  resultado: /\b(resultado|lucro|prejuizo|superavit|deficit|margem)\b/,
+  reserva: /\breserva/,
+};
+
+function parseSheet(aoa){
+  const diag = []; const warn = m => diag.push({ warn:true, text:m }); const info = m => diag.push({ text:m });
+  const rows = aoa || [];
+  // 1) linha de cabeçalho com os meses
+  let headerRow = -1, monthCols = {}, best = 0;
+  for (let r = 0; r < Math.min(rows.length, 60); r++){
+    const row = rows[r] || []; const cols = {}; let count = 0;
+    for (let c = 0; c < row.length; c++){ const m = monthOf(row[c]); if (m && !cols[m]){ cols[m] = c; count++; } }
+    if (count > best){ best = count; headerRow = r; monthCols = cols; }
+    if (count >= 12) break;
+  }
+  if (headerRow < 0 || best < 3){
+    return { ok:false, error:'Não foi possível localizar a linha com os meses (jan–dez) na aba “' + SHEET_NAME + '”.', diag };
+  }
+  const monthList = Object.keys(monthCols).map(Number).sort((a,b)=>a-b);
+  info('Meses encontrados na linha ' + (headerRow + 1) + ': ' + monthList.map(m => MESES_ABR[m-1]).join(', ') + '.');
+  if (monthList.length < 12) warn('A planilha não tem colunas para todos os meses; meses ausentes aparecem sem dados.');
+  const firstMonthCol = Math.min(...Object.values(monthCols));
+  const monthColSet = new Set(Object.values(monthCols));
+
+  // 2) percorre linhas
+  const items = []; const saldoIni = {}, saldoFim = {}, sheetResultado = {};
+  let section = null, stack = [];   // stack: [{col,label}]
+  let ignored = { totais:0, semRotulo:0, vazias:0, calculadas:0 };
+  for (let r = headerRow + 1; r < rows.length; r++){
+    const row = rows[r] || [];
+    let labelCol = -1, label = '';
+    for (let c = 0; c < firstMonthCol; c++){
+      const v = row[c];
+      if (v != null && String(v).trim() !== '' && parseNumber(v) === null){ labelCol = c; label = String(v).trim(); break; }
+    }
+    if (labelCol < 0){ // talvez rótulo numérico/ano? tenta texto qualquer fora das colunas de mês
+      for (let c = 0; c < firstMonthCol; c++){ const v = row[c]; if (v != null && String(v).trim() !== ''){ labelCol = c; label = String(v).trim(); break; } }
+    }
+    const values = {}; let hasValues = false;
+    for (const m of monthList){ const n = parseNumber(row[monthCols[m]]); if (n != null){ values[m] = n; hasValues = true; } }
+    const nl = norm(label);
+    if (!label && !hasValues){ ignored.vazias++; continue; }
+    if (!label){ ignored.semRotulo++; continue; }
+    if (RX.saldoIni.test(nl)){ Object.assign(saldoIni, values); continue; }
+    if (RX.saldoFim.test(nl)){ Object.assign(saldoFim, values); continue; }
+    if (RX.total.test(nl)){ ignored.totais++; continue; }
+    if (RX.resultado.test(nl)){ if (hasValues) Object.assign(sheetResultado, values); ignored.calculadas++; continue; }
+    if (!hasValues){
+      // cabeçalho: seção (receitas/despesas) ou categoria/tipo
+      const isRec = RX.receita.test(nl) && !RX.despesa.test(nl), isDesp = RX.despesa.test(nl) && !RX.receita.test(nl);
+      if (isRec || isDesp){
+        section = isRec ? 'receita' : 'despesa'; stack = [];
+        // "Despesas fixas" é seção e também categoria; "DESPESAS" sozinho é só seção
+        const rest = nl.replace(isRec ? RX.receita : RX.despesa, '').replace(/\b(de|da|do|das|dos|com|e)\b/g,'').replace(/[:\-–]/g,'').trim();
+        if (rest) stack.push({ col:labelCol, label });
+        continue;
+      }
+      // empilha por coluna (coluna menor = nível mais alto)
+      while (stack.length && stack[stack.length-1].col >= labelCol) stack.pop();
+      if (stack.length >= 2) stack.pop();
+      stack.push({ col:labelCol, label });
+      continue;
+    }
+    // item com valores
+    const cat = stack[0] ? stack[0].label : null;
+    const tipo = stack[1] ? stack[1].label : null;
+    let sec = section;
+    if (!sec){ sec = (RX.receita.test(nl) || (cat && RX.receita.test(norm(cat)))) ? 'receita' : 'despesa'; }
+    // categoria de nível superior que é uma seção disfarçada (ex.: "Despesas fixas")
+    let categoria = cat || (sec === 'receita' ? 'Receitas' : 'Despesas');
+    items.push({ row:r + 1, section:sec, categoria, tipo, item:label, values, reserva:RX.reserva.test(nl) || (cat && RX.reserva.test(norm(cat))) });
+  }
+  // 3) convenção de sinal: despesas negativas → absolutas
+  const desp = items.filter(i => i.section === 'despesa');
+  const negCount = desp.reduce((a,i) => a + Object.values(i.values).filter(v => v < 0).length, 0);
+  const posCount = desp.reduce((a,i) => a + Object.values(i.values).filter(v => v > 0).length, 0);
+  if (negCount > posCount){ desp.forEach(i => { for (const m in i.values) i.values[m] = Math.abs(i.values[m]); }); info('Despesas registradas como valores negativos; convertidas para positivas.'); }
+  const rec = items.filter(i => i.section === 'receita');
+  const recNeg = rec.reduce((a,i) => a + Object.values(i.values).filter(v => v < 0).length, 0);
+  if (recNeg > 0 && recNeg >= rec.reduce((a,i)=>a+Object.keys(i.values).length,0)/2){ rec.forEach(i => { for (const m in i.values) i.values[m] = Math.abs(i.values[m]); }); }
+
+  info(rec.length + ' itens de receita e ' + desp.length + ' itens de despesa lidos (' + new Set(desp.map(i=>i.categoria)).size + ' categorias de despesa).');
+  if (ignored.totais) info(ignored.totais + ' linha(s) de totais ignoradas para evitar dupla contagem.');
+  if (ignored.calculadas) info(ignored.calculadas + ' linha(s) de resultado/saldo calculadas pela planilha foram ignoradas; o dashboard recalcula esses valores.');
+  if (ignored.semRotulo) warn(ignored.semRotulo + ' linha(s) com valores mas sem descrição foram ignoradas.');
+  if (Object.keys(saldoIni).length) info('Saldo inicial lido da planilha (' + Object.keys(saldoIni).map(m=>MESES_ABR[m-1]).join(', ') + ').'); else warn('Nenhuma linha “Saldo inicial” encontrada; o saldo acumulado parte de zero.');
+  if (Object.keys(saldoFim).length) info('Linha “Saldo final” da planilha usada quando preenchida; demais meses são calculados.');
+  if (!rec.length) warn('Nenhuma receita identificada. Verifique se há um cabeçalho “Receitas” acima dos itens de receita.');
+  if (!desp.length) warn('Nenhuma despesa identificada.');
+  if (desp.some(i => i.reserva)) info('Itens de reserva são contabilizados como despesa, conforme a planilha.');
+  return { ok:true, items, saldoIni, saldoFim, sheetResultado, monthList, diag };
+}
+
+/* ========= Estado ========= */
+const state = {
+  model: null, meta: load(STORE.data, null) ? load(STORE.data).meta : null,
+  period: load(STORE.period, 'year'),
+  filter: load(STORE.filter, 'all'),
+  monthStatus: Object.assign(Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, DEFAULT_STATUS(i+1)])), load(STORE.status, {})),
+  cat: '', search: '', detLimit: 100,
+};
+if (!['all','realizado','projetado','misto'].includes(state.filter)) state.filter = 'all';
+
+/* ========= Biblioteca XLSX (carregada sob demanda) ========= */
+let xlsxPromise = null;
+function ensureXLSX(){
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (xlsxPromise) return xlsxPromise;
+  xlsxPromise = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = XLSX_URL; s.async = true;
+    s.onload = () => window.XLSX ? res(window.XLSX) : rej(new Error('Biblioteca carregada, mas indisponível.'));
+    s.onerror = () => { xlsxPromise = null; rej(new Error('Não foi possível carregar a biblioteca de importação. Verifique a conexão com a internet e tente novamente.')); };
+    document.head.appendChild(s);
+  });
+  return xlsxPromise;
+}
+
+/* ========= Importação ========= */
+function setStatus(kind, html){
+  const box = $('#file-status'); box.className = 'status-line' + (kind ? ' ' + kind : '');
+  box.replaceChildren(el('span', { class:'dot' }), ...html);
+}
+function showDiag(diag){
+  const d = $('#diag'), ul = $('#diag-list'); ul.replaceChildren();
+  if (!diag || !diag.length){ d.hidden = true; return; }
+  diag.forEach(x => ul.appendChild(el('li', { class: x.warn ? 'warn' : '', text:x.text })));
+  d.hidden = false;
+}
+async function importFile(file){
+  if (!file) return;
+  setStatus('', [el('span', { text:'Lendo “' + file.name + '”…' })]);
+  try {
+    const XLSX = await ensureXLSX();
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true, dense:false });
+    const name = wb.SheetNames.find(n => n === SHEET_NAME) || wb.SheetNames.find(n => norm(n).replace(/\s+/g,'') === norm(SHEET_NAME).replace(/\s+/g,''));
+    if (!name){ throw new Error('A aba “' + SHEET_NAME + '” não foi encontrada. Abas disponíveis: ' + wb.SheetNames.join(', ') + '.'); }
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, raw:true, defval:null, blankrows:true });
+    const safe = aoa.map(r => r.map(v => v instanceof Date ? { __d:v.getTime() } : v));
+    const meta = { file:file.name, when:Date.now(), sheet:name, rows:aoa.length };
+    applyData(safe, meta);
+    store(STORE.data, { aoa:safe, meta });
+  } catch (e){
+    setStatus('err', [el('span', {}, [el('strong', { text:'Falha na importação. ' }), String(e && e.message || e)])]);
+    showDiag(null);
+  }
+}
+function applyData(safeAoa, meta){
+  const aoa = safeAoa.map(r => r.map(v => (v && typeof v === 'object' && '__d' in v) ? new Date(v.__d) : v));
+  const model = parseSheet(aoa);
+  state.meta = meta;
+  if (!model.ok){
+    state.model = null;
+    setStatus('err', [el('span', {}, [el('strong', { text:'Planilha carregada, mas não interpretada. ' }), model.error])]);
+    showDiag(model.diag); render(); return;
+  }
+  state.model = model;
+  const when = new Date(meta.when);
+  setStatus('ok', [el('span', {}, [el('strong', { text:meta.file }), ' · aba “' + meta.sheet + '” · importada em ' + when.toLocaleDateString('pt-BR') + ' às ' + when.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) + '.'])]);
+  showDiag(model.diag);
+  $('#reload').disabled = false;
+  render();
+}
+function reload(){
+  const saved = load(STORE.data, null);
+  if (!saved || !saved.aoa){ setStatus('', [el('span', { text:'Nenhuma planilha salva neste navegador. Importe o arquivo novamente.' })]); return; }
+  applyData(saved.aoa, Object.assign({}, saved.meta, { when: saved.meta.when }));
+  setStatus('ok', [el('span', {}, [el('strong', { text:saved.meta.file }), ' · dados recarregados da última importação (' + new Date(saved.meta.when).toLocaleDateString('pt-BR') + '). Para números novos, importe a planilha atualizada.'])]);
+}
+
+/* ========= Períodos ========= */
+function periodOptions(){
+  const now = new Date(); const cur = now.getFullYear() === 2026 ? now.getMonth() + 1 : 12;
+  const o = [ ['year','Ano completo (2026)'], ['ytd','Janeiro até ' + MESES[cur-1].toLowerCase()], ['h1','1º semestre (jan–jun)'], ['h2','2º semestre (jul–dez)'],
+    ['q1','1º trimestre'], ['q2','2º trimestre'], ['q3','3º trimestre'], ['q4','4º trimestre'] ];
+  MESES.forEach((m,i) => o.push(['m' + (i+1), m]));
+  return o;
+}
+function periodMonths(p){
+  const now = new Date(); const cur = now.getFullYear() === 2026 ? now.getMonth() + 1 : 12;
+  const range = (a,b) => Array.from({length:b-a+1},(_,i)=>a+i);
+  if (p === 'ytd') return range(1, cur);
+  if (p === 'h1') return range(1,6); if (p === 'h2') return range(7,12);
+  const q = /^q([1-4])$/.exec(p); if (q) return range((q[1]-1)*3+1, q[1]*3);
+  const m = /^m(\d{1,2})$/.exec(p); if (m) return [+m[1]];
+  return range(1,12);
+}
+
+/* ========= Cálculo ========= */
+function monthly(model){
+  const out = {}; let running = null;
+  for (let m = 1; m <= 12; m++){
+    let rec = 0, desp = 0, has = false;
+    for (const it of model.items){ const v = it.values[m]; if (v == null) continue; has = true; if (it.section === 'receita') rec += v; else desp += v; }
+    const res = rec - desp;
+    if (running == null) running = model.saldoIni[m] != null ? model.saldoIni[m] : 0;
+    else if (model.saldoIni[m] != null && !has) running = model.saldoIni[m];
+    let saldo = running + (has ? res : 0), fromSheet = false;
+    if (model.saldoFim[m] != null){ saldo = model.saldoFim[m]; fromSheet = true; }
+    running = saldo;
+    out[m] = { m, rec, desp, res, margem: rec > 0 ? res / rec * 100 : null, saldo, fromSheet, has, status: state.monthStatus[m] };
+  }
+  return out;
+}
+function selectedMonths(){
+  const pm = periodMonths(state.period);
+  return pm.filter(m => state.filter === 'all' || state.monthStatus[m] === state.filter);
+}
+
+/* ========= Renderização ========= */
+function render(){
+  const model = state.model;
+  const sel = selectedMonths();
+  const months = model ? monthly(model) : null;
+  const periodMs = periodMonths(state.period);
+  const lastSel = sel.length ? sel[sel.length-1] : null;
+  // KPIs
+  let rec = 0, desp = 0, reserva = 0;
+  if (model) for (const m of sel){ rec += months[m].rec; desp += months[m].desp; for (const it of model.items) if (it.section === 'despesa' && it.reserva && it.values[m] != null) reserva += it.values[m]; }
+  const res = rec - desp;
+  const label = periodLabel(sel, periodMs);
+  $('#k-rec').textContent = brl(rec); $('#k-rec-f').textContent = model ? label : 'No período selecionado';
+  $('#k-desp').textContent = brl(desp); $('#k-desp-f').textContent = model && reserva ? 'Inclui ' + brl(reserva) + ' de reserva registrada na planilha' : 'Inclui reserva registrada na planilha';
+  const kr = $('#k-res'); kr.textContent = brl(res); kr.classList.toggle('neg', model && res < 0);
+  $('#k-res-f').textContent = model && rec > 0 ? 'Margem de ' + fmtPct(res / rec * 100) + ' sobre as receitas' : 'Receitas menos despesas';
+  const ks = $('#k-saldo');
+  if (model && lastSel != null){ ks.textContent = brl(months[lastSel].saldo); ks.classList.toggle('neg', months[lastSel].saldo < 0); $('#k-saldo-f').textContent = 'Saldo de caixa acumulado até ' + MESES[lastSel-1].toLowerCase() + (months[lastSel].fromSheet ? ' (planilha)' : ''); }
+  else { ks.textContent = brl(0); ks.classList.remove('neg'); $('#k-saldo-f').textContent = 'Saldo de caixa acumulado'; }
+
+  renderRecDesp(model, months, sel);
+  renderResultado(model, months, sel);
+  const cats = categoryTotals(model, sel);
+  renderCategorias(cats, desp);
+  renderComposicao(cats, desp);
+  renderMensal(model, months, periodMs);
+  renderDetalhe(model, sel, cats);
+}
+function periodLabel(sel, pm){
+  if (!sel.length) return 'Nenhum mês com o status selecionado no período';
+  const n = sel.length === pm.length ? '' : ' (' + sel.length + ' de ' + pm.length + ' meses)';
+  if (sel.length === 1) return MESES[sel[0]-1] + ' de 2026';
+  return MESES_ABR[sel[0]-1] + '–' + MESES_ABR[sel[sel.length-1]-1] + ' 2026' + n;
+}
+function empty(container, text){ container.replaceChildren(el('div', { class:'empty', text: text || 'Importe a planilha para visualizar os dados.' })); }
+
+/* --- tooltip --- */
+function tooltipFor(container){
+  let tip = container.querySelector('.tip'); if (!tip){ tip = el('div', { class:'tip', role:'tooltip' }); container.appendChild(tip); }
+  return {
+    show(evt, title, rows){
+      tip.replaceChildren(el('div', { class:'t', text:title }), ...rows.map(r => el('div', { class:'r' }, [el('span', {}, [Object.assign(el('i'), { style:'background:' + (r.color || 'transparent') }), r.label]), el('b', { text:r.value })])));
+      tip.classList.add('on'); this.move(evt);
+    },
+    move(evt){
+      const b = container.getBoundingClientRect(); const x = (evt.clientX || (b.left + b.width/2)) - b.left, y = (evt.clientY || b.top) - b.top;
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let lx = x + 12; if (lx + w > b.width) lx = x - w - 12; if (lx < 0) lx = 0;
+      let ly = y - h - 8; if (ly < 0) ly = y + 16;
+      tip.style.left = lx + 'px'; tip.style.top = ly + 'px';
+    },
+    hide(){ tip.classList.remove('on'); }
+  };
+}
+function hitArea(x, y, w, h, onEnter, onMove, onLeave, label){
+  const r = svg('rect', { class:'hit', x, y, width:w, height:h, tabindex:0, role:'img', 'aria-label':label });
+  r.addEventListener('pointerenter', onEnter); r.addEventListener('pointermove', onMove); r.addEventListener('pointerleave', onLeave);
+  r.addEventListener('focus', onEnter); r.addEventListener('blur', onLeave);
+  return r;
+}
+function roundedTopRect(x, y, w, h, r, fill, dir){
+  // dir 1: topo arredondado (valor positivo cresce para cima); -1: base arredondada
+  r = Math.min(r, w/2, h); if (h <= 0) return svg('path', { d:'' });
+  let d;
+  if (dir >= 0) d = `M${x},${y+h} V${y+r} Q${x},${y} ${x+r},${y} H${x+w-r} Q${x+w},${y} ${x+w},${y+r} V${y+h} Z`;
+  else d = `M${x},${y} H${x+w} V${y+h-r} Q${x+w},${y+h} ${x+w-r},${y+h} H${x+r} Q${x},${y+h} ${x},${y+h-r} Z`;
+  return svg('path', { d, fill });
+}
+function baseChart(container, W, H){
+  const s = svg('svg', { viewBox:`0 0 ${W} ${H}`, width:'100%', 'aria-hidden':'false' });
+  container.replaceChildren(s); return s;
+}
+
+/* --- gráfico 1: receitas x despesas --- */
+function renderRecDesp(model, months, sel){
+  const c = $('#c-recdesp'); if (!model || !sel.length){ empty(c, model ? 'Nenhum mês com o status selecionado.' : undefined); return; }
+  const W = 560, H = 260, P = { l:52, r:12, t:12, b:30 };
+  const s = baseChart(c, W, H); const tip = tooltipFor(c);
+  const maxV = Math.max(1, ...sel.map(m => Math.max(months[m].rec, months[m].desp)));
+  const yT = niceTicks(0, maxV, 4); const y = v => P.t + (H - P.t - P.b) * (1 - (v - yT.lo) / (yT.hi - yT.lo || 1));
+  const plotW = W - P.l - P.r, band = plotW / sel.length, bw = Math.min(24, (band - 10) / 2 - 1);
+  const g = svg('g', { class:'grid' }); yT.ticks.forEach(t => { g.appendChild(svg('line', { x1:P.l, x2:W-P.r, y1:y(t), y2:y(t) })); s.appendChild(svg('text', { x:P.l-8, y:y(t)+3, 'text-anchor':'end', text:compact(t) })); }); s.appendChild(g);
+  s.appendChild(svg('g', { class:'axis' }, [svg('line', { x1:P.l, x2:W-P.r, y1:y(0), y2:y(0) })]));
+  sel.forEach((m, i) => {
+    const d = months[m], cx = P.l + band * i + band/2;
+    const grp = svg('g');
+    const x1 = cx - bw - 1, x2 = cx + 1;
+    grp.appendChild(roundedTopRect(x1, y(d.rec), bw, y(0) - y(d.rec), 4, 'var(--rec)', 1));
+    grp.appendChild(roundedTopRect(x2, y(d.desp), bw, y(0) - y(d.desp), 4, 'var(--desp)', 1));
+    const title = MESES[m-1] + ' · ' + STATUS_LABEL[state.monthStatus[m]];
+    const rows = [ { label:'Receitas', value:brl(d.rec), color:'var(--rec)' }, { label:'Despesas', value:brl(d.desp), color:'var(--desp)' }, { label:'Resultado', value:brl(d.res) } ];
+    s.appendChild(hitArea(P.l + band*i, P.t, band, H - P.t - P.b, e => tip.show(e, title, rows), e => tip.move(e), () => tip.hide(), title + ': receitas ' + brl(d.rec) + ', despesas ' + brl(d.desp)));
+    s.appendChild(grp);
+    s.appendChild(svg('text', { x:cx, y:H-10, 'text-anchor':'middle', text:MESES_ABR[m-1] }));
+  });
+}
+/* --- gráfico 2: resultado + margem (dois painéis, um eixo cada) --- */
+function renderResultado(model, months, sel){
+  const c = $('#c-resultado'); if (!model || !sel.length){ empty(c, model ? 'Nenhum mês com o status selecionado.' : undefined); return; }
+  const W = 560, H = 260, P = { l:52, r:48, t:12, b:30 }, gap = 26, H1 = 140, H2 = H - P.t - P.b - H1 - gap;
+  const s = baseChart(c, W, H); const tip = tooltipFor(c);
+  const vals = sel.map(m => months[m].res); const minV = Math.min(0, ...vals), maxV = Math.max(0, ...vals);
+  const yT = niceTicks(minV, maxV === minV ? minV + 1 : maxV, 4); const y = v => P.t + H1 * (1 - (v - yT.lo) / (yT.hi - yT.lo || 1));
+  const plotW = W - P.l - P.r, band = plotW / sel.length, bw = Math.min(24, band - 10);
+  const g = svg('g', { class:'grid' }); yT.ticks.forEach(t => { g.appendChild(svg('line', { x1:P.l, x2:W-P.r, y1:y(t), y2:y(t) })); s.appendChild(svg('text', { x:P.l-8, y:y(t)+3, 'text-anchor':'end', text:compact(t) })); }); s.appendChild(g);
+  s.appendChild(svg('g', { class:'axis' }, [svg('line', { x1:P.l, x2:W-P.r, y1:y(0), y2:y(0) })]));
+  // painel margem
+  const mg = sel.map(m => months[m].margem).filter(v => v != null);
+  const top2 = P.t + H1 + gap; const mT = mg.length ? niceTicks(Math.min(0, ...mg), Math.max(0, ...mg) || 1, 2) : { lo:0, hi:100, ticks:[0,100] };
+  const y2 = v => top2 + H2 * (1 - (v - mT.lo) / (mT.hi - mT.lo || 1));
+  const g2 = svg('g', { class:'grid' }); mT.ticks.forEach(t => { g2.appendChild(svg('line', { x1:P.l, x2:W-P.r, y1:y2(t), y2:y2(t) })); s.appendChild(svg('text', { x:P.l-8, y:y2(t)+3, 'text-anchor':'end', text:fmtPct(t) })); }); s.appendChild(g2);
+  s.appendChild(svg('text', { x:P.l, y:top2 - 8, class:'lbl-ink', text:'Margem sobre receitas' }));
+  const pts = [];
+  sel.forEach((m, i) => {
+    const d = months[m], cx = P.l + band*i + band/2;
+    const grp = svg('g');
+    const fill = d.res >= 0 ? 'var(--pos)' : 'var(--neg)';
+    if (d.res >= 0) grp.appendChild(roundedTopRect(cx - bw/2, y(d.res), bw, y(0) - y(d.res), 4, fill, 1));
+    else grp.appendChild(roundedTopRect(cx - bw/2, y(0), bw, y(d.res) - y(0), 4, fill, -1));
+    if (d.margem != null) pts.push([cx, y2(d.margem), d]);
+    const title = MESES[m-1] + ' · ' + STATUS_LABEL[state.monthStatus[m]];
+    const rows = [ { label:'Resultado', value:brl(d.res), color:fill }, { label:'Margem', value:fmtPct(d.margem), color:'var(--ink-2)' } ];
+    s.appendChild(hitArea(P.l + band*i, P.t, band, H - P.t - P.b, e => tip.show(e, title, rows), e => tip.move(e), () => tip.hide(), title + ': resultado ' + brl(d.res) + ', margem ' + fmtPct(d.margem)));
+    s.appendChild(grp);
+    s.appendChild(svg('text', { x:cx, y:H-10, 'text-anchor':'middle', text:MESES_ABR[m-1] }));
+  });
+  if (pts.length){
+    s.appendChild(svg('path', { d: pts.map((p,i) => (i ? 'L' : 'M') + p[0] + ',' + p[1]).join(' '), fill:'none', stroke:'var(--ink-2)', 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
+    pts.forEach(p => s.appendChild(svg('circle', { cx:p[0], cy:p[1], r:4, fill:'var(--ink-2)', stroke:'var(--surface)', 'stroke-width':2 })));
+    const last = pts[pts.length-1];
+    s.appendChild(svg('text', { x:last[0] + 9, y:last[1] + 4, class:'lbl-ink', text:fmtPct(last[2].margem) }));
+  }
+}
+/* --- categorias --- */
+function categoryTotals(model, sel){
+  if (!model) return [];
+  const map = new Map();
+  for (const it of model.items){ if (it.section !== 'despesa') continue; let t = 0; for (const m of sel){ if (it.values[m] != null) t += it.values[m]; } if (!t) continue; map.set(it.categoria, (map.get(it.categoria) || 0) + t); }
+  return [...map.entries()].map(([cat, total]) => ({ cat, total })).sort((a,b) => b.total - a.total);
+}
+function renderCategorias(cats, totalDesp){
+  const c = $('#c-categorias'); if (!state.model){ empty(c); return; } if (!cats.length){ empty(c, 'Nenhuma despesa no período selecionado.'); return; }
+  const MAX = 9; let list = cats.slice(0, MAX); if (cats.length > MAX){ list.push({ cat:'Outras (' + (cats.length - MAX) + ')', total: cats.slice(MAX).reduce((a,x)=>a+x.total,0), other:true }); }
+  const rowH = 30, W = 560, P = { l:150, r:96, t:6, b:6 }, H = P.t + P.b + rowH * list.length;
+  const s = baseChart(c, W, H); const tip = tooltipFor(c);
+  const max = Math.max(...list.map(x => x.total)), plotW = W - P.l - P.r, bh = 14;
+  list.forEach((x, i) => {
+    const yy = P.t + rowH*i + (rowH - bh)/2, w = Math.max(2, plotW * x.total / max);
+    const name = x.cat.length > 24 ? x.cat.slice(0, 23) + '…' : x.cat;
+    const title = x.cat; const rows = [ { label:'Total', value:brl(x.total), color:'var(--desp)' }, { label:'Participação', value:fmtPct(totalDesp ? x.total/totalDesp*100 : null) } ];
+    s.appendChild(hitArea(0, P.t + rowH*i, W, rowH, e => tip.show(e, title, rows), e => tip.move(e), () => tip.hide(), x.cat + ': ' + brl(x.total)));
+    const grp = svg('g');
+    grp.appendChild(svg('path', { d:`M${P.l},${yy} H${P.l+w-4} Q${P.l+w},${yy} ${P.l+w},${yy+4} V${yy+bh-4} Q${P.l+w},${yy+bh} ${P.l+w-4},${yy+bh} H${P.l} Z`, fill:'var(--desp)', opacity: x.other ? .55 : 1 }));
+    s.appendChild(grp);
+    s.appendChild(svg('text', { x:P.l-10, y:yy+bh/2+4, 'text-anchor':'end', class:'lbl-ink', text:name }));
+    s.appendChild(svg('text', { x:P.l+w+8, y:yy+bh/2+4, class:'lbl-ink', text:compact(x.total) }));
+  });
+  const ax = svg('g', { class:'axis' }, [svg('line', { x1:P.l, x2:P.l, y1:P.t, y2:H-P.b })]); s.appendChild(ax);
+}
+function renderComposicao(cats, totalDesp){
+  const c = $('#t-composicao'); if (!state.model){ empty(c); return; } if (!cats.length){ empty(c, 'Nenhuma despesa no período selecionado.'); return; }
+  const tb = el('tbody'); const max = cats[0].total;
+  cats.forEach(x => tb.appendChild(el('tr', {}, [ el('td', { text:x.cat }), el('td', { class:'num', text:brl(x.total) }), el('td', { class:'num dim', text:fmtPct(totalDesp ? x.total/totalDesp*100 : null) }),
+    el('td', {}, [el('div', { class:'bar-cell' }, [el('div', { class:'track' }, [Object.assign(el('div', { class:'fill' }), { style:'width:' + (x.total/max*100).toFixed(1) + '%' })])])]) ])));
+  const t = el('table', {}, [ el('thead', {}, [el('tr', {}, [el('th', { text:'Categoria' }), el('th', { class:'num', text:'Total' }), el('th', { class:'num', text:'% do total' }), el('th', { text:'' })])]), tb,
+    el('tfoot', {}, [el('tr', {}, [el('td', { text:'Total das despesas' }), el('td', { class:'num', text:brl(totalDesp) }), el('td', { class:'num', text:'100%' }), el('td')])]) ]);
+  t.style.minWidth = '420px';
+  c.replaceChildren(el('div', { class:'tbl-wrap' }, [t]));
+}
+/* --- resumo mensal --- */
+function renderMensal(model, months, pm){
+  const c = $('#t-mensal'); if (!model){ empty(c); return; }
+  const tb = el('tbody'); let tr = 0, td = 0;
+  pm.forEach(m => {
+    const d = months[m]; const inSel = state.filter === 'all' || state.monthStatus[m] === state.filter;
+    if (inSel && d.has){ tr += d.rec; td += d.desp; }
+    const sel = el('select', { 'aria-label':'Status de ' + MESES[m-1] }, Object.keys(STATUS_LABEL).map(k => { const o = el('option', { value:k, text:STATUS_LABEL[k] }); if (k === state.monthStatus[m]) o.selected = true; return o; }));
+    sel.addEventListener('change', () => { state.monthStatus[m] = sel.value; store(STORE.status, state.monthStatus); render(); });
+    const row = el('tr', {}, [
+      el('td', {}, [el('strong', { text:MESES[m-1] }), !inSel ? el('div', { class:'count', text:'fora do filtro de status' }) : document.createTextNode('')]),
+      el('td', {}, [el('div', { class:'select' }, [sel])]),
+      el('td', { class:'num' + (d.has ? '' : ' dim'), text: d.has ? brl(d.rec) : '—' }),
+      el('td', { class:'num' + (d.has ? '' : ' dim'), text: d.has ? brl(d.desp) : '—' }),
+      el('td', { class:'num ' + (d.has ? (d.res < 0 ? 'neg' : 'pos') : 'dim'), text: d.has ? brl(d.res) : '—' }),
+      el('td', { class:'num' + (d.saldo < 0 ? ' neg' : ''), text: brl(d.saldo) + (d.fromSheet ? ' *' : '') }),
+      el('td', { class:'num' + (d.has ? '' : ' dim'), text: d.has ? fmtPct(d.margem) : '—' }),
+    ]);
+    if (!inSel) row.style.opacity = '.55';
+    tb.appendChild(row);
+  });
+  const t = el('table', {}, [ el('thead', {}, [el('tr', {}, ['Mês','Status','Receitas','Despesas','Resultado','Saldo final','Margem'].map((h,i) => el('th', { class: i >= 2 ? 'num' : '', text:h })))]), tb,
+    el('tfoot', {}, [el('tr', {}, [el('td', { text:'Total do período' }), el('td', { class:'dim', text: state.filter === 'all' ? 'todos os status' : STATUS_LABEL[state.filter] }), el('td', { class:'num', text:brl(tr) }), el('td', { class:'num', text:brl(td) }), el('td', { class:'num ' + (tr-td < 0 ? 'neg' : 'pos'), text:brl(tr-td) }), el('td'), el('td', { class:'num', text: tr > 0 ? fmtPct((tr-td)/tr*100) : '—' })])]) ]);
+  const notes = [];
+  if (Object.values(months).some(x => x.fromSheet)) notes.push('* saldo informado na linha “Saldo final” da planilha; os demais meses são calculados a partir do saldo inicial e do resultado.');
+  c.replaceChildren(el('div', { class:'tbl-wrap' }, [t]), ...(notes.length ? [el('p', { class:'count', text:notes.join(' ') })] : []));
+}
+/* --- detalhamento --- */
+function renderDetalhe(model, sel, cats){
+  const c = $('#t-detalhe'); const fc = $('#f-cat');
+  // repopula categorias mantendo seleção
+  const current = state.cat; const opts = [el('option', { value:'', text:'Todas as categorias' })];
+  if (model){ const all = [...new Set(model.items.filter(i => i.section === 'despesa').map(i => i.categoria))].sort((a,b)=>a.localeCompare(b,'pt-BR')); all.forEach(k => opts.push(el('option', { value:k, text:k }))); if (!all.includes(current)) state.cat = ''; }
+  fc.replaceChildren(...opts); fc.value = state.cat;
+  if (!model){ empty(c); return; }
+  const q = norm(state.search);
+  const rows = [];
+  for (const m of sel) for (const it of model.items){
+    if (it.section !== 'despesa') continue; const v = it.values[m]; if (v == null || v === 0) continue;
+    if (state.cat && it.categoria !== state.cat) continue;
+    if (q && !norm(it.item + ' ' + (it.tipo || '') + ' ' + it.categoria).includes(q)) continue;
+    rows.push({ m, it, v });
+  }
+  if (!rows.length){ empty(c, sel.length ? 'Nenhum lançamento encontrado com os filtros atuais.' : 'Nenhum mês com o status selecionado.'); return; }
+  const tb = el('tbody'); let total = 0; rows.forEach(r => { total += r.v; });
+  const shown = rows.slice(0, state.detLimit);
+  shown.forEach(r => { tb.appendChild(el('tr', {}, [
+    el('td', { text:MESES_ABR[r.m-1] + '/26' }),
+    el('td', {}, [document.createTextNode(r.it.categoria), r.it.tipo ? el('div', { class:'count', text:r.it.tipo }) : document.createTextNode('')]),
+    el('td', { text:r.it.item }),
+    el('td', {}, [el('span', { class:'pill ' + state.monthStatus[r.m], text:STATUS_LABEL[state.monthStatus[r.m]] })]),
+    el('td', { class:'num', text:brl(r.v) }),
+  ])); });
+  const t = el('table', {}, [ el('thead', {}, [el('tr', {}, ['Mês','Categoria','Item','Status do mês','Valor'].map((h,i) => el('th', { class: i === 4 ? 'num' : '', text:h })))]), tb,
+    el('tfoot', {}, [el('tr', {}, [el('td', { text:'Total' }), el('td'), el('td'), el('td', { class:'dim', text: rows.length + ' lançamento' + (rows.length > 1 ? 's' : '') }), el('td', { class:'num', text:brl(total) })])]) ]);
+  const more = rows.length > shown.length ? el('p', { class:'count' }, [ 'Mostrando ' + shown.length + ' de ' + rows.length + ' lançamentos. ',
+    el('button', { class:'btn', type:'button', style:'padding:6px 12px;font-size:12px;margin-left:6px', text:'Mostrar mais', onclick:() => { state.detLimit += 100; renderDetalhe(state.model, selectedMonths(), null); } }) ]) : null;
+  c.replaceChildren(el('div', { class:'tbl-wrap' }, [t]), ...(more ? [more] : []));
+}
+
+/* ========= Eventos ========= */
+function init(){
+  const ps = $('#period'); periodOptions().forEach(([v,l]) => ps.appendChild(el('option', { value:v, text:l })));
+  if (![...ps.options].some(o => o.value === state.period)) state.period = 'year';
+  ps.value = state.period;
+  ps.addEventListener('change', () => { state.period = ps.value; store(STORE.period, state.period); render(); });
+  $('#status-seg').addEventListener('click', e => { const b = e.target.closest('button[data-status]'); if (!b) return; state.filter = b.dataset.status; store(STORE.filter, state.filter); syncSeg(); render(); });
+  syncSeg();
+  $('#file').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; importFile(f); e.target.value = ''; });
+  $('#reload').addEventListener('click', reload);
+  $('#f-cat').addEventListener('change', e => { state.cat = e.target.value; state.detLimit = 100; render(); });
+  let tmr; $('#f-busca').addEventListener('input', e => { clearTimeout(tmr); tmr = setTimeout(() => { state.search = e.target.value; state.detLimit = 100; renderDetalhe(state.model, selectedMonths(), null); }, 120); });
+  // Pré-carrega a biblioteca em segundo plano (falha silenciosa; tenta de novo ao importar)
+  ensureXLSX().catch(() => {});
+  const saved = load(STORE.data, null);
+  if (saved && saved.aoa){ $('#reload').disabled = false; applyData(saved.aoa, saved.meta); setStatus('ok', [el('span', {}, [el('strong', { text:saved.meta.file }), ' · última importação em ' + new Date(saved.meta.when).toLocaleDateString('pt-BR') + '. Importe a planilha atualizada para novos números.'])]); }
+  else render();
+}
+function syncSeg(){ $('#status-seg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === state.filter))); }
+init();
+})();
+</script>
+</body>
+</html>

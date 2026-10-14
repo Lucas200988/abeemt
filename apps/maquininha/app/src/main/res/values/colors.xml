@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Paleta provisória (ADR-0007: a marca é trocável). Alto contraste de
+       propósito: a tela da maquininha é pequena e fica ao sol. -->
+  <color name="bora_fundo">#0B1E13</color>
+  <color name="bora_superficie">#12291B</color>
+  <color name="bora_primaria">#2ECC71</color>
+  <color name="bora_texto">#F5F7F5</color>
+  <color name="bora_texto_suave">#A8B8AD</color>
+  <color name="bora_erro">#E74C3C</color>
+</resources>

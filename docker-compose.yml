@@ -1,0 +1,103 @@
+# Ambiente local completo.
+#
+#   cp .env.example .env    (e preencha)
+#   docker compose up -d
+#
+# Sobe banco, API e painel. As migrations rodam sozinhas antes da API subir,
+# num serviço próprio — assim uma migration que falha impede a API de subir com
+# schema errado, em vez de deixá-la meio funcionando.
+#
+# Redis não está aqui de propósito: o MVP usa PostgreSQL + outbox (ADR-0003).
+# Quando algum dos gatilhos documentados no ADR for atingido, ele entra.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-bora_carregar}
+    ports:
+      # Exposto apenas em localhost: sem o prefixo, o Docker publicaria a porta
+      # em todas as interfaces, inclusive a externa.
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-bora} -d ${POSTGRES_DB:-bora_carregar}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Roda as migrations e encerra. A API só sobe depois que este termina bem.
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    container_name: bora-migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bora_carregar}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        './node_modules/.bin/prisma',
+        'migrate',
+        'deploy',
+        '--schema',
+        'packages/database/prisma/schema.prisma',
+      ]
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    container_name: bora-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bora_carregar}?schema=public
+      API_PORT: 3001
+      API_PREFIX: ${API_PREFIX:-api}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?defina JWT_REFRESH_SECRET no .env}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      RATE_LIMIT_TTL_SECONDS: ${RATE_LIMIT_TTL_SECONDS:-60}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-10}
+      BORA_BRAND_NAME: ${BORA_BRAND_NAME:-Borá Carregar}
+      BORA_PREAUTH_CEILING_CENTS: ${BORA_PREAUTH_CEILING_CENTS:-20000}
+      BORA_AUTOSTOP_THRESHOLD_CARD_PCT: ${BORA_AUTOSTOP_THRESHOLD_CARD_PCT:-95}
+      BORA_AUTOSTOP_THRESHOLD_PIX_PCT: ${BORA_AUTOSTOP_THRESHOLD_PIX_PCT:-100}
+    ports:
+      - '127.0.0.1:${API_PORT:-3001}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
+        NEXT_PUBLIC_BRAND_NAME: ${BORA_BRAND_NAME:-Borá Carregar}
+    container_name: bora-web
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${WEB_PORT:-3000}:3000'
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:

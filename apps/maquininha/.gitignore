@@ -1,0 +1,12 @@
+# Android / Gradle — tudo gerado, nada disso vai para o repositório
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/
+
+# Chaves de assinatura: NUNCA no repositório
+*.jks
+*.keystore

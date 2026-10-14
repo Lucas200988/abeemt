@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Overlay do flavor PAGBANK, fundido ao manifesto principal pelo Gradle.
+
+  As duas entradas vêm do app demo oficial do PagBank (SmartCoffee,
+  pagseguro-plugpagservicewrapper-smartcoffeedemo):
+
+  - MANAGE_PAYMENTS: a permissão que autoriza falar com o serviço PlugPag. O
+    próprio .aar do wrapper 1.35.0 já a declara (e também as <queries> do
+    serviço) e a fusão de manifestos a traria sozinha — fica explícita aqui,
+    como no demo, para ninguém removê-la achando que sobra.
+
+  - intent-filter br.com.uol.pagseguro.PAYMENT: o launcher PagBank abre o
+    aplicativo sozinho quando o motorista insere um cartão ou aperta uma tecla
+    do terminal. No totem do carregador é exatamente o que se quer.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-permission android:name="br.com.uol.pagseguro.permission.MANAGE_PAYMENTS" />
+
+  <application>
+    <activity android:name=".MainActivity">
+      <intent-filter>
+        <action android:name="br.com.uol.pagseguro.PAYMENT" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

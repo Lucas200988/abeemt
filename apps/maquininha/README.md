@@ -199,6 +199,31 @@ O que ainda depende do PagBank:
       reinício (`pendingCaptureSessionId` no `/terminal/me`). Para exercitar
       no emulador: `BORA_TERMINAL_MOCK_CAPTURE_LOCATION=terminal` no backend
 
+## Testes automatizados do aplicativo
+
+A máquina de estados (`FluxoRecarga`) não depende de Android e tem testes em
+JVM pura — API, SDK e cofre são dublês, e o tempo é virtual:
+
+```
+gradlew testSimuladoDebugUnitTest
+```
+
+(ou _Run_ no arquivo `app/src/test/.../FluxoRecargaTest.kt` dentro do Android
+Studio). Em Linux com locale POSIX, exporte `LC_ALL=C.UTF-8` antes: os nomes
+dos testes têm acentos e viram nomes de arquivo `.class`. Cada teste é uma
+regra que custou caro descobrir no terminal:
+pendência de captura só depois de a conciliação decidir, cancelar aborta o
+SDK, pré-pago recusado é estornado, estorno sem resposta é abortado aos 90 s,
+encerramento recusado devolve o botão.
+
+## Gerar o APK de release (homologação e campo)
+
+Passo a passo, chave de assinatura e checklist do Guia de Boas Práticas em
+[`docs/payments/pagbank-homologacao-apk.md`](../../docs/payments/pagbank-homologacao-apk.md).
+Em resumo: chave `.jks` fora do repositório, propriedades `bora.keystore.*` e
+`bora.baseUrl.release` no `gradle.properties` pessoal, `versionCode`
+incrementado, variante **pagbankRelease**.
+
 ## O que já foi verificado — e o que não
 
 **Compilado contra o SDK real (2026-10-09):** todo o código Kotlin — domínio,

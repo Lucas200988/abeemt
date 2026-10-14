@@ -6,3 +6,7 @@ local.properties
 *.iml
 captures/
 .cxx/
+
+# Chaves de assinatura: NUNCA no repositório
+*.jks
+*.keystore

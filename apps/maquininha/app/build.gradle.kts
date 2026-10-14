@@ -28,12 +28,47 @@ android {
     )
   }
 
+  /**
+   * Assinatura do APK de campo (homologação PagBank: V1 e V2 obrigatórias).
+   *
+   * A chave fica FORA do repositório, no gradle.properties pessoal
+   * (~/.gradle/gradle.properties):
+   *   bora.keystore.path=C:/Users/<você>/bora-release.jks
+   *   bora.keystore.password=…
+   *   bora.key.alias=bora
+   *   bora.key.password=…
+   * Como gerar a chave: docs/payments/pagbank-homologacao-apk.md.
+   * Sem essas propriedades, o release sai SEM assinatura — serve para
+   * conferir o build, não para instalar no terminal.
+   */
+  signingConfigs {
+    create("release") {
+      val caminho = providers.gradleProperty("bora.keystore.path").orNull
+      if (caminho != null) {
+        storeFile = file(caminho)
+        storePassword = providers.gradleProperty("bora.keystore.password").orNull
+        keyAlias = providers.gradleProperty("bora.key.alias").orNull
+        keyPassword = providers.gradleProperty("bora.key.password").orNull
+        enableV1Signing = true
+        enableV2Signing = true
+      }
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = false
-      // Sem servidor de produção definido ainda (decisão adiada junto com a
-      // FASE 4). Preencher antes de gerar o APK de campo.
-      buildConfigField("String", "BORA_BASE_URL", "\"https://TROQUE-PELA-API-DE-PRODUCAO/api/v1\"")
+      // Endereço da API de produção: decisão de hospedagem adiada junto com a
+      // FASE 4. Vem do gradle.properties pessoal (bora.baseUrl.release) para o
+      // repositório não fixar servidor nenhum.
+      buildConfigField(
+        "String",
+        "BORA_BASE_URL",
+        "\"${providers.gradleProperty("bora.baseUrl.release").orNull ?: "https://TROQUE-PELA-API-DE-PRODUCAO/api/v1"}\"",
+      )
+      if (providers.gradleProperty("bora.keystore.path").isPresent) {
+        signingConfig = signingConfigs.getByName("release")
+      }
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
@@ -109,4 +144,9 @@ dependencies {
   // repositório oficial (maven-metadata conferido em 2026-08-05; o .aar desta
   // versão foi extraído e as assinaturas verificadas com javap).
   "pagbankImplementation"("br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.35.0")
+
+  // Testes da máquina de estados (FluxoRecarga) em JVM pura, sem Android:
+  //   ./gradlew testSimuladoDebugUnitTest
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

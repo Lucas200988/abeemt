@@ -44,6 +44,37 @@ O arquivo do encaixe: `app/src/pagbank/java/.../pagamento/ProvedorPagamento.kt`.
 Celular físico em vez de emulador: `bora.baseUrl` no `~/.gradle/gradle.properties`
 (ver o roteiro abaixo) — o `10.0.2.2` só existe dentro do emulador.
 
+## Começando o dia (reinício do zero, Windows)
+
+Depois de reiniciar o PC, só o que roda na memória precisa religar. As
+configurações ficam salvas: `.env`, `gradle.properties`, o pareamento da
+maquininha. A porta abaixo é a `API_PORT` do `.env` (3006 na máquina de
+desenvolvimento atual; 3001 por padrão).
+
+1. **Docker Desktop** — abrir e esperar "Engine running". No cmd:
+   `docker start bora-postgres` e `docker ps` (tem de listar `bora-postgres`
+   com status _Up_).
+2. **cmd 1 — backend:** `cd c:\bora` → `git pull` → `pnpm dev`. Se o `git pull`
+   trouxe migrações, `pnpm bootstrap` antes. Teste:
+   `http://localhost:3006/api/health` → `"status":"ok"`. Não clique dentro da
+   janela: o modo "Selecionar" pausa o programa (Esc solta).
+3. **cmd 2 — túnel USB:** Gertec ligada no cabo →
+   `"%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" reverse tcp:3006 tcp:3006`
+   → responde `3006`. Refazer sempre que o cabo reconectar ou a Gertec
+   reiniciar.
+4. **Android Studio:** abre o projeto sozinho; se avisar que arquivos mudaram no
+   disco, recarregar. _Build Variants_ = `pagbankDebug`, dispositivo = Gertec
+   GPOS780S, **▶ Run** → "Install successfully finished".
+5. **cmd 3 — carregador simulado:** `cd c:\bora` →
+   `pnpm --filter @bora/ocpp-simulator start -- --identity SIM-001 --plug-in`
+   (**sem** `--never-start`, a não ser nos testes 5 e 11 — e lembre de
+   religar sem ele depois).
+6. **Gertec:** em até 15 s mostra "Conecte o cabo ao veículo". Se mostrar
+   "Parear maquininha", gere um código novo no painel
+   (`http://localhost:3005` → Maquininhas).
+
+Fim do dia: Ctrl+C nas janelas 1 e 3; o Docker pode ficar aberto.
+
 ## Dia 1 com o terminal de desenvolvimento (Moderninha Smart 2 DEBUG)
 
 O terminal DEBUG chega **ativado** e opera em ambiente de QA: as transações são

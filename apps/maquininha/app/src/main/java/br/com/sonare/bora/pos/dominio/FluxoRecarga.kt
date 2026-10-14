@@ -1,7 +1,7 @@
 package br.com.sonare.bora.pos.dominio
 
 import br.com.sonare.bora.pos.api.BoraApi
-import br.com.sonare.bora.pos.api.CofreDeToken
+import br.com.sonare.bora.pos.api.Cofre
 import br.com.sonare.bora.pos.api.ContextoTerminal
 import br.com.sonare.bora.pos.api.PedidoAutorizacao
 import br.com.sonare.bora.pos.api.PedidoEncerramento
@@ -39,13 +39,15 @@ import java.util.UUID
  */
 class FluxoRecarga(
   private val api: BoraApi,
-  private val cofre: CofreDeToken,
+  private val cofre: Cofre,
   private val pagamento: PagamentoPort,
   private val escopo: CoroutineScope,
   private val versaoApp: String,
   /** Build.MODEL / Build.SERIAL, injetados para esta classe não depender de Android. */
   private val modeloEquipamento: String? = null,
   private val serieEquipamento: String? = null,
+  /** Relógio injetável: os testes avançam o tempo sem esperar de verdade. */
+  private val relogio: () -> Long = System::currentTimeMillis,
 ) {
 
   sealed class Tela {
@@ -413,8 +415,8 @@ class FluxoRecarga(
             // de começar, sem valor a fechar) não pode prender a tela para
             // sempre. A referência FICA guardada — se a pendência aparecer
             // depois, o /terminal/me (pendingCaptureSessionId) a devolve.
-            val desde = encerradaDesde ?: System.currentTimeMillis().also { encerradaDesde = it }
-            if (System.currentTimeMillis() - desde > ESPERA_MAXIMA_CONCILIACAO_MS) return
+            val desde = encerradaDesde ?: relogio().also { encerradaDesde = it }
+            if (relogio() - desde > ESPERA_MAXIMA_CONCILIACAO_MS) return
             delay(3000)
             continue
           }

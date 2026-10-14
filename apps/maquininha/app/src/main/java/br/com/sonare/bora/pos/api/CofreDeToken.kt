@@ -16,7 +16,7 @@ import androidx.security.crypto.MasterKey
  * O token é devolvido pelo backend UMA única vez, no pareamento. Perdido, não
  * há recuperação — gera-se outro código no painel e pareia-se de novo.
  */
-class CofreDeToken(contexto: Context) {
+class CofreDeToken(contexto: Context) : Cofre {
 
   private val prefs: SharedPreferences by lazy {
     val chave = MasterKey.Builder(contexto)
@@ -31,14 +31,14 @@ class CofreDeToken(contexto: Context) {
     )
   }
 
-  fun token(): String? = prefs.getString(CHAVE_TOKEN, null)
+  override fun token(): String? = prefs.getString(CHAVE_TOKEN, null)
 
-  fun guardarToken(token: String) {
+  override fun guardarToken(token: String) {
     prefs.edit().putString(CHAVE_TOKEN, token).apply()
   }
 
   /** Backend respondeu 401: o token foi revogado no painel. Volta ao pareamento. */
-  fun esquecerToken() {
+  override fun esquecerToken() {
     prefs.edit().remove(CHAVE_TOKEN).apply()
   }
 
@@ -50,13 +50,13 @@ class CofreDeToken(contexto: Context) {
    * Ao religar, reenvia com a MESMA chave e recebe o MESMO pagamento, em vez
    * de criar uma segunda cobrança (fase-8 §3.3).
    */
-  fun chaveIdempotenciaPendente(): String? = prefs.getString(CHAVE_IDEMPOTENCIA, null)
+  override fun chaveIdempotenciaPendente(): String? = prefs.getString(CHAVE_IDEMPOTENCIA, null)
 
-  fun guardarChaveIdempotencia(chave: String) {
+  override fun guardarChaveIdempotencia(chave: String) {
     prefs.edit().putString(CHAVE_IDEMPOTENCIA, chave).apply()
   }
 
-  fun limparChaveIdempotencia() {
+  override fun limparChaveIdempotencia() {
     prefs.edit().remove(CHAVE_IDEMPOTENCIA).apply()
   }
 
@@ -69,7 +69,7 @@ class CofreDeToken(contexto: Context) {
    * Formato: "providerPaymentId|transactionId|transactionCode" (nenhum dos
    * três contém '|': são identificadores alfanuméricos do adquirente).
    */
-  fun guardarReferenciaDaSessao(
+  override fun guardarReferenciaDaSessao(
     sessionId: String,
     providerPaymentId: String,
     transactionId: String?,
@@ -84,7 +84,7 @@ class CofreDeToken(contexto: Context) {
       .apply()
   }
 
-  fun referenciaDaSessao(sessionId: String): Triple<String, String?, String?>? {
+  override fun referenciaDaSessao(sessionId: String): Triple<String, String?, String?>? {
     val bruto = prefs.getString(PREFIXO_REFERENCIA + sessionId, null) ?: return null
     val partes = bruto.split("|")
     if (partes.isEmpty() || partes[0].isBlank()) return null
@@ -95,7 +95,7 @@ class CofreDeToken(contexto: Context) {
     )
   }
 
-  fun limparReferenciaDaSessao(sessionId: String) {
+  override fun limparReferenciaDaSessao(sessionId: String) {
     prefs.edit().remove(PREFIXO_REFERENCIA + sessionId).apply()
   }
 

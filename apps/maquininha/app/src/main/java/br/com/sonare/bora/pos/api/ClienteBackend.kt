@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
  * tiver token no cofre — inclusive nenhum cabeçalho quando não há token, que é
  * o estado do pareamento.
  */
-class ClienteBackend(private val cofre: CofreDeToken) {
+class ClienteBackend(private val cofre: Cofre) {
 
   val api: BoraApi by lazy {
     val logging = HttpLoggingInterceptor().apply {

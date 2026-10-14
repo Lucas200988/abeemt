@@ -4,6 +4,7 @@ import {
   MockPaymentProvider,
   PagBankProvider,
   RedeProvider,
+  PagBankPosProvider,
   TerminalMockPaymentProvider,
   assertProviderSupportsModel,
   pendenciasDoContrato,
@@ -31,6 +32,14 @@ export class PaymentProviderRegistry implements OnModuleInit {
     this.register(new MockPaymentProvider());
     this.register(new ManualPaymentProvider());
     this.register(new TerminalMockPaymentProvider(runtimeEnv.BORA_TERMINAL_MOCK_CAPTURE_LOCATION));
+
+    /**
+     * PagBank na maquininha (PlugPag). Sem credencial nenhuma: o backend não
+     * fala com o PagBank nesse caminho — o SDK, dentro do terminal, faz tudo.
+     * Registrado sempre; o que o protege é a verificação no equipamento
+     * (BORA_PAGBANK_POS_VERIFIED), conferida em validarProvedorDeTerminal.
+     */
+    this.register(new PagBankPosProvider());
 
     /**
      * O adquirente real só é registrado quando há credencial configurada.
@@ -161,6 +170,22 @@ export class PaymentProviderRegistry implements OnModuleInit {
         `BORA_TERMINAL_PAYMENT_PROVIDER="${nome}" é um provedor simulado e não pode ser usado ` +
           'em produção: toda recarga por maquininha seria aprovada sem cobrança.',
       );
+    }
+
+    /**
+     * O provedor real da maquininha só vale em produção depois de a bateria de
+     * testes no equipamento passar inteira. Em desenvolvimento — inclusive nos
+     * próprios testes com o terminal DEBUG — basta o aviso.
+     */
+    if (nome === 'pagbank-pos' && !runtimeEnv.BORA_PAGBANK_POS_VERIFIED) {
+      const aviso =
+        'BORA_TERMINAL_PAYMENT_PROVIDER="pagbank-pos" ainda não concluiu a bateria de testes no ' +
+        'equipamento (apps/maquininha/README.md, testes 1–11): BORA_PAGBANK_POS_VERIFIED=false.';
+
+      if (runtimeEnv.NODE_ENV === 'production') {
+        throw new Error(`${aviso} Em produção isso é bloqueante.`);
+      }
+      this.logger.warn(aviso);
     }
   }
 

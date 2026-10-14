@@ -265,7 +265,7 @@ describe('assertProviderSupportsModel', () => {
   it('recusa provedor que aceita Pix mas não devolve', () => {
     const ruim = new MockPaymentProvider();
     Object.defineProperty(ruim, 'capabilities', {
-      value: { ...ruim.capabilities, partialRefund: false },
+      value: { ...ruim.capabilities, refund: false, partialRefund: false },
     });
 
     expect(() => assertProviderSupportsModel(ruim, { requirePix: true })).toThrow(/Pix/);

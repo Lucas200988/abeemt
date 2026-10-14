@@ -270,8 +270,11 @@ export function assertProviderSupportsModel(
     );
   }
 
-  if (opts.requirePix && c.methods.includes('PIX') && !c.partialRefund) {
-    // ADR-0010 §4: Pix pago sem energia entregue precisa ser devolvido.
+  if (opts.requirePix && c.methods.includes('PIX') && !c.refund) {
+    // ADR-0010 §4: Pix pago sem energia entregue precisa ser devolvido — e
+    // INTEGRALMENTE, por isso o que elimina é não devolver. Devolução parcial
+    // é desejável (ajustes do operador), não eliminatória: na maquininha o
+    // estorno do SDK é integral e o resto é feito no portal do adquirente.
     problemas.push(
       'aceita Pix mas não faz devolução — obrigatório para consumo zero (ADR-0010 §4)',
     );

@@ -861,6 +861,18 @@ código novo também invalida o token anterior — é o caso de equipamento troc
 
 ## 10. Configuração
 
+**Provedor do piloto: `pagbank-pos`.** PagBank na maquininha (PlugPag), sem
+credencial no servidor — o SDK faz tudo no equipamento e o backend só registra
+e publica pendências (`captureLocation: 'terminal'`, §3.5/§3.6). Configuração:
+`BORA_TERMINAL_PAYMENT_PROVIDER=pagbank-pos`. Em produção exige
+`BORA_PAGBANK_POS_VERIFIED=true`, que só deve ser ligado quando a bateria de
+testes no equipamento (README do app, testes 1–11) passar inteira; em
+desenvolvimento, `false` apenas avisa no boot. A devolução manual pelo painel
+de uma venda feita na maquininha é recusada com instrução
+(`REFUND_ON_TERMINAL_OR_PORTAL`): a devolução integral por consumo zero é do
+próprio terminal; qualquer outra é feita no portal/app PagBank. Homologação do
+APK: [`pagbank-homologacao-apk.md`](pagbank-homologacao-apk.md).
+
 ```
 # Provedor usado pelas maquininhas. A maquininha NUNCA escolhe (risco R-32).
 BORA_TERMINAL_PAYMENT_PROVIDER=terminal-mock

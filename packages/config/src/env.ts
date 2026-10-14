@@ -117,6 +117,14 @@ export const envSchema = z
      */
     BORA_TERMINAL_MOCK_CAPTURE_LOCATION: z.enum(['backend', 'terminal']).default('backend'),
     /**
+     * O provedor `pagbank-pos` (PlugPag na maquininha) concluiu a bateria de
+     * testes no equipamento (apps/maquininha/README.md, testes 1–11)?
+     *
+     * Em desenvolvimento, `false` só avisa no boot. Em produção, bloqueia: a
+     * mesma disciplina do BORA_PAGBANK_VERIFIED — "escrito" não é "funciona".
+     */
+    BORA_PAGBANK_POS_VERIFIED: booleanFromString.default(false),
+    /**
      * Validade do código de pareamento da maquininha, em minutos.
      *
      * Curta de propósito: o código é um portador — quem o tiver vira terminal

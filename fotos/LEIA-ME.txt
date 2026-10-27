@@ -1,0 +1,9 @@
+GALERIA DO FMEES 2026
+
+1. Suba as fotos nesta pasta com nomes numéricos: 1.jpg, 2.jpg, 3.jpg ... (sem pular números).
+   A ordem dos números é a ordem na página. Comece pelas melhores.
+2. Formato JPG, lado maior com 1600 a 2000 px (fotos de celular podem ser enviadas direto; o ideal é reduzir para carregar rápido).
+3. Legendas (opcional): crie o arquivo legendas.json aqui com o formato
+   {"1":"Abertura institucional em Cuiabá","2":"Palestra da WEG","5":"Fogo de chão no Casarão 154"}
+4. A página mostra 12 fotos e um botão "Ver mais". Não há limite — até 120.
+Nada mais precisa ser alterado no site.

@@ -213,14 +213,14 @@ footer{background:#070F1A;padding:44px 40px;border-top:1px solid rgba(255,255,25
     <div id="gal-more" style="display:none;text-align:center;margin-top:24px"><a href="#" class="btn-outline" onclick="galMore();return false">Ver mais fotos</a></div>
   </div>
 </section>
-<div id="lb" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;align-items:center;justify-content:center;cursor:zoom-out;padding:20px"><img id="lb-img" style="max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)"/></div>
+<div id="lb" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;align-items:center;justify-content:center;cursor:zoom-out;padding:20px"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%"><img id="lb-img" style="max-width:100%;max-height:calc(100vh - 90px);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)"/><div id="lb-cap" style="display:none;color:#fff;font-weight:600;font-size:15px;text-align:center"></div></div></div>
 <script>
 // GALERIA: coloque as fotos na pasta /fotos do repositório com nomes 1.jpg, 2.jpg, 3.jpg ... (sem pular números).
 // A página carrega em ordem até encontrar 3 números seguidos sem arquivo. Legendas opcionais em /fotos/legendas.json: {"1":"Abertura em Cuiabá", ...}
 (function(){
   var gal=document.getElementById('gal'),empty=document.getElementById('gal-empty'),more=document.getElementById('gal-more');
   var found=[],miss=0,n=1,MAX=120,LOTE=12,shown=0,legendas={};
-  fetch('fotos/legendas.json').then(function(r){return r.ok?r.json():{}}).then(function(j){legendas=j||{}}).catch(function(){});
+  fetch('fotos/legendas.json').then(function(r){return r.ok?r.json():{}}).then(function(j){legendas=j||{}}).catch(function(){}).then(probe,probe);
   function probe(){
     if(n>MAX||miss>=3){fim();return}
     var im=new Image(),k=n;
@@ -230,14 +230,13 @@ footer{background:#070F1A;padding:44px 40px;border-top:1px solid rgba(255,255,25
   }
   function card(k){
     var a=document.createElement('a');a.href='#';a.style.cssText='display:block;position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:12px;background:#0b1a2e';
-    a.onclick=function(e){e.preventDefault();var lb=document.getElementById('lb');document.getElementById('lb-img').src='fotos/'+k+'.jpg';lb.style.display='flex'};
+    a.onclick=function(e){e.preventDefault();var lb=document.getElementById('lb');document.getElementById('lb-img').src='fotos/'+k+'.jpg';var c=document.getElementById('lb-cap');if(c){c.textContent=legendas[k]||'';c.style.display=legendas[k]?'block':'none'}lb.style.display='flex'};
     a.innerHTML='<img src="fotos/'+k+'.jpg" loading="lazy" alt="FMEES 2026" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s">'+(legendas[k]?'<span style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;font-size:12px;font-weight:700;background:linear-gradient(0deg,rgba(0,0,0,.8),transparent);color:#fff">'+legendas[k]+'</span>':'');
     a.onmouseenter=function(){a.firstChild.style.transform='scale(1.04)'};a.onmouseleave=function(){a.firstChild.style.transform=''};
     return a;
   }
   window.galMore=function(){var end=Math.min(shown+LOTE,found.length);for(var i=shown;i<end;i++)gal.appendChild(card(found[i]));shown=end;more.style.display=shown<found.length?'block':'none'};
   function fim(){if(!found.length){empty.style.display='block';return}galMore()}
-  probe();
 })();
 </script>
 

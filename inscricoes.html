@@ -204,13 +204,13 @@ footer{background:#070F1A;padding:44px 40px;border-top:1px solid rgba(255,255,25
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:40px">
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 16px;text-align:center"><div style="font-size:40px;font-weight:900;color:var(--g);line-height:1">2</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:8px">Cidades</div></div>
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 16px;text-align:center"><div style="font-size:40px;font-weight:900;color:var(--g);line-height:1" data-num="participantes">[—]</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:8px">Participantes</div></div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 16px;text-align:center"><div style="font-size:40px;font-weight:900;color:var(--g);line-height:1" data-num="participantes">+200</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:8px">Participantes</div></div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 16px;text-align:center"><div style="font-size:40px;font-weight:900;color:var(--g);line-height:1">6</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:8px">Empresas no palco</div></div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 16px;text-align:center"><div style="font-size:40px;font-weight:900;color:var(--g);line-height:1">17</div><div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:8px">Patrocinadores</div></div>
     </div>
     <div id="gal" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-    <div id="gal-empty" style="display:none;text-align:center;padding:40px 20px;border:1px dashed rgba(255,255,255,.2);border-radius:14px;color:rgba(255,255,255,.55);font-size:14px">📷 As fotos do evento serão publicadas em breve.</div>
-    <div id="gal-more" style="display:none;text-align:center;margin-top:24px"><a href="#" class="btn-outline" onclick="galMore();return false">Ver mais fotos</a></div>
+    <div id="gal-empty" style="display:none;text-align:center;padding:44px 20px;border:1px dashed rgba(255,255,255,.2);border-radius:14px"><div style="font-size:40px;line-height:1">📷</div><div style="font-size:20px;font-weight:800;color:#fff;margin-top:12px">As fotos oficiais das duas noites já estão disponíveis</div><div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:6px">Cuiabá · 28/09 e Rondonópolis · 30/09 — álbum completo em alta resolução</div><a href="https://drive.google.com/drive/folders/1SlNpQGwysuFnOBpnF1J2gN-H351VjJHs" target="_blank" rel="noopener" class="btn-green" style="margin-top:20px">Ver todas as fotos</a></div>
+    <div id="gal-more" style="display:none;text-align:center;margin-top:24px"><a href="#" class="btn-outline" onclick="galMore();return false">Ver mais fotos</a></div><div id="gal-drive" style="display:none;text-align:center;margin-top:18px;font-size:14px;color:rgba(255,255,255,.6)">Álbum completo em alta resolução: <a href="https://drive.google.com/drive/folders/1SlNpQGwysuFnOBpnF1J2gN-H351VjJHs" target="_blank" rel="noopener" style="color:var(--g);font-weight:700">abrir no Google Drive →</a></div>
   </div>
 </section>
 <div id="lb" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;align-items:center;justify-content:center;cursor:zoom-out;padding:20px"><div style="display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%"><img id="lb-img" style="max-width:100%;max-height:calc(100vh - 90px);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)"/><div id="lb-cap" style="display:none;color:#fff;font-weight:600;font-size:15px;text-align:center"></div></div></div>
@@ -236,7 +236,7 @@ footer{background:#070F1A;padding:44px 40px;border-top:1px solid rgba(255,255,25
     return a;
   }
   window.galMore=function(){var end=Math.min(shown+LOTE,found.length);for(var i=shown;i<end;i++)gal.appendChild(card(found[i]));shown=end;more.style.display=shown<found.length?'block':'none'};
-  function fim(){if(!found.length){empty.style.display='block';return}galMore()}
+  function fim(){if(!found.length){empty.style.display='block';return}galMore();document.getElementById('gal-drive').style.display='block'}
 })();
 </script>
 
